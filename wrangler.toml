@@ -1,0 +1,9 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "masjidnurulhuda"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB" # Nama variabel yang akan kita panggil di kode Hono
+database_name = "masjidnurulhuda-db"
+database_id = "b1082762-01af-4696-ab60-d245a653424f"

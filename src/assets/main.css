@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* 1. Mendaftarkan Palet Warna Brand Logo Masjid */
+@theme {
+  --color-brand-green: #116b39;
+  --color-brand-accent: #e08926;
+
+  /* Menjadikan Inter sebagai font default seluruh aplikasi */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* 2. SAKLAR UTAMA DARK MODE TAILWIND V4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 3. Global Styling CSS & Kalibrasi Tema */
+@layer base {
+  body {
+    /* Menerapkan font-sans, antialiased agar tulisan terlihat lebih tipis/tajam */
+    @apply font-sans antialiased bg-[#fafafa] text-slate-900 transition-colors duration-300;
+  }
+
+  /* 🟢 KALIBRASI WARNA DARK MODE (LEBIH SOFT & ELEGAN) */
+  .dark {
+    /* Terangkan teks mute agar tidak tenggelam di background gelap */
+    --color-slate-500: #94a3b8; /* Setara slate-400 normal */
+    --color-slate-400: #cbd5e1; /* Setara slate-300 normal */
+
+    /* Terangkan sedikit warna border dan panel (opsional, jika Anda pakai class slate-900/800) */
+    --color-slate-900: #1e293b;
+    --color-slate-800: #334155;
+
+    /* Redam warna identitas agar tidak "neon" / menusuk mata */
+    --color-brand-green: #10b981; /* Emerald-500 (hijau yang lebih cerah & kalem) */
+    --color-brand-accent: #f59e0b; /* Amber-500 (oren yang lebih soft) */
+
+    /* Redam warna peringatan/hapus (opsional tapi sangat membantu) */
+    --color-rose-600: #e11d48;
+    --color-rose-500: #f43f5e;
+  }
+
+  .dark body {
+    /* Memastikan background utama body mengikuti warna yang Anda pakai di AdminLayout */
+    @apply bg-[#0e131f] text-slate-100;
+  }
+}
+
+/* Hilangkan spinner panah pada input type="number" */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield; /* Untuk Firefox */
+}

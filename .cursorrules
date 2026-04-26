@@ -1,0 +1,44 @@
+ATURAN NAVIGASI, KONTEKS & OPTIMASI (TECH STACK: VUE + TAILWIND + HONO)
+
+## 1. MANDATORY CONTEXT CHECK (WAJIB)
+
+Setiap awal sesi baru, WAJIB baca DUA file ini di root folder sebagai kompas utama:
+
+1. `SYSTEM_MAP.md` (Peta arsitektur dan lokasi fungsi).
+2. `optimalisasi_plan.md` (Daftar prioritas perbaikan dan technical debt).
+   Jangan pernah melakukan "blind scan".
+
+## 2. CONTINUOUS OPTIMIZATION PROTOCOL (PERAN TECH LEAD)
+
+- Saat mengedit atau membuat fitur baru, cek apakah tugas tersebut berkaitan dengan list di `optimalisasi_plan.md`.
+- Jika Anda menyelesaikan sebuah masalah dari daftar optimasi, WAJIB coret/update status item tersebut di `optimalisasi_plan.md` pada sesi yang sama.
+- Jika Anda menemukan _code smell_, performa lambat (misal: re-render tidak perlu di Vue, N+1 query di Hono, atau class Tailwind yang redundan) saat mengerjakan tugas lain, catat temuan tersebut sebagai poin baru di `optimalisasi_plan.md`.
+
+## 3. TRACE-BY-FLOW & LAYER MAPPING
+
+- Telusuri alur berurutan: User Action (Vue Component) -> State/Composables -> Hono Route -> Hono Handler/Service -> Data Access -> Database.
+- Sesuaikan penamaan layer: `Controller` = `Hono Handlers`, `View` = `Vue Components` dengan `Tailwind CSS`.
+- Jangan gunakan `rg` (ripgrep) secara liar. Gunakan `SYSTEM_MAP.md` + Header Doc untuk langsung lompat ke target file.
+
+## 4. UNIVERSAL EXCLUSIONS
+
+Selalu abaikan folder dependensi/build/IDE/cache:
+node_modules, .venv, venv, env, vendor, target, .gradle, bin, obj, pkg, .git, .vscode, .idea, **pycache**, dist, build, tmp, coverage, .next, .nuxt, .cache, .output.
+
+## 5. EFISIENSI BACA & EDIT
+
+- Minim command, minim file read. Untuk file >500 baris, baca HANYA per blok fungsi/class terkait, bukan full file kecuali diminta eksplisit.
+- **Pre-Edit Trace Note:** Sebelum menulis kode, berikan output singkat (1-2 kalimat): file target + alur fungsi yang akan disentuh.
+- **Persetujuan Inisiatif:** Jika ada perubahan struktur di luar request user, wajib minta izin sebelum eksekusi.
+- **Modularitas:** Pecah logika kompleks ke Composables (Vue) atau pisahkan Handler & Service (Hono).
+
+## 6. HARD INSTRUCTION DOKUMENTASI & SINKRONISASI
+
+- **Header Doc:** Setiap file yang dibuat/diubah wajib punya header doc singkat di paling atas file (Tujuan, Caller, Dependensi, Main Functions, Side Effects).
+- **Sinkronisasi Otomatis:** Setiap perubahan logic WAJIB diikuti update Header Doc. Jika mengubah flow utama, WAJIB update `SYSTEM_MAP.md`. Jika memperbaiki isu performa, WAJIB update `optimalisasi_plan.md`.
+
+## 7. STANDAR DATABASE & QUERY (SENIOR DBA LEVEL)
+
+- Rancang query dengan prinsip minimum I/O, minimum cost, minimum lock contention.
+- Selalu evaluasi: selectivity filter, pemakaian index, strategi join, dan dampak N+1 query.
+- Sebelum finalize perubahan DB-heavy, jelaskan singkat alasan efisiensi, trade-off, dan risiko performa yang dihindari.
