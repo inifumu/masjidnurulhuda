@@ -1,6 +1,29 @@
-import { ref, onMounted, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useAuthStore } from "../../stores/authStore";
-import { toast } from "vue-sonner"; // 🟢 Ganti alert bawaan jadi Toast biar keren
+import { toast } from "vue-sonner";
+import {
+  pengaturanService,
+  type JenisArus,
+  type KategoriItem,
+  type SeksiItem,
+  type UserItem,
+  type UserRole,
+} from "../../services/admin/pengaturanService";
+
+interface PengaturanForm {
+  nama: string;
+  jenis_arus: JenisArus;
+  nama_pengurus: string;
+  nama_pengurus_list: string[];
+  role: UserRole;
+  email: string;
+  password: string;
+}
+
+type EditablePengaturanItem = Partial<KategoriItem & SeksiItem & UserItem>;
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Terjadi kesalahan";
 
 export function usePengaturan() {
   const authStore = useAuthStore();
@@ -11,16 +34,16 @@ export function usePengaturan() {
   const errorMessage = ref("");
 
   // State Data
-  const kategoriList = ref<any[]>([]);
-  const seksiList = ref<any[]>([]);
-  const akunList = ref<any[]>([]);
+  const kategoriList = ref<KategoriItem[]>([]);
+  const seksiList = ref<SeksiItem[]>([]);
+  const akunList = ref<UserItem[]>([]);
 
   // State Modal Form
   const isModalOpen = ref(false);
   const modalMode = ref<"add" | "edit">("add");
   const editId = ref<number | null>(null);
 
-  // 🟢 State Dropdown Custom
+  // State Dropdown Custom
   const openDropdown = ref<string | null>(null);
   const toggleDropdown = (name: string) => {
     openDropdown.value = openDropdown.value === name ? null : name;
@@ -30,7 +53,7 @@ export function usePengaturan() {
   };
 
   // Form Data
-  const formData = ref({
+  const formData = ref<PengaturanForm>({
     nama: "",
     jenis_arus: "pemasukan",
     nama_pengurus: "",
@@ -45,24 +68,17 @@ export function usePengaturan() {
     isLoading.value = true;
     errorMessage.value = "";
     try {
-      let endpoint = "";
-      if (activeTab.value === "kategori")
-        endpoint = "/api/admin/pengaturan/kategori";
-      else if (activeTab.value === "seksi")
-        endpoint = "/api/admin/pengaturan/seksi";
-      else if (activeTab.value === "akun")
-        endpoint = "/api/admin/pengaturan/users";
-
-      const res = await fetch(endpoint);
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.message || "Gagal memuat data");
-
-      if (activeTab.value === "kategori") kategoriList.value = json.data || [];
-      else if (activeTab.value === "seksi") seksiList.value = json.data || [];
-      else if (activeTab.value === "akun") akunList.value = json.data || [];
-    } catch (error: any) {
-      errorMessage.value = error.message;
+      if (activeTab.value === "kategori") {
+        kategoriList.value = await pengaturanService.getKategori();
+      } else if (activeTab.value === "seksi") {
+        seksiList.value = await pengaturanService.getSeksi();
+      } else if (activeTab.value === "akun") {
+        akunList.value = await pengaturanService.getUsers();
+      }
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      errorMessage.value = message;
+      toast.error(message);
     } finally {
       isLoading.value = false;
     }
@@ -71,32 +87,28 @@ export function usePengaturan() {
   watch(activeTab, () => loadData());
   onMounted(() => loadData());
 
-  const addPengurusInput = () => {
-    formData.value.nama_pengurus_list.push("");
-  };
-
-  const removePengurusInput = (index: number) => {
+  const addPengurusInput = () => formData.value.nama_pengurus_list.push("");
+  const removePengurusInput = (index: number) =>
     formData.value.nama_pengurus_list.splice(index, 1);
-  };
 
-  const openModal = (mode: "add" | "edit", item?: any) => {
+  const openModal = (mode: "add" | "edit", item?: EditablePengaturanItem) => {
     modalMode.value = mode;
     errorMessage.value = "";
-    closeDropdowns(); // Tutup dropdown jika ada yang kebuka
+    closeDropdowns();
 
     if (mode === "edit" && item) {
-      editId.value = item.id;
+      editId.value = item.id ?? null;
       if (activeTab.value === "kategori") {
-        formData.value.nama = item.nama_kategori || item.name;
+        formData.value.nama = item.nama_kategori || item.name || "";
         formData.value.jenis_arus = item.jenis_arus || "pemasukan";
       } else if (activeTab.value === "seksi") {
-        formData.value.nama = item.nama_seksi;
+        formData.value.nama = item.nama_seksi || "";
         formData.value.nama_pengurus_list = item.nama_pengurus
           ? item.nama_pengurus.split(", ")
           : [""];
       } else if (activeTab.value === "akun") {
-        formData.value.nama = item.name;
-        formData.value.email = item.email;
+        formData.value.nama = item.name || "";
+        formData.value.email = item.email || "";
         formData.value.role = item.role || "pengurus";
         formData.value.password = "";
       }
@@ -115,50 +127,33 @@ export function usePengaturan() {
   const closeModal = () => {
     isModalOpen.value = false;
     closeDropdowns();
-    formData.value.nama = "";
-    formData.value.jenis_arus = "pemasukan";
-    formData.value.nama_pengurus = "";
-    formData.value.nama_pengurus_list = [""];
-    formData.value.email = "";
-    formData.value.password = "";
-    formData.value.role = "pengurus";
   };
 
   const saveItem = async () => {
     isLoading.value = true;
-
     try {
-      let url = "";
-      let method = modalMode.value === "add" ? "POST" : "PUT";
-      let payload: any = {};
-
       if (activeTab.value === "kategori") {
         if (!formData.value.nama) throw new Error("Nama kategori wajib diisi");
-        url =
-          modalMode.value === "add"
-            ? "/api/admin/pengaturan/kategori"
-            : `/api/admin/pengaturan/kategori/${editId.value}`;
-
-        payload = {
+        const payload = {
           nama_kategori: formData.value.nama,
           jenis_arus: formData.value.jenis_arus,
         };
+        if (modalMode.value === "add")
+          await pengaturanService.addKategori(payload);
+        else await pengaturanService.updateKategori(editId.value!, payload);
       } else if (activeTab.value === "seksi") {
         if (!formData.value.nama) throw new Error("Nama seksi wajib diisi");
-        url =
-          modalMode.value === "add"
-            ? "/api/admin/pengaturan/seksi"
-            : `/api/admin/pengaturan/seksi/${editId.value}`;
-
         const gabunganPengurus = formData.value.nama_pengurus_list
           .map((n) => n.trim())
           .filter((n) => n !== "")
           .join(", ");
-
-        payload = {
+        const payload = {
           nama_seksi: formData.value.nama,
           nama_pengurus: gabunganPengurus,
         };
+        if (modalMode.value === "add")
+          await pengaturanService.addSeksi(payload);
+        else await pengaturanService.updateSeksi(editId.value!, payload);
       } else if (activeTab.value === "akun") {
         if (modalMode.value === "add") {
           if (
@@ -167,28 +162,18 @@ export function usePengaturan() {
             !formData.value.password
           )
             throw new Error("Nama, Email, dan Password wajib diisi");
-          url = "/api/admin/pengaturan/users";
-          payload = {
+          await pengaturanService.addUser({
             name: formData.value.nama,
             email: formData.value.email,
             password: formData.value.password,
             role: formData.value.role,
-          };
+          });
         } else {
-          url = `/api/admin/pengaturan/users/${editId.value}`;
-          payload = { name: formData.value.nama, role: formData.value.role };
+          await pengaturanService.updateUser(editId.value!, {
+            name: formData.value.nama,
+            role: formData.value.role,
+          });
         }
-      }
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.message || "Gagal menyimpan data");
       }
 
       closeModal();
@@ -200,32 +185,27 @@ export function usePengaturan() {
           "Profil/Role Anda diubah! Silakan Logout dan Login kembali.",
         );
       }
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       isLoading.value = false;
     }
   };
 
   const deleteItem = async (id: number) => {
-    // 🟢 HAPUS ALERT CONFIRM BAWAAN DI SINI! (Sudah dipindah ke Vue Modal)
     isLoading.value = true;
-
-    let endpoint = "";
-    if (activeTab.value === "kategori")
-      endpoint = `/api/admin/pengaturan/kategori/${id}`;
-    else if (activeTab.value === "seksi")
-      endpoint = `/api/admin/pengaturan/seksi/${id}`;
-    else if (activeTab.value === "akun")
-      endpoint = `/api/admin/pengaturan/users/${id}`;
-
     try {
-      const res = await fetch(endpoint, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus data");
+      if (activeTab.value === "kategori")
+        await pengaturanService.deleteKategori(id);
+      else if (activeTab.value === "seksi")
+        await pengaturanService.deleteSeksi(id);
+      else if (activeTab.value === "akun")
+        await pengaturanService.deleteUser(id);
+
       await loadData();
       toast.success("Data berhasil dihapus!");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       isLoading.value = false;
     }

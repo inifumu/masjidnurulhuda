@@ -5,7 +5,7 @@
   - Backend: Hono.js (`server/index.ts`) berjalan via Vite dev server adapter Cloudflare.
   - Database: Cloudflare D1 (SQLite) melalui binding `DB` di `wrangler.toml`.
   - Auth: JWT (`hono/jwt`) disimpan di cookie `httpOnly`.
-- Pola arsitektur singkat: UI Vue (view/component) -> composable/store/service frontend -> `httpClient` terpusat (request bridge + normalisasi error non-2xx) -> endpoint `/api/*` Hono (route + middleware auth) -> service/query SQL -> tabel D1.
+- Pola arsitektur singkat: UI Vue (view/component) -> composable/store/service frontend -> `httpClient` terpusat (request bridge + normalisasi error non-2xx) -> Cloudflare Pages Functions wrapper `functions/api/[[path]].ts` -> endpoint `/api/*` Hono (route + middleware auth) -> service/query SQL -> tabel D1.
 
 # Core Logic Flow (Function-Level Flowchart)
 - `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> DB users`
@@ -13,14 +13,14 @@
 - `[Vue] GET / (public route) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> section-based smooth-scroll landing (hero/jadwal/kas/kabar/galeri/saran)`
 - `[Vue] Home/JadwalSholat(useJadwal) -> [Vue] jadwalService.fetchJadwalToday -> [Hono] GET /api/public/jadwal/today (proxy + timeout/retry) -> [External API] MyQuran Kemenag -> cache harian localStorage + fallback offline`
 - `[Vue] Home/KasWidget(useKasSummary) -> [Vue] kasSummaryService.fetchSummary -> [Hono] GET /api/public/kas/summary -> [Query] aggregate kas approved bulanan -> DB kas_masjid`
-- `[Vue] Dashboard.vue(fetchSummary) -> [Hono] GET /api/admin/dashboard/summary -> dashboardService.getDashboardSummary -> dashboard query SUM kas_masjid -> DB kas_masjid`
+- `[Vue] Dashboard.vue -> [Vue] useDashboard.fetchSummary -> [Vue] dashboardService.getSummary -> [Vue] httpClient -> [Hono] GET /api/admin/dashboard/summary -> dashboardService.getDashboardSummary -> dashboard query SUM kas_masjid -> DB kas_masjid`
 - `[Vue] KeuanganKas/useKas.loadData -> [Vue] kasService.getMasterData + getTransactions -> [Vue] httpClient (credentials include + error normalization) -> [Hono] GET /api/admin/transaction/master-data + /list -> [Service] getAllTransactions(user) -> DB kas_masjid (role=pengurus: approved OR created_by=user.sub|id)`
 - `[Vue] KasInput/KasProposal -> [Vue] useKas.filteredCategoriesInput|filteredCategoriesProposal -> master-data categories(jenis_arus) -> UI dropdown kategori difilter by tipe transaksi + general`
 - `[Vue] KeuanganKas/KasApproval (Status Proposal) -> [Vue] kasService.getTransactions (/list) -> [Hono] GET /api/admin/transaction/list -> [Service] getAllTransactions(user) -> DB kas_masjid (role=pengurus scoped: approved OR created_by=user.sub|id)`
 - `[Vue] KasInput(useKas.handleDirectInput) -> [Vue] kasService.submitDirectTransaction -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-direct -> txService.createTransaction -> DB kas_masjid (status dipaksa approved, seksi_id opsional: disimpan jika dikirim, null jika kosong)`
 - `[Vue] KasProposal(useKas.handleProposal) -> [Vue] kasService.submitProposal -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-proposal -> txService.createTransaction -> DB kas_masjid (status dipaksa pending, seksi_id wajib)`
 - `[Vue] Kas Approval (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid`
-- `[Vue] Pengaturan/usePengaturan.saveItem|deleteItem -> fetch langsung ke [Hono] /api/admin/pengaturan/(kategori|seksi|users) -> service kategori|seksi|user -> DB kategori_kas(jenis_arus)|seksi_pengurus|users`
+- `[Vue] Pengaturan/usePengaturan.loadData|saveItem|deleteItem -> [Vue] pengaturanService/httpClient -> [Hono] /api/admin/pengaturan/(kategori|seksi|users) -> service kategori|seksi|user -> DB kategori_kas(jenis_arus)|seksi_pengurus|users`
 - `[Vue] Kas/Pengaturan delete/submit/approval -> ConfirmModal.vue + vue-sonner toast -> composable action -> API mutation`
 
 ## Authorization Matrix (RBAC)
@@ -71,6 +71,9 @@ masjidnurulhuda/
   migrations/
     0001_init_schema.sql
     0002_seed_initial_data.sql
+  functions/
+    api/
+      [[path]].ts
   src/
     main.ts
     env.d.ts
@@ -87,13 +90,16 @@ masjidnurulhuda/
           jadwalService.ts
           kasSummaryService.ts
       admin/
+        dashboardService.ts
         kasService.ts
+        pengaturanService.ts
     composables/
       public/
         home/
           useJadwal.ts
           useKasSummary.ts
       admin/
+        useDashboard.ts
         useKas.ts
         usePengaturan.ts
         useTheme.ts
@@ -178,10 +184,12 @@ masjidnurulhuda/
 - `src/stores/authStore.ts` — `login`, `logout`, `checkAuth` — sumber state autentikasi global frontend.
 - `src/views/admin/Login.vue` — `handleLogin` — UI login dan trigger autentikasi.
 - `src/layouts/AdminLayout.vue` — `handleLogout`, state sidebar/theme — kerangka UI panel admin.
-- `src/views/admin/Dashboard.vue` — `fetchSummary` — ambil ringkasan kas dan render kartu statistik.
+- `src/views/admin/Dashboard.vue` — integrasi `useDashboard` — render kartu statistik dari composable dashboard.
+- `src/composables/admin/useDashboard.ts` — `fetchSummary` — state dan loading ringkasan dashboard via service.
 - `src/views/admin/KeuanganKas.vue` — integrasi `useKas` + `useAuthStore` — host tab kas dengan UI guard RBAC (role-based visibilitas tab).
 - `src/composables/admin/useKas.ts` — `loadData`, `filteredCategoriesInput`, `filteredCategoriesProposal`, `handleDirectInput`, `handleProposal`, `handleAction`, `handleDelete` — orkestrasi state + aksi transaksi kas serta filter kategori berbasis `jenis_arus`.
 - `src/services/httpClient.ts` — `httpClient`, `ApiError` — jembatan fetch wrapper terpusat (default `credentials: include`) untuk intersepsi HTTP error non-2xx dan normalisasi error agar bisa dipakai notifikasi global (`vue-sonner`) di layer UI.
+- `src/services/admin/dashboardService.ts` — `getSummary` — API client dashboard admin berbasis `httpClient`.
 - `src/services/admin/kasService.ts` — `getMasterData`, `getTransactions`, `submitDirectTransaction`, `submitProposal`, `approveTransaction`, `deleteTransaction` — API client ke endpoint transaksi kas yang dipisah per intent.
 - `src/components/admin/kas/KasLaporan.vue` — tabel laporan + filter + ConfirmModal delete — UI guard RBAC untuk kolom/aksi delete.
 - `src/components/admin/kas/KasApproval.vue` — antrean approval/status proposal + ConfirmModal approve/reject — UI guard RBAC untuk label tab dan aksi approve/reject.
@@ -189,8 +197,10 @@ masjidnurulhuda/
 - `src/components/admin/kas/KasProposal.vue` — form proposal + validasi UI + ConfirmModal submit; `seksi_id` wajib sebelum dikirim ke backend.
 - `src/components/ui/ConfirmModal.vue` — modal konfirmasi reusable berbasis Headless UI untuk aksi destructive/success/warning.
 - `src/views/admin/Pengaturan.vue` — integrasi `usePengaturan`, custom dropdown role/jenis_arus, ConfirmModal delete — UI manajemen kategori/seksi/akun.
-- `src/composables/admin/usePengaturan.ts` — `loadData`, `saveItem`, `deleteItem` — state dan CRUD pengaturan lintas tab, masih memakai `fetch` langsung.
+- `src/composables/admin/usePengaturan.ts` — `loadData`, `saveItem`, `deleteItem` — state dan CRUD pengaturan lintas tab via `pengaturanService`.
+- `src/services/admin/pengaturanService.ts` — `get/add/update/delete` kategori, seksi, users — API client pengaturan admin berbasis `httpClient` dengan DTO frontend.
 - `src/composables/admin/useTheme.ts` — `toggleTheme` — dark/light mode berbasis `localStorage`.
+- `functions/api/[[path]].ts` — `handle(app)` dari `hono/cloudflare-pages` — adapter wajib Cloudflare Pages Functions agar request `/api/*` masuk ke Hono, bukan dilayani sebagai static SPA/HTML.
 - `server/index.ts` — `app.route(...)` — entrypoint backend dan registrasi semua sub-router API.
 - `server/api/public/index.ts` — aggregator router domain publik (`/api/public/*`) untuk modularisasi endpoint public-facing.
 - `server/api/public/kas.ts` — `GET /summary` — endpoint read-only kas publik (approved-only aggregate).
@@ -239,18 +249,19 @@ masjidnurulhuda/
   - Seed awal: `migrations/0002_seed_initial_data.sql`.
   - Catatan kompatibilitas: struktur migration ini aman untuk D1 remote yang fresh; jika migration lama pernah apply di remote, perlu strategi reconcile sebelum publish.
 - Konfigurasi deploy:
-  - Workflow CI/CD awal: `.github/workflows/deploy.yml`.
+  - Workflow CI/CD awal: `.github/workflows/deploy.yml` dengan step name di-quote, Node.js 24, dan migration command `npx wrangler d1 migrations apply masjidnurulhuda-db --remote`.
   - Script deploy tersedia di `package.json`: `npm run deploy` menjalankan build lalu `wrangler pages deploy dist`.
   - Cek lokal terbaru: `vue-tsc -b` pass dan `npm run build` pass setelah refresh cache/install dependency.
   - Cloudflare secret yang perlu tersedia di luar repo: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, dan runtime `JWT_SECRET`.
-  - Status pre-push: runtime `JWT_SECRET` production sudah dipasang di Cloudflare Pages project `masjidnurulhuda`.
+  - `CF_API_TOKEN` wajib Custom API Token level Account dengan scope D1 Edit, Pages Edit, dan Worker Scripts Edit; token standar "Edit Workers" tidak cukup untuk migration D1.
+  - Status production: runtime `JWT_SECRET` sudah dipasang di Cloudflare Pages project `masjidnurulhuda` dan harus berbeda total dari `.dev.vars` lokal.
 - Folder output/runtime artifacts:
   - Output build frontend: `dist` (dideklarasikan di `wrangler.toml`, tidak dianalisis sesuai exclusion).
   - Runtime cookie client: `cookies.txt` (artefak lokal, harus tidak tracked).
 
 # External Integrations
 - Cloudflare D1 (SQLite managed) — dipakai oleh seluruh route backend via binding `c.env.DB`.
-- Cloudflare Workers/Pages runtime via Wrangler — konfigurasi di `wrangler.toml`, adapter di `vite.config.ts`.
+- Cloudflare Workers/Pages runtime via Wrangler — konfigurasi di `wrangler.toml`, adapter dev di `vite.config.ts`, dan adapter production di `functions/api/[[path]].ts`.
 - Tidak ditemukan integrasi API pihak ketiga lain (payment gateway, email service, queue, webhook): Not found.
 
 # Risks / Blind Spots
@@ -259,6 +270,6 @@ masjidnurulhuda/
 - Rotasi secret JWT dan pengelolaan secret production baseline sudah dicatat di `RUNBOOK.md`; revoke/rotation drill tetap dapat diperdalam pada Day-2 Operations.
 - Struktur role berpotensi tidak sinkron jika akun lama masih menyimpan nilai role historis yang tidak masuk matrix final (`superadmin|ketua|pengurus`).
 - Migration DDL dan seed sudah dipisah untuk fresh database, tetapi belum ada skrip reset/seed lokal yang konsisten atau test migration otomatis.
-- Pipeline CI/CD awal sudah ada, script deploy tersedia, build lokal sudah pass, dan smoke test otomatis dipindahkan ke Day-2 Operations; deploy awal memakai health check manual pasca-deploy.
-- `usePengaturan` masih memakai `fetch` langsung, sehingga belum mendapat benefit `httpClient` terpusat (`credentials`, normalisasi error, tipe response).
+- Pipeline CI/CD sudah berhasil deploy; lesson learned: readiness harus mengecek YAML quoting, Node runner aktif, Wrangler command valid, scope API token Cloudflare account-level, dan Pages Functions wrapper untuk API Hono.
+- Type safety belum tuntas menyeluruh: area admin utama sudah memakai DTO service/composable, tetapi masih ada `any` residual di middleware/service backend, helper response, dan beberapa component props/catch non-kritis.
 - Dokumentasi resmi arsitektur/operasional minim (README masih template), sehingga beberapa keputusan non-fungsional (monitoring, backup, recovery) tidak bisa dipetakan pasti.

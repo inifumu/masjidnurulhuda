@@ -1,21 +1,39 @@
 import { ref, computed, watch } from "vue";
-import { kasService } from "../../services/admin/kasService";
+import {
+  kasService,
+  type DirectTransactionPayload,
+  type KasCategory,
+  type KasMethod,
+  type KasSection,
+  type KasTransaction,
+  type ProposalTransactionPayload,
+} from "../../services/admin/kasService";
 
 const activeTab = ref<"laporan" | "approval" | "input" | "proposal">("laporan");
 const isLoading = ref(false);
-const transactions = ref<any[]>([]);
+const transactions = ref<KasTransaction[]>([]);
 
 const selectedMonth = ref(new Date().getMonth() + 1);
 const selectedYear = ref(new Date().getFullYear());
 const filterTipe = ref<"semua" | "pemasukan" | "pengeluaran">("semua");
 const filterKategori = ref<number | "semua">("semua");
 
-const categories = ref<any[]>([]);
-const sections = ref<any[]>([]);
-const methods = ref<any[]>([]);
+const categories = ref<KasCategory[]>([]);
+const sections = ref<KasSection[]>([]);
+const methods = ref<KasMethod[]>([]);
+
+type KasForm = {
+  tipe: "pemasukan" | "pengeluaran";
+  jumlah: string;
+  kategori_id: number | null;
+  seksi_id: number | null;
+  metode: string;
+  tanggal: string;
+  keterangan: string;
+};
 
 // 🟢 UPDATE: Tambahkan seksi_id ke formInput Kas Langsung
-const formInput = ref({
+const formInput = ref<KasForm>({
   tipe: "pemasukan",
   jumlah: "",
   kategori_id: null as number | null,
@@ -25,7 +43,7 @@ const formInput = ref({
   keterangan: "",
 });
 
-const formProposal = ref({
+const formProposal = ref<KasForm>({
   tipe: "pengeluaran",
   jumlah: "",
   kategori_id: null as number | null,
@@ -173,7 +191,17 @@ export function useKas() {
   const handleDirectInput = async () => {
     isLoading.value = true;
     try {
-      await kasService.submitDirectTransaction({ ...formInput.value });
+      if (!formInput.value.kategori_id) {
+        throw new Error("Kategori wajib dipilih");
+      }
+
+      const payload: DirectTransactionPayload = {
+        ...formInput.value,
+        jumlah: Number(formInput.value.jumlah),
+        kategori_id: formInput.value.kategori_id,
+      };
+
+      await kasService.submitDirectTransaction(payload);
       formInput.value.jumlah = "";
       formInput.value.keterangan = "";
       formInput.value.seksi_id = null; // Reset seksi
@@ -187,7 +215,21 @@ export function useKas() {
   const handleProposal = async () => {
     isLoading.value = true;
     try {
-      await kasService.submitProposal({ ...formProposal.value });
+      if (!formProposal.value.kategori_id) {
+        throw new Error("Kategori wajib dipilih");
+      }
+      if (!formProposal.value.seksi_id) {
+        throw new Error("Seksi wajib dipilih");
+      }
+
+      const payload: ProposalTransactionPayload = {
+        ...formProposal.value,
+        jumlah: Number(formProposal.value.jumlah),
+        kategori_id: formProposal.value.kategori_id,
+        seksi_id: formProposal.value.seksi_id,
+      };
+
+      await kasService.submitProposal(payload);
       formProposal.value.jumlah = "";
       formProposal.value.keterangan = "";
       formProposal.value.seksi_id = null; // Reset seksi

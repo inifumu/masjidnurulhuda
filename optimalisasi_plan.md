@@ -7,7 +7,8 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
 ### Done
 - [x] Hardening secret auth baseline:
   - `JWT_SECRET` sudah dipindahkan dari hardcoded ke environment (`c.env.JWT_SECRET`),
-  - fallback dev memakai konfigurasi lokal `.dev.vars`/binding, bukan konstanta hardcoded di source.
+  - fallback dev memakai konfigurasi lokal `.dev.vars`/binding, bukan konstanta hardcoded di source,
+  - `JWT_SECRET` production wajib berbeda total dari `.dev.vars` lokal.
 - [x] Validasi input endpoint transaksi kritis:
   - validasi required field, nominal positif, whitelist tipe, sanitasi keterangan.
 - [x] Refactor endpoint transaksi submit:
@@ -15,11 +16,14 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - `POST /api/admin/transaction/add-proposal` (server paksa `status=pending`, `seksi_id` wajib).
 - [x] Penutupan celah bypass role `pengurus`:
   - `POST /approve/:id` dan `DELETE /:id` sudah `403` untuk non-approver.
+- [x] Error handling end-to-end area admin kritis:
+  - frontend memakai `httpClient` + toast `vue-sonner`,
+  - backend route admin kritis (`auth`, `dashboard`, `transaction`, `pengaturan`) sudah memakai helper `sendSuccess/sendError`.
+- [x] Standarisasi response API admin kritis:
+  - route `auth`, `dashboard`, `transaction`, dan `pengaturan` sudah konsisten memakai helper response terpusat,
+  - kontrak utama memakai `status`, `message`, `data`/`errors`; `errorCode` machine-readable belum dipakai dan bisa dievaluasi lagi jika dibutuhkan client.
 
 ### In Progress
-- [~] Error handling end-to-end:
-  - sisi frontend selesai (`httpClient` + toast `vue-sonner`),
-  - sisi backend belum seragam penuh (belum helper response success/error terpusat lintas route).
 - [~] Hardening auth/session lanjutan:
   - cookie/session sudah membaik,
   - rotasi secret + runbook lifecycle secret belum finalized,
@@ -31,7 +35,6 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - perlu reconcile jika migration lama pernah apply di D1 remote.
 
 ### Not Yet
-- [ ] Standarisasi kontrak response auth (`status`, `message`, `data`, `errorCode`) lintas endpoint.
 - [ ] Pisahkan seed dari DDL migration:
   - seed production sudah dipindah ke `migrations/0002_seed_initial_data.sql`,
   - `server/db/schema.sql` masih berisi DDL + seed sebagai reference/reset lokal,
@@ -43,7 +46,11 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
 - [x] Refactor API client frontend:
   - `src/services/httpClient.ts` aktif sebagai wrapper fetch,
   - service transaksi sudah migrasi ke `httpClient`,
+  - service dashboard dan pengaturan admin sudah migrasi ke `httpClient`,
   - parsing error non-2xx sudah terpusat.
+- [x] Migrasi `usePengaturan` ke `httpClient`:
+  - `loadData`, `saveItem`, dan `deleteItem` sekarang lewat `pengaturanService`,
+  - normalisasi error, `credentials`, dan kontrak response sudah setara dengan service transaksi.
 - [x] Konsistensi role matrix final (`superadmin`, `ketua`, `pengurus`) sudah diterapkan pada flow keuangan inti.
 - [x] Relasi Kategori Kas dengan Jenis Arus:
   - `kategori_kas.jenis_arus` tersedia di schema/migration,
@@ -60,15 +67,14 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - transaksi sudah fail-closed,
   - modul admin lain masih perlu audit seragam.
   - temuan audit selesai: `GET /api/admin/dashboard/summary` sudah memakai `requireAuth` + allowlist role eksplisit.
+- [~] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`).
+  - update Day-2: payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload/list `usePengaturan`, `dashboardService`, dan `pengaturanService` sudah memakai DTO eksplisit.
+  - sisa audit: `any` residual masih ada di middleware/service backend, helper response, beberapa component props/catch admin, dan area publik jadwal.
 
 ### Not Yet
-- [ ] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`).
-  - temuan audit Gate 1: payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload `usePengaturan`, dan service backend kategori/transaksi masih memakai `any`/`string` generik; perlu DTO eksplisit untuk `jenis_arus`, `seksi_id`, role, dan tipe transaksi.
-  - temuan audit Gate 1: `jenis_arus` belum divalidasi eksplisit di route `/api/admin/pengaturan/kategori`; saat ini invalid value baru ditolak oleh CHECK constraint DB.
-  - temuan audit Gate 1: `seksi_id` Kas Langsung sudah opsional dan tersimpan bila dikirim, tetapi masih perlu hardening validasi numerik/FK jika payload di luar UI mengirim nilai tidak valid.
-- [ ] Migrasi `usePengaturan` ke `httpClient`:
-  - saat ini masih memakai `fetch` langsung untuk load/save/delete,
-  - normalisasi error, `credentials`, dan kontrak response belum setara dengan service transaksi.
+- [ ] Validasi DTO backend lanjutan:
+  - `jenis_arus` perlu divalidasi eksplisit di route `/api/admin/pengaturan/kategori`; saat ini invalid value baru ditolak oleh CHECK constraint DB.
+  - `seksi_id` Kas Langsung sudah opsional dan tersimpan bila dikirim, tetapi masih perlu hardening validasi numerik/FK jika payload di luar UI mengirim nilai tidak valid.
 - [ ] Optimasi query dan indexing D1:
   - index `kas_masjid(status,tanggal)`, `kas_masjid(kategori_id)`, `kas_masjid(seksi_id)`, `users(email)`,
   - query pagination-ready,
@@ -167,7 +173,7 @@ Fokus: website jamaah yang cepat, aman (read-only), dan scalable.
 - [x] Fallback + caching jadwal sholat publik.
 
 ### Next (setelah flow stabil)
-- [ ] Type safety menyeluruh + kurangi `any`.
+- [~] Type safety menyeluruh + kurangi `any`.
 - [ ] Refactor backend konsisten `Route -> Service -> Query`.
 - [ ] Loading UX halus + observability dasar.
 
@@ -175,12 +181,19 @@ Fokus: website jamaah yang cepat, aman (read-only), dan scalable.
 - [~] Migration versioned + seed terpisah.
   - DDL/index dan seed sudah dipisah di folder `migrations/`,
   - D1 remote production awal dikonfirmasi fresh (dibuat via `npx wrangler d1 create`, belum ada tabel),
+  - command CI/CD valid: `npx wrangler d1 migrations apply masjidnurulhuda-db --remote` tanpa flag `--batch`,
   - belum ada test migration otomatis; reconcile hanya diperlukan jika ada remote non-fresh di masa depan.
 - [~] Pipeline staging -> production dengan quality gate.
   - `.github/workflows/deploy.yml` sudah ada,
   - `npm run deploy` sudah tersedia di `package.json`,
+  - YAML step name yang mengandung tanda baca wajib diberi double quotes agar tidak gagal parse,
+  - GitHub Actions runner memakai Node.js 24 untuk menghindari status deprecated,
+  - Cloudflare API token untuk CI/CD wajib custom token level Account dengan scope D1 Edit, Pages Edit, dan Worker Scripts Edit; token standar "Edit Workers" tidak cukup untuk D1 account-level,
   - smoke test endpoint inti belum otomatis,
   - cek lokal terbaru: `vue-tsc -b` pass dan `npm run build` pass setelah refresh cache/install dependency.
+- [x] Pages Functions wrapper untuk arsitektur hybrid SPA + Hono:
+  - `functions/api/[[path]].ts` wajib ada agar request `/api/*` diproses oleh Hono di Cloudflare Pages,
+  - tanpa wrapper ini deploy hanya mengirim Vue static files dan API dapat gagal sebagai HTML/405.
 - [~] Runbook backup/restore/rollback.
   - `RUNBOOK.md` sudah ada untuk backup/restore D1, rollback Pages, dan health check publik,
   - sudah mencakup rotasi `JWT_SECRET`, health check publik, dan verifikasi admin minimum pasca-deploy/rollback.
@@ -219,7 +232,12 @@ Estimasi cepat Gate 1: **0.5 - 1 hari**
   - install -> typecheck -> test -> build -> deploy.
   - status: `.github/workflows/deploy.yml` sudah ada,
   - status: `package.json` sudah punya script `deploy`,
+  - status pasca-deploy: nama step GitHub Actions sudah memakai double quotes, runner Node.js sudah Node 24, dan command migration sudah tanpa `--batch`,
+  - pre-deploy wajib: `CF_API_TOKEN` adalah Custom API Token level Account dengan D1 Edit, Pages Edit, dan Worker Scripts Edit,
   - cek lokal terbaru: `vue-tsc -b` sukses dan `npm run build` sukses di Windows setelah `npm cache verify` + `npm install`.
+- [x] Verifikasi Pages Functions wrapper untuk backend Hono:
+  - file `functions/api/[[path]].ts` aktif sebagai adapter Cloudflare Pages Functions,
+  - trace runtime: `/api/*` -> Pages Function wrapper -> `server/index.ts` -> router Hono.
 - [~] Tambahkan quality gate:
   - fail jika migration gagal,
   - fail jika smoke test endpoint inti gagal.
@@ -241,9 +259,17 @@ Estimasi cepat Gate 2: **1 - 2 hari**
 - [ ] Review response error production-safe (tidak bocor detail internal).
 - [ ] Verifikasi konfigurasi secret production:
   - `JWT_SECRET` tidak default/dev,
+  - `JWT_SECRET` production harus berbeda total dari `.dev.vars` lokal,
   - prosedur rotasi secret terdokumentasi.
   - status pre-push: `.dev.vars` dan `cookies.txt` sudah dikeluarkan dari index Git dan secret lokal sudah dirotasi.
   - status pre-push: `JWT_SECRET` runtime Cloudflare/Pages sudah diset untuk project `masjidnurulhuda`.
+
+### Lessons Learned Deploy Pertama
+- YAML GitHub Actions: quote semua `name` step yang mengandung karakter khusus seperti titik dua (`:`).
+- Node.js runner: gunakan Node.js 24 untuk menghindari deprecation warning GitHub Actions 2026.
+- Wrangler D1 migration: jangan gunakan `--batch` pada `d1 migrations apply`; gunakan `--remote` untuk CI/CD.
+- Cloudflare permission: D1 adalah resource account-level, jadi token CI/CD perlu Custom API Token dengan scope Account, bukan hanya token zona/Workers standar.
+- Hybrid Vue + Hono di Cloudflare Pages: pastikan `functions/api/[[path]].ts` ada agar API tidak jatuh menjadi response HTML/static 405.
 
 Estimasi cepat Gate 3: **0.5 hari**
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
 import { useAuthStore } from "../../stores/authStore";
+import { useDashboard } from "../../composables/admin/useDashboard"; // 🟢 Panggil composable
 import {
   Wallet,
   TrendingUp,
@@ -11,13 +11,10 @@ import {
 
 const authStore = useAuthStore();
 
-const summary = ref({
-  totalPemasukan: 0,
-  totalPengeluaran: 0,
-  saldoAkhir: 0,
-});
-const isLoading = ref(true);
+// 🟢 Ambil state dan data dari composable
+const { summary, isLoading } = useDashboard();
 
+// 🟢 UI Logic murni (biarkan di sini)
 const formatRupiah = (angka: number) => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -25,26 +22,6 @@ const formatRupiah = (angka: number) => {
     maximumFractionDigits: 0,
   }).format(angka);
 };
-
-const fetchSummary = async () => {
-  try {
-    const res = await fetch("/api/admin/dashboard/summary", {
-      credentials: "include",
-    });
-    if (res.ok) {
-      const result = await res.json();
-      summary.value = result.data;
-    }
-  } catch (e) {
-    console.error("Gagal memuat ringkasan kas");
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-onMounted(() => {
-  fetchSummary();
-});
 </script>
 
 <template>

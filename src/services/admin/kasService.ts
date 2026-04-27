@@ -1,46 +1,112 @@
-// Pastikan path import ini sesuai dengan lokasi file httpClient Anda
 import { httpClient } from "../httpClient";
 
+// ==========================================
+// 🛡️ INTERFACES / DTO (Data Transfer Objects)
+// ==========================================
+
+export interface TransactionBasePayload {
+  tipe: "pemasukan" | "pengeluaran";
+  jumlah: number;
+  keterangan: string;
+  tanggal: string; // Format: YYYY-MM-DD
+  kategori_id: number;
+  metode: string;
+}
+
+// Seksi_id opsional untuk Kas Langsung
+export interface DirectTransactionPayload extends TransactionBasePayload {
+  seksi_id?: number | null;
+}
+
+// Seksi_id WAJIB untuk Proposal
+export interface ProposalTransactionPayload extends TransactionBasePayload {
+  seksi_id: number;
+}
+
+export interface KasCategory {
+  id: number;
+  nama_kategori: string;
+  jenis_arus: "pemasukan" | "pengeluaran" | "general";
+  name?: string;
+}
+
+export interface KasSection {
+  id: number;
+  nama_seksi: string;
+  nama_pengurus?: string | null;
+}
+
+export interface KasTransaction {
+  id: number;
+  tipe: "pemasukan" | "pengeluaran";
+  jumlah: number;
+  keterangan: string;
+  tanggal: string;
+  kategori_id: number;
+  kategori?: string;
+  seksi_id?: number | null;
+  seksi?: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at?: string;
+}
+
+export interface TransactionMasterData {
+  categories?: KasCategory[];
+  kategori?: KasCategory[];
+  sections?: KasSection[];
+  seksi?: KasSection[];
+}
+
+export interface KasMethod {
+  id: string;
+  name: string;
+}
+
+// ==========================================
+// 🚀 SERVICE METHODS
+// ==========================================
+
 export const kasService = {
-  async getMasterData() {
-    const res = await httpClient("/api/admin/transaction/master-data");
+  async getMasterData(): Promise<TransactionMasterData> {
+    const res = await httpClient<{ data: TransactionMasterData }>(
+      "/api/admin/transaction/master-data",
+    );
     return res.data;
   },
 
-  getMethods() {
+  getMethods(): KasMethod[] {
     return [
       { id: "kas_langsung", name: "Kas Langsung (Tunai/Bank)" },
       { id: "reimbursement", name: "Reimbursement (Ganti Uang)" },
     ];
   },
 
-  async getTransactions() {
+  async getTransactions(): Promise<KasTransaction[]> {
     try {
-      const res = await httpClient("/api/admin/transaction/list");
-      return res.data;
+      const res = await httpClient<{ data?: KasTransaction[] }>(
+        "/api/admin/transaction/list",
+      );
+      return res.data || [];
     } catch (error) {
       console.error("Gagal load transaksi:", error);
       return []; // Fallback agar tabel tidak error jika gagal load
     }
   },
 
-  // 🟢 FUNGSI BARU 1: Untuk Kas Langsung (Tanpa Seksi)
-  async submitDirectTransaction(payload: any) {
+  async submitDirectTransaction(payload: DirectTransactionPayload) {
     return await httpClient("/api/admin/transaction/add-direct", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 
-  // 🟢 FUNGSI BARU 2: Untuk Proposal (Wajib Seksi)
-  async submitProposal(payload: any) {
+  async submitProposal(payload: ProposalTransactionPayload) {
     return await httpClient("/api/admin/transaction/add-proposal", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 
-  // Tipe action disesuaikan dengan validasi backend ("approve" | "reject")
   async approveTransaction(id: number, action: "approve" | "reject") {
     return await httpClient(`/api/admin/transaction/approve/${id}`, {
       method: "POST",

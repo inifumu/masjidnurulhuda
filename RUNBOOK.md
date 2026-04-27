@@ -58,22 +58,54 @@ Secret yang wajib tersedia:
 - Cloudflare Pages runtime secret:
   - `JWT_SECRET`
 
+`CF_API_TOKEN` wajib berupa Custom API Token dengan scope Account:
+
+- D1 Edit
+- Pages Edit
+- Worker Scripts Edit
+
+Token standar "Edit Workers" tidak cukup untuk menjalankan migration D1 dari GitHub Actions, karena D1 berada di level akun Cloudflare.
+
 Set atau rotasi `JWT_SECRET` production:
 
 ```bash
 npx wrangler pages secret put JWT_SECRET --project-name masjidnurulhuda
 ```
 
-Catatan: setelah `JWT_SECRET` dirotasi, sesi login lama tidak valid dan user perlu login ulang.
+Catatan:
 
-## 5. Exit Criteria Deploy Awal
+- `JWT_SECRET` production wajib berbeda total dari nilai di `.dev.vars` lokal.
+- Setelah `JWT_SECRET` dirotasi, sesi login lama tidak valid dan user perlu login ulang.
+
+## 5. Checklist Pipeline & Routing
+
+GitHub Actions:
+
+- Step `name` yang mengandung tanda baca seperti titik dua (`:`) harus memakai double quotes.
+- Runner memakai Node.js 24.
+- Migration D1 memakai:
+
+```bash
+npx wrangler d1 migrations apply masjidnurulhuda-db --remote
+```
+
+Jangan tambahkan flag `--batch` pada `d1 migrations apply`.
+
+Cloudflare Pages Functions:
+
+- File `functions/api/[[path]].ts` wajib ada untuk proyek hybrid Vue SPA + Hono.
+- Trace production: `/api/*` -> `functions/api/[[path]].ts` -> `server/index.ts` -> router Hono.
+- Jika wrapper hilang, deploy hanya melayani file statis Vue dan API bisa gagal dengan HTML/405.
+
+## 6. Exit Criteria Deploy Awal
 
 Sebelum push ke `main`, pastikan:
 
 - [ ] `npm audit` menunjukkan `found 0 vulnerabilities`.
 - [ ] D1 remote masih fresh atau strategi reconcile migration sudah jelas.
-- [ ] `CF_ACCOUNT_ID` dan `CF_API_TOKEN` tersedia di GitHub Secrets.
-- [ ] `JWT_SECRET` sudah dipasang di Cloudflare Pages project `masjidnurulhuda`.
+- [ ] `CF_ACCOUNT_ID` dan custom `CF_API_TOKEN` level Account tersedia di GitHub Secrets.
+- [ ] `JWT_SECRET` sudah dipasang di Cloudflare Pages project `masjidnurulhuda` dan berbeda dari `.dev.vars`.
+- [ ] `functions/api/[[path]].ts` tersedia sebagai Pages Functions wrapper untuk Hono.
 - [ ] Pipeline GitHub Actions hijau: install, typecheck, migration apply, build, deploy.
 - [ ] Health check publik dan flow admin minimum lolos setelah deploy.
 
