@@ -14,7 +14,16 @@ export const getUsers = async (db: D1Database) => {
     .all();
 };
 
-export const createUser = async (db: D1Database, data: any) => {
+export type UserRole = "superadmin" | "ketua" | "pengurus";
+
+export interface CreateUserPayload {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+}
+
+export const createUser = async (db: D1Database, data: CreateUserPayload) => {
   const hashedPassword = await hashPassword(data.password);
   return await db
     .prepare(
@@ -27,7 +36,7 @@ export const createUser = async (db: D1Database, data: any) => {
 export const updateUserRole = async (
   db: D1Database,
   id: number,
-  role: string,
+  role: UserRole,
   name: string,
 ) => {
   return await db

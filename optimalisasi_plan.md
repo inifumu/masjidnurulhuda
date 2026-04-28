@@ -69,12 +69,17 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - temuan audit selesai: `GET /api/admin/dashboard/summary` sudah memakai `requireAuth` + allowlist role eksplisit.
 - [~] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`).
   - update Day-2: payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload/list `usePengaturan`, `dashboardService`, dan `pengaturanService` sudah memakai DTO eksplisit.
-  - sisa audit: `any` residual masih ada di middleware/service backend, helper response, beberapa component props/catch admin, dan area publik jadwal.
+  - update kecil: `server/utils/response.ts`, `server/middleware/auth.ts`, `server/services/transaction.ts`, dan `server/services/user.ts` sudah bebas `any`.
+  - sisa audit: `any` residual masih ada di `src/services/httpClient.ts`, beberapa component props/catch admin, query dashboard, service auth, dan area publik jadwal.
 
 ### Not Yet
 - [ ] Validasi DTO backend lanjutan:
   - `jenis_arus` perlu divalidasi eksplisit di route `/api/admin/pengaturan/kategori`; saat ini invalid value baru ditolak oleh CHECK constraint DB.
   - `seksi_id` Kas Langsung sudah opsional dan tersimpan bila dikirim, tetapi masih perlu hardening validasi numerik/FK jika payload di luar UI mengirim nilai tidak valid.
+  - `role` pada create/update akun perlu allowlist `superadmin|ketua|pengurus` sebelum masuk service DB.
+  - `kategori_id` dan `seksi_id` pada transaksi perlu parse integer positif; `add-proposal` perlu normalisasi `seksi_id` seperti `add-direct`.
+  - `jumlah` perlu `Number.isFinite` dan batas maksimum nominal yang masuk akal agar nilai seperti `Infinity` tidak lolos.
+  - route param `:id` di pengaturan kategori/seksi/users/reset-password/delete perlu validasi integer positif seperti endpoint transaksi.
 - [ ] Optimasi query dan indexing D1:
   - index `kas_masjid(status,tanggal)`, `kas_masjid(kategori_id)`, `kas_masjid(seksi_id)`, `users(email)`,
   - query pagination-ready,

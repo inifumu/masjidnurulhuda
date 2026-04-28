@@ -1,6 +1,27 @@
+type TransactionType = "pemasukan" | "pengeluaran";
+type TransactionStatus = "pending" | "approved" | "rejected";
+
+export interface TransactionPayload {
+  tipe: TransactionType;
+  jumlah: number;
+  keterangan: string;
+  tanggal: string;
+  kategori_id: number;
+  periode_id?: number | null;
+  seksi_id?: number | null;
+  metode?: string | null;
+  status?: TransactionStatus;
+}
+
+export interface TransactionUserScope {
+  sub?: number;
+  id?: number;
+  role?: string;
+}
+
 export const createTransaction = async (
   db: D1Database,
-  data: any,
+  data: TransactionPayload,
   userId: number,
 ) => {
   const {
@@ -40,7 +61,10 @@ export const createTransaction = async (
     .run();
 };
 
-export const getPendingTransactions = async (db: D1Database, user: any) => {
+export const getPendingTransactions = async (
+  db: D1Database,
+  user: TransactionUserScope,
+) => {
   let baseQuery = `
     SELECT t.*, k.nama_kategori, s.nama_seksi 
     FROM kas_masjid t
@@ -63,7 +87,7 @@ export const getPendingTransactions = async (db: D1Database, user: any) => {
 export const updateStatus = async (
   db: D1Database,
   id: number,
-  status: "approved" | "rejected",
+  status: Extract<TransactionStatus, "approved" | "rejected">,
 ) => {
   return await db
     .prepare("UPDATE kas_masjid SET status = ? WHERE id = ?")
@@ -71,7 +95,10 @@ export const updateStatus = async (
     .run();
 };
 
-export const getAllTransactions = async (db: D1Database, user: any) => {
+export const getAllTransactions = async (
+  db: D1Database,
+  user: TransactionUserScope,
+) => {
   let baseQuery = `
     SELECT 
       t.*, 

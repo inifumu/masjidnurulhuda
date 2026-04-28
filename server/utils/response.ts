@@ -1,11 +1,11 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-// 🟢 Helper untuk Response Sukses
-export const sendSuccess = (
+// 🟢 Helper untuk Response Sukses (Menggunakan Generic <T>)
+export const sendSuccess = <T = unknown>(
   c: Context,
   message: string,
-  data: any = null,
+  data: T | null = null,
   statusCode: ContentfulStatusCode = 200,
 ) => {
   return c.json(
@@ -24,7 +24,7 @@ export const sendError = (
   c: Context,
   message: string,
   statusCode: ContentfulStatusCode = 500,
-  errors: any = null,
+  errors: unknown = null,
 ) => {
   return c.json(
     {
