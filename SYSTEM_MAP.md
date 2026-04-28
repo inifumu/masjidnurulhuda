@@ -8,7 +8,7 @@
 - Pola arsitektur singkat: UI Vue (view/component) -> composable/store/service frontend -> `httpClient` terpusat (request bridge + normalisasi error non-2xx) -> Cloudflare Pages Functions wrapper `functions/api/[[path]].ts` -> endpoint `/api/*` Hono (route + middleware auth) -> service/query SQL -> tabel D1.
 
 # Core Logic Flow (Function-Level Flowchart)
-- `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> DB users`
+- `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Middleware] login rate limit baseline (IP+email, in-memory, 5 gagal/15 menit) -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> DB users`
 - `[Vue] router.beforeEach -> [Vue] authStore.checkAuth() -> [Hono] GET /api/admin/auth/me -> verify JWT cookie -> response user session`
 - `[Vue] GET / (public route) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> section-based smooth-scroll landing (hero/jadwal/kas/kabar/galeri/saran)`
 - `[Vue] Home/JadwalSholat(useJadwal) -> [Vue] jadwalService.fetchJadwalToday -> [Hono] GET /api/public/jadwal/today (proxy + timeout/retry) -> [External API] MyQuran Kemenag -> cache harian localStorage + fallback offline`
@@ -139,6 +139,7 @@ masjidnurulhuda/
     index.ts
     middleware/
       auth.ts
+      rateLimit.ts
     api/
       public/
         index.ts
@@ -207,8 +208,9 @@ masjidnurulhuda/
 - `server/api/public/jadwal.ts` — `GET /today` — proxy API jadwal sholat (timeout + retry + cache headers) agar integrasi eksternal lebih stabil.
 - `server/utils/response.ts` — `sendSuccess`, `sendError` — factory response helper backend untuk standarisasi output JSON lintas endpoint.
 - `server/middleware/auth.ts` — `requireAuth`, `requireRole` — middleware reusable untuk autentikasi JWT dan otorisasi role lintas route admin.
-- `server/api/admin/auth.ts` — `POST /login`, `POST /logout`, `GET /me` — autentikasi cookie JWT.
-- `server/services/auth.ts` — `loginAdmin` — validasi kredensial dan pembuatan token JWT.
+- `server/middleware/rateLimit.ts` — `checkLoginRateLimit`, `recordFailedLogin`, `clearLoginAttempts` — rate limit baseline login admin berbasis in-memory Map dengan key `IP:email`, `Retry-After`, dan reset saat login sukses.
+- `server/api/admin/auth.ts` — `POST /login`, `POST /logout`, `GET /me` — autentikasi cookie JWT; login memvalidasi email/password, mengecek rate limit sebelum auth service, mencatat kegagalan, dan membersihkan attempt saat sukses.
+- `server/services/auth.ts` — `loginAdmin`, `AuthUserRow`, `AuthRole` — validasi kredensial typed, hash verify, dan pembuatan token JWT.
 - `server/db/queries/auth.ts` — `getUserByEmail` — query user by email untuk login.
 - `server/api/admin/dashboard.ts` — `GET /summary` + middleware auth — endpoint ringkasan kas.
 - `server/services/dashboard.ts` — `getDashboardSummary` — delegasi business logic dashboard ke query.
@@ -271,5 +273,6 @@ masjidnurulhuda/
 - Struktur role berpotensi tidak sinkron jika akun lama masih menyimpan nilai role historis yang tidak masuk matrix final (`superadmin|ketua|pengurus`).
 - Migration DDL dan seed sudah dipisah untuk fresh database, tetapi belum ada skrip reset/seed lokal yang konsisten atau test migration otomatis.
 - Pipeline CI/CD sudah berhasil deploy; lesson learned: readiness harus mengecek YAML quoting, Node runner aktif, Wrangler command valid, scope API token Cloudflare account-level, dan Pages Functions wrapper untuk API Hono.
-- Type safety belum tuntas menyeluruh: area admin utama sudah memakai DTO service/composable, tetapi masih ada `any` residual di middleware/service backend, helper response, dan beberapa component props/catch non-kritis.
+- Type safety belum tuntas menyeluruh: area admin utama dan backend auth/core service sudah memakai DTO/typed payload, tetapi masih ada `any` residual di `httpClient`, beberapa component props/catch non-kritis, query dashboard, dan area publik jadwal.
+- Rate limiting login masih baseline in-memory; cukup untuk proteksi awal, tetapi tidak persisten lintas isolate/region Cloudflare. Jika trafik/risiko naik, pertimbangkan Cloudflare Turnstile, WAF rules, KV, D1, atau Redis-compatible storage.
 - Dokumentasi resmi arsitektur/operasional minim (README masih template), sehingga beberapa keputusan non-fungsional (monitoring, backup, recovery) tidak bisa dipetakan pasti.

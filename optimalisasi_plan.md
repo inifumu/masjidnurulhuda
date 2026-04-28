@@ -22,6 +22,10 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
 - [x] Standarisasi response API admin kritis:
   - route `auth`, `dashboard`, `transaction`, dan `pengaturan` sudah konsisten memakai helper response terpusat,
   - kontrak utama memakai `status`, `message`, `data`/`errors`; `errorCode` machine-readable belum dipakai dan bisa dievaluasi lagi jika dibutuhkan client.
+- [x] Rate limiting endpoint login:
+  - `POST /api/admin/auth/login` dilindungi rate limit baseline berbasis in-memory Map,
+  - limit memakai key `cf-connecting-ip + email`, maksimal 5 kegagalan dalam 15 menit,
+  - attempt hanya dicatat saat kredensial gagal, dihapus saat login berhasil, dan response blokir mengirim `429` + `Retry-After`.
 
 ### In Progress
 - [~] Hardening auth/session lanjutan:
@@ -69,8 +73,8 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - temuan audit selesai: `GET /api/admin/dashboard/summary` sudah memakai `requireAuth` + allowlist role eksplisit.
 - [~] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`).
   - update Day-2: payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload/list `usePengaturan`, `dashboardService`, dan `pengaturanService` sudah memakai DTO eksplisit.
-  - update kecil: `server/utils/response.ts`, `server/middleware/auth.ts`, `server/services/transaction.ts`, dan `server/services/user.ts` sudah bebas `any`.
-  - sisa audit: `any` residual masih ada di `src/services/httpClient.ts`, beberapa component props/catch admin, query dashboard, service auth, dan area publik jadwal.
+  - update backend: `server/utils/response.ts`, `server/middleware/auth.ts`, `server/services/transaction.ts`, `server/services/user.ts`, dan `server/services/auth.ts` sudah bebas `any`.
+  - sisa audit: `any` residual masih ada di `src/services/httpClient.ts`, beberapa component props/catch admin, query dashboard, dan area publik jadwal.
 
 ### Not Yet
 - [ ] Validasi DTO backend lanjutan:
@@ -179,6 +183,7 @@ Fokus: website jamaah yang cepat, aman (read-only), dan scalable.
 
 ### Next (setelah flow stabil)
 - [~] Type safety menyeluruh + kurangi `any`.
+  - backend auth/core service sudah dibersihkan bertahap; sisa fokus berikutnya di `httpClient`, props/catch component admin, query dashboard, dan jadwal publik.
 - [ ] Refactor backend konsisten `Route -> Service -> Query`.
 - [ ] Loading UX halus + observability dasar.
 
@@ -202,10 +207,10 @@ Fokus: website jamaah yang cepat, aman (read-only), dan scalable.
 - [~] Runbook backup/restore/rollback.
   - `RUNBOOK.md` sudah ada untuk backup/restore D1, rollback Pages, dan health check publik,
   - sudah mencakup rotasi `JWT_SECRET`, health check publik, dan verifikasi admin minimum pasca-deploy/rollback.
-- [ ] Security checklist final (rate limit login, dependency audit, production-safe error).
+- [~] Security checklist final (rate limit login, dependency audit, production-safe error).
   - status pre-push: `npm audit` = `found 0 vulnerabilities`,
   - `JWT_SECRET` production sudah dipasang via `npx wrangler pages secret put JWT_SECRET --project-name masjidnurulhuda`,
-  - rate limiting login dipindahkan ke Day-2 Operations (Post-Deploy).
+  - rate limiting login baseline sudah aktif; caveat: in-memory Map dapat reset antar isolate/region Cloudflare, upgrade ke Turnstile/KV/D1/WAF jika trafik atau risiko meningkat.
 
 ## Deploy Readiness (1 Halaman)
 
@@ -257,8 +262,8 @@ Estimasi cepat Gate 1: **0.5 - 1 hari**
 Estimasi cepat Gate 2: **1 - 2 hari**
 
 ### Gate 3 - Security Final Check
-- [ ] Rate limiting endpoint login.
-  - dipindahkan ke Day-2 Operations (Post-Deploy).
+- [x] Rate limiting endpoint login.
+  - baseline in-memory per `IP:email`, maksimal 5 kegagalan per 15 menit, dengan `Retry-After`.
 - [x] Audit dependency (security patch minor/patch).
   - status pre-push: `npm audit` = `found 0 vulnerabilities`.
 - [ ] Review response error production-safe (tidak bocor detail internal).
