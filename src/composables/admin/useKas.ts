@@ -8,6 +8,11 @@ import {
   type KasTransaction,
   type ProposalTransactionPayload,
 } from "../../services/admin/kasService";
+import {
+  formatRupiah,
+  formatInputRupiah,
+  parseInputRupiah,
+} from "../../utils/currency";
 
 const activeTab = ref<"laporan" | "approval" | "input" | "proposal">("laporan");
 const isLoading = ref(false);
@@ -32,12 +37,12 @@ type KasForm = {
   keterangan: string;
 };
 
-// 🟢 UPDATE: Tambahkan seksi_id ke formInput Kas Langsung
+// Form Kas Langsung
 const formInput = ref<KasForm>({
   tipe: "pemasukan",
   jumlah: "",
   kategori_id: null as number | null,
-  seksi_id: null as number | null, // <-- INI BARU
+  seksi_id: null as number | null,
   metode: "kas_langsung",
   tanggal: new Date().toISOString().split("T")[0],
   keterangan: "",
@@ -59,12 +64,18 @@ export function useKas() {
   const toggleDropdown = (name: string) =>
     (openDropdown.value = openDropdown.value === name ? null : name);
   const closeDropdowns = () => (openDropdown.value = null);
-  const formatRupiah = (angka: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(angka);
+  const formatWaktuAudit = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    // Karena CURRENT_TIMESTAMP SQLite itu UTC, kita konversi ke waktu lokal (WIB/WITA/WIT)
+    const date = new Date(dateString + "Z");
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -165,9 +176,14 @@ export function useKas() {
       .reduce((sum, t) => sum + t.jumlah, 0),
   );
 
+  // 🟢 LOGIKA BARU (POIN 4): Strict Type Check tanpa startsWith
   const pendingTransactions = computed(() =>
-    transactions.value.filter((t) => t.status === "pending"),
+    transactions.value.filter(
+      (t) => t.status === "pending_ketua" || t.status === "pending_bendahara",
+    ),
   );
+
+  // Status rejected dibiarkan bersih seperti ini
   const rejectedTransactions = computed(() =>
     transactions.value.filter((t) => t.status === "rejected"),
   );
@@ -176,11 +192,8 @@ export function useKas() {
     isLoading.value = true;
     try {
       const master = await kasService.getMasterData();
-
-      // 🟢 BUG FIX: Tangkap nama array 'categories' atau 'kategori', dan 'sections' atau 'seksi'
       categories.value = master.categories || master.kategori || [];
       sections.value = master.sections || master.seksi || [];
-
       methods.value = kasService.getMethods();
       transactions.value = await kasService.getTransactions();
     } finally {
@@ -195,16 +208,21 @@ export function useKas() {
         throw new Error("Kategori wajib dipilih");
       }
 
+      const nominal = parseInputRupiah(formInput.value.jumlah);
+      if (!Number.isFinite(nominal) || nominal <= 0) {
+        throw new Error("Nominal wajib lebih dari 0");
+      }
+
       const payload: DirectTransactionPayload = {
         ...formInput.value,
-        jumlah: Number(formInput.value.jumlah),
+        jumlah: nominal,
         kategori_id: formInput.value.kategori_id,
       };
 
       await kasService.submitDirectTransaction(payload);
       formInput.value.jumlah = "";
       formInput.value.keterangan = "";
-      formInput.value.seksi_id = null; // Reset seksi
+      formInput.value.seksi_id = null;
       activeTab.value = "laporan";
       await loadData();
     } finally {
@@ -222,9 +240,14 @@ export function useKas() {
         throw new Error("Seksi wajib dipilih");
       }
 
+      const nominal = parseInputRupiah(formProposal.value.jumlah);
+      if (!Number.isFinite(nominal) || nominal <= 0) {
+        throw new Error("Nominal wajib lebih dari 0");
+      }
+
       const payload: ProposalTransactionPayload = {
         ...formProposal.value,
-        jumlah: Number(formProposal.value.jumlah),
+        jumlah: nominal,
         kategori_id: formProposal.value.kategori_id,
         seksi_id: formProposal.value.seksi_id,
       };
@@ -232,7 +255,7 @@ export function useKas() {
       await kasService.submitProposal(payload);
       formProposal.value.jumlah = "";
       formProposal.value.keterangan = "";
-      formProposal.value.seksi_id = null; // Reset seksi
+      formProposal.value.seksi_id = null;
       activeTab.value = "approval";
       await loadData();
     } finally {
@@ -269,6 +292,9 @@ export function useKas() {
     toggleDropdown,
     closeDropdowns,
     formatRupiah,
+    formatWaktuAudit,
+    formatInputRupiah,
+    parseInputRupiah,
     selectedMonth,
     selectedYear,
     filterTipe,

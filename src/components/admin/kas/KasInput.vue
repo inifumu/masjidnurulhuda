@@ -20,6 +20,8 @@ const {
   toggleDropdown,
   handleDirectInput,
   formatRupiah,
+  formatInputRupiah,
+  parseInputRupiah,
 } = useKas();
 
 const validationErrors = ref({
@@ -46,7 +48,10 @@ const submitForm = async () => {
     validationErrors.value.kategori = true;
     hasError = true;
   }
-  if (!formInput.value.jumlah || Number(formInput.value.jumlah) <= 0) {
+  if (
+    !formInput.value.jumlah ||
+    parseInputRupiah(formInput.value.jumlah) <= 0
+  ) {
     validationErrors.value.jumlah = true;
     hasError = true;
   }
@@ -68,7 +73,7 @@ const submitForm = async () => {
     filteredCategoriesInput.value.find(
       (c) => c.id === formInput.value.kategori_id,
     )?.nama_kategori || "-";
-  const nominalRp = formatRupiah(Number(formInput.value.jumlah));
+  const nominalRp = formatRupiah(parseInputRupiah(formInput.value.jumlah));
 
   confirmMessage.value = `Anda akan menyimpan transaksi ${formInput.value.tipe.toUpperCase()} sebesar ${nominalRp} untuk kategori ${namaKategori}. Apakah data sudah benar dan ingin disimpan?`;
 
@@ -256,10 +261,17 @@ const executeSubmit = async () => {
               Rp
             </div>
             <input
-              v-model="formInput.jumlah"
-              type="number"
+              :value="formInput.jumlah"
+              type="text"
+              inputmode="numeric"
               placeholder="0"
-              @input="validationErrors.jumlah = false"
+              @input="
+                formInput.jumlah = formatInputRupiah(
+                  ($event.target as HTMLInputElement).value,
+                );
+                validationErrors.jumlah =
+                  parseInputRupiah(formInput.jumlah) <= 0;
+              "
               class="flex-1 px-3 py-2.5 bg-transparent text-sm font-bold focus:outline-none text-slate-800 dark:text-white"
             />
           </div>
