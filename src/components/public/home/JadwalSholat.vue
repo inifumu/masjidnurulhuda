@@ -8,7 +8,7 @@ const { jadwal, lokasiMasjid } = useJadwal();
 
 <template>
   <div
-    class="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-2xl transition-shadow duration-500"
+    class="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-2xl dark:hover:shadow-none transition-shadow duration-500"
   >
     <div class="flex items-center gap-3 text-slate-800 dark:text-white">
       <Clock class="text-brand-green animate-bounce" :size="24" />

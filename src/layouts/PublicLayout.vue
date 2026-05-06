@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Moon, Sun } from "lucide-vue-next";
+import { useTheme } from "../composables/admin/useTheme";
 import {
   BookOpen,
   HeartHandshake,
@@ -11,6 +13,8 @@ import {
   ImageIcon,
   MessageSquare,
 } from "lucide-vue-next";
+
+const { isDark, toggleTheme } = useTheme();
 
 // State untuk menu mobile
 const isMobileMenuOpen = ref(false);
@@ -102,7 +106,15 @@ const scrollTo = (targetId: string) => {
             >
           </nav>
 
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 sm:gap-4">
+            <button
+              @click="toggleTheme"
+              class="hidden lg:flex p-2 text-slate-500 hover:text-brand-green dark:text-slate-400 dark:hover:text-amber-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 rounded-xl transition-colors border border-slate-200 dark:border-slate-700 active:scale-95"
+              title="Ganti Tema"
+            >
+              <Moon v-if="!isDark" :size="18" />
+              <Sun v-else :size="18" class="text-amber-500" />
+            </button>
             <router-link
               to="/admin/login"
               class="hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-green dark:hover:text-brand-green transition-colors"
@@ -173,6 +185,14 @@ const scrollTo = (targetId: string) => {
             >
 
             <div class="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
+            <button
+              @click="toggleTheme"
+              class="px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg font-medium flex items-center gap-3 transition-colors"
+            >
+              <Moon v-if="!isDark" :size="18" />
+              <Sun v-else :size="18" class="text-amber-500" />
+              {{ isDark ? "Mode Terang" : "Mode Gelap" }}
+            </button>
             <router-link
               @click="isMobileMenuOpen = false"
               to="/admin/login"
