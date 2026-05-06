@@ -436,6 +436,15 @@ const executeDelete = async () => {
                     </div>
                     <div
                       @click="
+                        formData.role = 'bendahara';
+                        closeDropdowns();
+                      "
+                      class="px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm font-medium transition-colors"
+                    >
+                      Bendahara
+                    </div>
+                    <div
+                      @click="
                         formData.role = 'superadmin';
                         closeDropdowns();
                       "

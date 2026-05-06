@@ -20,6 +20,8 @@ const {
   toggleDropdown,
   handleProposal,
   formatRupiah,
+  formatInputRupiah,
+  parseInputRupiah,
 } = useKas();
 
 const validationErrors = ref({
@@ -52,7 +54,10 @@ const submitForm = async () => {
     validationErrors.value.seksi = true;
     hasError = true;
   }
-  if (!formProposal.value.jumlah || Number(formProposal.value.jumlah) <= 0) {
+  if (
+    !formProposal.value.jumlah ||
+    parseInputRupiah(formProposal.value.jumlah) <= 0
+  ) {
     validationErrors.value.jumlah = true;
     hasError = true;
   }
@@ -79,7 +84,7 @@ const submitForm = async () => {
   const namaSeksi =
     sections.value.find((s) => s.id === formProposal.value.seksi_id)
       ?.nama_seksi || "-";
-  const nominalRp = formatRupiah(Number(formProposal.value.jumlah));
+  const nominalRp = formatRupiah(parseInputRupiah(formProposal.value.jumlah));
 
   confirmMessage.value = `Anda akan mengajukan proposal dana sebesar ${nominalRp} untuk keperluan ${namaKategori} (Seksi: ${namaSeksi}). Lanjutkan pengajuan?`;
 
@@ -271,10 +276,17 @@ const executeSubmit = async () => {
               Rp
             </div>
             <input
-              v-model="formProposal.jumlah"
-              type="number"
+              :value="formProposal.jumlah"
+              type="text"
+              inputmode="numeric"
               placeholder="0"
-              @input="validationErrors.jumlah = false"
+              @input="
+                formProposal.jumlah = formatInputRupiah(
+                  ($event.target as HTMLInputElement).value,
+                );
+                validationErrors.jumlah =
+                  parseInputRupiah(formProposal.jumlah) <= 0;
+              "
               class="flex-1 px-3 py-2.5 bg-transparent text-sm font-bold focus:outline-none text-slate-800 dark:text-white"
             />
           </div>

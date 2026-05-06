@@ -14,7 +14,8 @@ export const getUsers = async (db: D1Database) => {
     .all();
 };
 
-export type UserRole = "superadmin" | "ketua" | "pengurus";
+// 🟢 UPDATE: Tambahkan "bendahara" di tipe UserRole
+export type UserRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
 
 export interface CreateUserPayload {
   email: string;

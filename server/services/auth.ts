@@ -3,7 +3,7 @@ import { getUserByEmail } from "../db/queries/auth";
 import { hashPassword } from "../utils/crypto";
 
 // 🛡️ Buat Union Type yang ketat untuk Role
-export type AuthRole = "superadmin" | "ketua" | "pengurus";
+export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
 
 // 🛡️ Tambahkan Interface DTO untuk hasil query Database
 export interface AuthUserRow {

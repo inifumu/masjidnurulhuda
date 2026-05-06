@@ -1,5 +1,9 @@
 type TransactionType = "pemasukan" | "pengeluaran";
-type TransactionStatus = "pending" | "approved" | "rejected";
+type TransactionStatus =
+  | "pending_ketua"
+  | "pending_bendahara"
+  | "approved"
+  | "rejected";
 
 export interface TransactionPayload {
   tipe: TransactionType;
@@ -19,6 +23,13 @@ export interface TransactionUserScope {
   role?: string;
 }
 
+export const getTransactionById = async (db: D1Database, id: number) => {
+  return await db
+    .prepare("SELECT * FROM kas_masjid WHERE id = ?")
+    .bind(id)
+    .first();
+};
+
 export const createTransaction = async (
   db: D1Database,
   data: TransactionPayload,
@@ -36,7 +47,7 @@ export const createTransaction = async (
     status,
   } = data;
 
-  const finalStatus = status || "pending";
+  const finalStatus = status || "pending_ketua";
 
   return await db
     .prepare(
@@ -55,7 +66,7 @@ export const createTransaction = async (
       periode_id ?? null,
       seksi_id ?? null,
       metode ?? null,
-      userId ?? null, // 🟢 Sekarang userId pasti ada isinya!
+      userId,
       finalStatus,
     )
     .run();
@@ -65,17 +76,17 @@ export const getPendingTransactions = async (
   db: D1Database,
   user: TransactionUserScope,
 ) => {
+  // 🟢 UPDATE: Tambahkan ALIAS as kategori dan as seksi agar sama persis dengan query list
   let baseQuery = `
-    SELECT t.*, k.nama_kategori, s.nama_seksi 
+    SELECT t.*, k.nama_kategori as kategori, s.nama_seksi as seksi 
     FROM kas_masjid t
     JOIN kategori_kas k ON t.kategori_id = k.id
     LEFT JOIN seksi_pengurus s ON t.seksi_id = s.id
-    WHERE t.status = 'pending'
+    WHERE t.status IN ('pending_ketua', 'pending_bendahara', 'rejected')
   `;
 
-  // 🟢 SATPAM DATABASE dengan Jaring Ganda
   if (user.role === "pengurus") {
-    const userId = user.sub || user.id; // Tangkap identitasnya
+    const userId = user.sub || user.id;
     baseQuery += ` AND t.created_by = ? ORDER BY t.created_at DESC`;
     return await db.prepare(baseQuery).bind(userId).all();
   }
@@ -87,12 +98,63 @@ export const getPendingTransactions = async (
 export const updateStatus = async (
   db: D1Database,
   id: number,
-  status: Extract<TransactionStatus, "approved" | "rejected">,
+  newStatus: TransactionStatus,
+  accDate?: string,
 ) => {
-  return await db
-    .prepare("UPDATE kas_masjid SET status = ? WHERE id = ?")
-    .bind(status, id)
+  // 🟢 1. Ambil state saat ini untuk validasi Race Condition (POIN 2)
+  const current = await db
+    .prepare("SELECT status FROM kas_masjid WHERE id = ?")
+    .bind(id)
+    .first();
+  if (!current) throw new Error("Transaksi tidak ditemukan.");
+
+  const currentStatus = current.status as string;
+
+  // 🟢 2. Validasi Alur Logika (Cegah lompat status atau dobel klik)
+  if (newStatus === "pending_bendahara" && currentStatus !== "pending_ketua") {
+    throw new Error("Gagal! Proposal ini sudah tidak ada di antrean Ketua.");
+  }
+  if (newStatus === "approved" && currentStatus !== "pending_bendahara") {
+    throw new Error(
+      "Gagal! Proposal ini sudah tidak ada di antrean Bendahara.",
+    );
+  }
+  if (newStatus === "rejected" && currentStatus === "approved") {
+    throw new Error("Gagal! Tidak bisa menolak proposal yang sudah cair.");
+  }
+
+  // 🟢 3. Rangkai Query Update dengan aman
+  let query = "UPDATE kas_masjid SET status = ?";
+  const params: any[] = [newStatus];
+
+  // 🟢 4. Audit Trail (POIN 5) - Catat kapan dana benar-benar dicairkan
+  if (newStatus === "approved") {
+    query += ", approved_at = CURRENT_TIMESTAMP";
+
+    // Jika bendahara mengubah tanggal untuk laporan buku kas, biarkan ditimpa
+    // Karena sekarang kita punya approved_at dan created_at sebagai backup jejak aslinya
+    if (accDate) {
+      query += ", tanggal = ?";
+      params.push(accDate);
+    }
+  }
+
+  // 🟢 5. Eksekusi Optimistic Locking
+  query += " WHERE id = ? AND status = ?";
+  params.push(id, currentStatus);
+
+  const result = await db
+    .prepare(query)
+    .bind(...params)
     .run();
+
+  if (result.meta.changes === 0) {
+    throw new Error(
+      "Gagal memproses! Data mungkin telah diubah oleh pengguna lain.",
+    );
+  }
+
+  return result;
 };
 
 export const getAllTransactions = async (
@@ -110,21 +172,16 @@ export const getAllTransactions = async (
     WHERE t.periode_id IS NULL 
   `;
 
-  // 🟢 SATPAM DATA SCOPING dengan Jaring Ganda
   if (user && user.role === "pengurus") {
-    const userId = user.sub || user.id; // Tangkap identitasnya
+    const userId = user.sub || user.id;
     if (!userId) {
-      // Safety fallback: jika token user tidak membawa id yang valid,
-      // jangan tampilkan data personal agar tidak terjadi kebocoran lintas akun.
       baseQuery += ` AND t.status = 'approved' ORDER BY t.tanggal DESC, t.created_at DESC`;
       return await db.prepare(baseQuery).all();
     }
-    // Tampilkan yang 'approved' ATAU yang dia buat sendiri
     baseQuery += ` AND (t.status = 'approved' OR t.created_by = ?) ORDER BY t.tanggal DESC, t.created_at DESC`;
     return await db.prepare(baseQuery).bind(userId).all();
   }
 
-  // Jika Superadmin/Ketua: Tampilkan semua
   baseQuery += ` ORDER BY t.tanggal DESC, t.created_at DESC`;
   return await db.prepare(baseQuery).all();
 };

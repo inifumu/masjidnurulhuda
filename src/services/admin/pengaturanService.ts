@@ -14,7 +14,7 @@ export interface SeksiPayload {
 }
 
 export type JenisArus = "pemasukan" | "pengeluaran" | "general";
-export type UserRole = "superadmin" | "ketua" | "pengurus";
+export type UserRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
 
 export interface KategoriItem {
   id: number;

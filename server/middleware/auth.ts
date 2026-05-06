@@ -7,7 +7,7 @@ type AuthBindings = {
   JWT_SECRET?: string;
 };
 
-export type AuthRole = "superadmin" | "ketua" | "pengurus";
+export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
 
 export type AuthJwtPayload = {
   sub?: number;

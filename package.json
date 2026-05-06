@@ -6,8 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "test": "node --test tests/**/*.test.mjs",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda",
+    "db:create": "wrangler d1 migrations create masjidnurulhuda-db",
+    "db:apply:local": "wrangler d1 migrations apply masjidnurulhuda-db --local",
+    "db:apply:remote": "wrangler d1 migrations apply masjidnurulhuda-db --remote",
+    "db:drop:local": "wrangler d1 execute masjidnurulhuda-db --local --command=\"DROP TABLE IF EXISTS d1_migrations; DROP TABLE IF EXISTS kas_masjid; DROP TABLE IF EXISTS users; DROP TABLE IF EXISTS kategori_kas; DROP TABLE IF EXISTS periode; DROP TABLE IF EXISTS seksi_pengurus;\"",
+    "db:reset:local": "npm run db:drop:local && npm run db:apply:local"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

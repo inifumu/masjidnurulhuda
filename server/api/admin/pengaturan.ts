@@ -2,8 +2,23 @@ import { Hono } from "hono";
 import * as kategoriService from "../../services/kategori";
 import * as seksiService from "../../services/seksi";
 import * as userService from "../../services/user";
+import type { UserRole } from "../../services/user";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { sendSuccess, sendError } from "../../utils/response"; // 🟢 Import Helper
+
+const VALID_ARUS = new Set(["pemasukan", "pengeluaran", "general"]);
+const VALID_ROLE = new Set<UserRole>([
+  "superadmin",
+  "ketua",
+  "bendahara",
+  "pengurus",
+]);
+
+const parsePositiveIntParam = (value: string): number | null => {
+  const num = Number(value);
+  if (!Number.isInteger(num) || num <= 0) return null;
+  return num;
+};
 
 const api = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>();
 
@@ -29,6 +44,10 @@ api.post("/kategori", async (c) => {
     if (!nama_kategori) return sendError(c, "Nama kategori wajib diisi!", 400);
 
     const arus = jenis_arus || "general"; // Fallback default
+    if (typeof arus !== "string" || !VALID_ARUS.has(arus)) {
+      return sendError(c, "Jenis arus tidak valid!", 400);
+    }
+
     await kategoriService.createKategori(c.env.DB, nama_kategori, arus);
 
     return sendSuccess(c, "Kategori berhasil ditambahkan", null, 201);
@@ -45,9 +64,18 @@ api.put("/kategori/:id", async (c) => {
     if (!nama_kategori) return sendError(c, "Nama kategori wajib diisi!", 400);
 
     const arus = jenis_arus || "general";
+    if (typeof arus !== "string" || !VALID_ARUS.has(arus)) {
+      return sendError(c, "Jenis arus tidak valid!", 400);
+    }
+
+    const kategoriId = parsePositiveIntParam(c.req.param("id"));
+    if (kategoriId === null) {
+      return sendError(c, "ID kategori tidak valid", 400);
+    }
+
     await kategoriService.updateKategori(
       c.env.DB,
-      Number(c.req.param("id")),
+      kategoriId,
       nama_kategori,
       arus,
     );
@@ -61,7 +89,12 @@ api.put("/kategori/:id", async (c) => {
 
 api.delete("/kategori/:id", async (c) => {
   try {
-    await kategoriService.deleteKategori(c.env.DB, Number(c.req.param("id")));
+    const kategoriId = parsePositiveIntParam(c.req.param("id"));
+    if (kategoriId === null) {
+      return sendError(c, "ID kategori tidak valid", 400);
+    }
+
+    await kategoriService.deleteKategori(c.env.DB, kategoriId);
     return sendSuccess(c, "Kategori berhasil dihapus");
   } catch (error) {
     console.error("ERROR DELETE /kategori:", error);
@@ -98,9 +131,14 @@ api.put("/seksi/:id", async (c) => {
     const { nama_seksi, nama_pengurus } = await c.req.json();
     if (!nama_seksi) return sendError(c, "Nama seksi wajib diisi!", 400);
 
+    const seksiId = parsePositiveIntParam(c.req.param("id"));
+    if (seksiId === null) {
+      return sendError(c, "ID seksi tidak valid", 400);
+    }
+
     await seksiService.updateSeksi(
       c.env.DB,
-      Number(c.req.param("id")),
+      seksiId,
       nama_seksi,
       nama_pengurus,
     );
@@ -113,7 +151,12 @@ api.put("/seksi/:id", async (c) => {
 
 api.delete("/seksi/:id", async (c) => {
   try {
-    await seksiService.deleteSeksi(c.env.DB, Number(c.req.param("id")));
+    const seksiId = parsePositiveIntParam(c.req.param("id"));
+    if (seksiId === null) {
+      return sendError(c, "ID seksi tidak valid", 400);
+    }
+
+    await seksiService.deleteSeksi(c.env.DB, seksiId);
     return sendSuccess(c, "Seksi berhasil dihapus");
   } catch (error) {
     console.error("ERROR DELETE /seksi:", error);
@@ -139,7 +182,17 @@ api.post("/users", async (c) => {
       return sendError(c, "Semua data akun wajib diisi!", 400);
     }
 
-    await userService.createUser(c.env.DB, body);
+    if (
+      typeof body.role !== "string" ||
+      !VALID_ROLE.has(body.role as UserRole)
+    ) {
+      return sendError(c, "Role tidak valid!", 400);
+    }
+
+    await userService.createUser(c.env.DB, {
+      ...body,
+      role: body.role as UserRole,
+    });
     return sendSuccess(c, "Akun berhasil dibuat", null, 201);
   } catch (error) {
     console.error("ERROR POST /users:", error);
@@ -156,12 +209,16 @@ api.put("/users/:id", async (c) => {
     const { role, name } = await c.req.json();
     if (!role || !name) return sendError(c, "Nama dan Role wajib diisi!", 400);
 
-    await userService.updateUserRole(
-      c.env.DB,
-      Number(c.req.param("id")),
-      role,
-      name,
-    );
+    if (typeof role !== "string" || !VALID_ROLE.has(role as UserRole)) {
+      return sendError(c, "Role tidak valid!", 400);
+    }
+
+    const userId = parsePositiveIntParam(c.req.param("id"));
+    if (userId === null) {
+      return sendError(c, "ID user tidak valid", 400);
+    }
+
+    await userService.updateUserRole(c.env.DB, userId, role as UserRole, name);
     return sendSuccess(c, "Akun berhasil diupdate");
   } catch (error) {
     console.error("ERROR PUT /users:", error);
@@ -176,11 +233,12 @@ api.put("/users/:id/password", async (c) => {
       return sendError(c, "Password baru minimal 6 karakter!", 400);
     }
 
-    await userService.resetPassword(
-      c.env.DB,
-      Number(c.req.param("id")),
-      password,
-    );
+    const userId = parsePositiveIntParam(c.req.param("id"));
+    if (userId === null) {
+      return sendError(c, "ID user tidak valid", 400);
+    }
+
+    await userService.resetPassword(c.env.DB, userId, password);
     return sendSuccess(c, "Password berhasil di-reset");
   } catch (error) {
     console.error("ERROR PUT /users/password:", error);
@@ -190,7 +248,12 @@ api.put("/users/:id/password", async (c) => {
 
 api.delete("/users/:id", async (c) => {
   try {
-    await userService.deleteUser(c.env.DB, Number(c.req.param("id")));
+    const userId = parsePositiveIntParam(c.req.param("id"));
+    if (userId === null) {
+      return sendError(c, "ID user tidak valid", 400);
+    }
+
+    await userService.deleteUser(c.env.DB, userId);
     return sendSuccess(c, "Akun berhasil dihapus");
   } catch (error) {
     console.error("ERROR DELETE /users:", error);

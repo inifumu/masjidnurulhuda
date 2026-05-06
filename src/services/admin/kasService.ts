@@ -43,11 +43,12 @@ export interface KasTransaction {
   keterangan: string;
   tanggal: string;
   kategori_id: number;
-  kategori?: string;
+  kategori: string; // 🟢 Wajib ada (sudah dialias dari DB)
   seksi_id?: number | null;
-  seksi?: string | null;
-  status: "pending" | "approved" | "rejected";
+  seksi: string | null; // 🟢 Wajib ada (walau isinya bisa null)
+  status: "pending_ketua" | "pending_bendahara" | "approved" | "rejected";
   created_at?: string;
+  approved_at?: string | null; // 🟢 Tambahan Audit Trail
 }
 
 export interface TransactionMasterData {

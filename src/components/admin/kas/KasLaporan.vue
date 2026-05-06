@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { Trash2, Filter, ChevronDown } from "lucide-vue-next";
+// 🟢 UPDATE: Import CheckCircle dan Zap dari lucide
+import { Trash2, Filter, ChevronDown, CheckCircle, Zap } from "lucide-vue-next";
 import { useKas } from "../../../composables/admin/useKas";
 import { useAuthStore } from "../../../stores/authStore";
 import { toast } from "vue-sonner";
 import ConfirmModal from "../../ui/ConfirmModal.vue";
+import { canDelete } from "../../../utils/permissions";
 
 const {
   filteredLaporan,
   filteredMasuk,
   filteredKeluar,
   formatRupiah,
+  formatWaktuAudit,
   handleDelete,
   selectedMonth,
   selectedYear,
@@ -21,6 +24,8 @@ const {
 } = useKas();
 
 const authStore = useAuthStore();
+
+const canDeleteTransaction = () => canDelete(authStore.user?.role);
 
 // --- STATE FILTER ---
 const months = [
@@ -46,7 +51,7 @@ const closeFilters = () => (openFilter.value = null);
 onMounted(() => document.addEventListener("click", closeFilters));
 onUnmounted(() => document.removeEventListener("click", closeFilters));
 
-// 🟢 STATE & LOGIC UNTUK MODAL HAPUS
+// STATE & LOGIC UNTUK MODAL HAPUS
 const isDeleteModalOpen = ref(false);
 const selectedDeleteId = ref<number | null>(null);
 
@@ -337,10 +342,7 @@ const executeDelete = async () => {
             <th class="py-3 px-4 text-right bg-rose-50/50 dark:bg-rose-900/10">
               Kredit (Keluar)
             </th>
-            <th
-              v-if="authStore.user?.role !== 'pengurus'"
-              class="py-3 px-4 text-center"
-            >
+            <th v-if="canDeleteTransaction()" class="py-3 px-4 text-center">
               Aksi
             </th>
           </tr>
@@ -353,9 +355,43 @@ const executeDelete = async () => {
             :key="trx.id"
             class="text-sm group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-default"
           >
-            <td class="py-3 px-4 text-slate-500 whitespace-nowrap">
-              {{ trx.tanggal }}
+            <!-- 🟢 Kolom Tanggal STERIL EMOJI -->
+            <td class="py-3 px-4 whitespace-nowrap">
+              <div class="text-slate-500 font-medium">{{ trx.tanggal }}</div>
+
+              <!-- Jika cair dari Proposal -->
+              <div
+                v-if="trx.approved_at"
+                class="flex items-center gap-1 text-[10px] font-medium mt-1"
+                :class="
+                  trx.tipe === 'pengeluaran'
+                    ? 'text-rose-600/80'
+                    : 'text-emerald-600/80'
+                "
+                :title="
+                  trx.tipe === 'pengeluaran'
+                    ? 'Waktu Pencairan Aktual (Pengeluaran)'
+                    : 'Waktu Pemasukan Aktual (Pemasukan)'
+                "
+              >
+                <CheckCircle :size="12" />
+                <span>
+                  {{ trx.tipe === "pengeluaran" ? "Cair" : "Masuk" }}:
+                  {{ formatWaktuAudit(trx.approved_at) }}
+                </span>
+              </div>
+
+              <!-- Jika Input Kas Langsung (Jalur VIP Bendahara) -->
+              <div
+                v-else
+                class="flex items-center gap-1 text-[10px] font-medium text-indigo-400/80 mt-1"
+                title="Input Langsung Bendahara"
+              >
+                <Zap :size="12" />
+                <span>Kas Langsung</span>
+              </div>
             </td>
+
             <td class="py-3 px-4">
               <div class="font-medium text-slate-700 dark:text-slate-200">
                 {{ trx.keterangan }}
@@ -375,10 +411,7 @@ const executeDelete = async () => {
             >
               {{ trx.tipe === "pengeluaran" ? formatRupiah(trx.jumlah) : "-" }}
             </td>
-            <td
-              v-if="authStore.user?.role !== 'pengurus'"
-              class="py-3 px-4 text-center"
-            >
+            <td v-if="canDeleteTransaction()" class="py-3 px-4 text-center">
               <button
                 @click="openDeleteConfirm(trx.id)"
                 class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded transition-all opacity-50 group-hover:opacity-100"
@@ -390,7 +423,7 @@ const executeDelete = async () => {
           </tr>
           <tr v-if="filteredLaporan.length === 0">
             <td
-              :colspan="authStore.user?.role !== 'pengurus' ? 5 : 4"
+              :colspan="canDeleteTransaction() ? 5 : 4"
               class="py-12 text-center text-slate-400 text-sm italic"
             >
               Tidak ada data transaksi yang sesuai.

@@ -1,4 +1,5 @@
 # Project Summary
+
 - Tujuan aplikasi: website publik Masjid Nurul Huda (informasi profil, transparansi kas, kabar, galeri, kritik/saran) + panel administrasi untuk autentikasi admin, ringkasan kas, manajemen transaksi kas (input/proposal/approval/laporan), dan master data pengaturan (kategori, seksi, akun).
 - Tech stack utama:
   - Frontend: Vue 3 + TypeScript + Vue Router + Pinia + Tailwind CSS (via `@tailwindcss/vite`) + `lucide-vue-next`.
@@ -8,6 +9,7 @@
 - Pola arsitektur singkat: UI Vue (view/component) -> composable/store/service frontend -> `httpClient` terpusat (request bridge + normalisasi error non-2xx) -> Cloudflare Pages Functions wrapper `functions/api/[[path]].ts` -> endpoint `/api/*` Hono (route + middleware auth) -> service/query SQL -> tabel D1.
 
 # Core Logic Flow (Function-Level Flowchart)
+
 - `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Middleware] login rate limit baseline (IP+email, in-memory, 5 gagal/15 menit) -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> DB users`
 - `[Vue] router.beforeEach -> [Vue] authStore.checkAuth() -> [Hono] GET /api/admin/auth/me -> verify JWT cookie -> response user session`
 - `[Vue] GET / (public route) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> section-based smooth-scroll landing (hero/jadwal/kas/kabar/galeri/saran)`
@@ -15,46 +17,53 @@
 - `[Vue] Home/KasWidget(useKasSummary) -> [Vue] kasSummaryService.fetchSummary -> [Hono] GET /api/public/kas/summary -> [Query] aggregate kas approved bulanan -> DB kas_masjid`
 - `[Vue] Dashboard.vue -> [Vue] useDashboard.fetchSummary -> [Vue] dashboardService.getSummary -> [Vue] httpClient -> [Hono] GET /api/admin/dashboard/summary -> dashboardService.getDashboardSummary -> dashboard query SUM kas_masjid -> DB kas_masjid`
 - `[Vue] KeuanganKas/useKas.loadData -> [Vue] kasService.getMasterData + getTransactions -> [Vue] httpClient (credentials include + error normalization) -> [Hono] GET /api/admin/transaction/master-data + /list -> [Service] getAllTransactions(user) -> DB kas_masjid (role=pengurus: approved OR created_by=user.sub|id)`
+- `[Vue] KeuanganKas/KasLaporan -> [Vue] utils/permissions(canAccessKasInput|canViewProposalTab|canDelete) -> guard visibilitas tab/aksi berdasarkan allowlist role -> sinkron dengan policy backend transaksi`
 - `[Vue] KasInput/KasProposal -> [Vue] useKas.filteredCategoriesInput|filteredCategoriesProposal -> master-data categories(jenis_arus) -> UI dropdown kategori difilter by tipe transaksi + general`
 - `[Vue] KeuanganKas/KasApproval (Status Proposal) -> [Vue] kasService.getTransactions (/list) -> [Hono] GET /api/admin/transaction/list -> [Service] getAllTransactions(user) -> DB kas_masjid (role=pengurus scoped: approved OR created_by=user.sub|id)`
-- `[Vue] KasInput(useKas.handleDirectInput) -> [Vue] kasService.submitDirectTransaction -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-direct -> txService.createTransaction -> DB kas_masjid (status dipaksa approved, seksi_id opsional: disimpan jika dikirim, null jika kosong)`
-- `[Vue] KasProposal(useKas.handleProposal) -> [Vue] kasService.submitProposal -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-proposal -> txService.createTransaction -> DB kas_masjid (status dipaksa pending, seksi_id wajib)`
-- `[Vue] Kas Approval (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid`
+- `[Vue] KasInput(useKas.handleDirectInput) -> [Vue] parseInputRupiah/formatInputRupiah (helper terpusat) -> [Vue] kasService.submitDirectTransaction -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-direct -> validasi DTO + validasi FK seksi (`existsSeksiById`) -> txService.createTransaction -> DB kas_masjid (status dipaksa approved, seksi_id opsional: jika dikirim harus integer positif & eksis di seksi_pengurus, jika kosong disimpan null)`
+- `[Vue] KasProposal(useKas.handleProposal) -> [Vue] parseInputRupiah/formatInputRupiah (helper terpusat) -> [Vue] kasService.submitProposal -> [Vue] httpClient (ApiError on non-2xx) -> [Hono] POST /api/admin/transaction/add-proposal -> validasi DTO + validasi FK seksi (`existsSeksiById`) -> txService.createTransaction -> DB kas_masjid (status awal proposal = pending_ketua, seksi_id wajib, harus eksis di seksi_pengurus)`
+- `[Vue] KasApproval tahap ketua (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid (pending_ketua -> pending_bendahara)`
+- `[Vue] KasApproval tahap bendahara (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid (pending_bendahara -> approved, pencairan dana masuk laporan kas)`
 - `[Vue] Pengaturan/usePengaturan.loadData|saveItem|deleteItem -> [Vue] pengaturanService/httpClient -> [Hono] /api/admin/pengaturan/(kategori|seksi|users) -> service kategori|seksi|user -> DB kategori_kas(jenis_arus)|seksi_pengurus|users`
 - `[Vue] Kas/Pengaturan delete/submit/approval -> ConfirmModal.vue + vue-sonner toast -> composable action -> API mutation`
 
 ## Authorization Matrix (RBAC)
 
-Implementasi terbaru terdeteksi di level UI melalui `v-if` pada halaman keuangan dengan matrix final role: `superadmin`, `ketua`, `pengurus`.
+Implementasi terbaru terdeteksi di level UI + API dengan matrix role operasional: `superadmin`, `ketua`, `bendahara`, `pengurus`.
 
 - Superadmin (akses penuh):
   - Tab: `Rincian Transaksi`, `Approval`, `Kas Baru`, `Proposal`.
   - Aksi tabel laporan: tombol `Delete` tampil.
   - Aksi approval: tombol `Approve/Reject` tampil.
-- Ketua (akses terbatas proposal):
-  - Tab: `Rincian Transaksi`, `Approval`, `Kas Baru`.
-  - Tab `Proposal`: tidak tampil (`v-if="authStore.user?.role !== 'ketua'"`).
-  - Aksi tabel laporan: tombol `Delete` tampil.
-  - Aksi approval: tombol `Approve/Reject` tampil.
+- Ketua (approver tahap 1):
+  - Fokus approval proposal dari seksi lain pada status `pending_ketua`.
+  - Aksi approval ketua mendorong status ke `pending_bendahara` (belum masuk kas final).
+  - Tetap bisa akses laporan sesuai guard saat ini.
+- Bendahara (approver tahap 2 + pencairan):
+  - Fokus approval proposal tahap akhir pada status `pending_bendahara`.
+  - Aksi approval bendahara mencairkan dana dan mengubah status ke `approved` agar tercatat di laporan kas.
+  - Rejection tetap mengakhiri proposal ke `rejected`.
 - Pengurus (akses proposal dan status pribadi):
   - Tab: `Rincian Transaksi`, `Proposal`, dan tab approval berubah label menjadi `Status Proposal`.
-  - Tab `Kas Baru`: tidak tampil (`v-if="authStore.user?.role !== 'pengurus'"`).
+  - Tab `Kas Baru`: tidak tampil (via helper `canAccessKasInput`).
   - Aksi tabel laporan: kolom/tombol `Delete` tidak tampil.
   - Aksi approval: tombol `Approve/Reject` tidak tampil.
 
 Catatan enforcement:
-- RBAC sekarang aktif di 2 layer: UI (`KeuanganKas`, `KasLaporan`, `KasApproval`) dan backend `server/api/admin/transaction.ts`.
-- Endpoint `POST /api/admin/transaction/approve/:id` menolak role di luar approver (`superadmin`, `ketua`) dengan `403 Forbidden`.
-- Endpoint `DELETE /api/admin/transaction/:id` menolak role di luar approver (`superadmin`, `ketua`) dengan `403 Forbidden`.
+
+- RBAC sekarang aktif di 2 layer: UI (`KeuanganKas`, `KasLaporan`, `KasApproval` + helper `src/utils/permissions.ts`) dan backend `server/api/admin/transaction.ts`.
+- Endpoint `POST /api/admin/transaction/approve/:id` mengikuti approver bertahap proposal (`ketua` lalu `bendahara`) sesuai status proposal aktif.
+- Endpoint `DELETE /api/admin/transaction/:id` menolak role di luar approver (`superadmin`, `ketua`, `bendahara`) dengan `403 Forbidden`.
 - Endpoint `GET /api/admin/transaction/pending` menerapkan data scoping (least privilege):
   - role `pengurus` hanya melihat data `pending` miliknya (`created_by = user.sub|user.id`),
-  - role approver (`superadmin/ketua`) melihat antrean global.
+  - role approver (`superadmin/ketua/bendahara`) melihat antrean global.
 - Endpoint `GET /api/admin/transaction/list` juga menerapkan data scoping untuk role `pengurus`:
   - hanya data `approved` atau data yang dibuat user sendiri (`created_by = user.sub|user.id`),
   - role approver tetap melihat data global sesuai kebutuhan laporan.
 - Endpoint `POST /api/admin/transaction/add` sudah punya validasi manual input (required fields, nominal positif, whitelist tipe, sanitasi panjang minimal keterangan).
 
 # Clean Tree
+
 ```text
 masjidnurulhuda/
   package.json
@@ -171,10 +180,11 @@ masjidnurulhuda/
 ```
 
 # Module Map (The Chapters)
+
 - `src/main.ts` — `createApp`, `createPinia` — bootstrap Vue app + registrasi router/store.
 - `src/env.d.ts` — deklarasi tipe Vite + side-effect import font.
 - `src/router/index.ts` — `createRouter`, `beforeEach` — definisi route publik/admin dan guard berbasis sesi backend.
-- `src/layouts/PublicLayout.vue` — `scrollTo`, `toggleMobileMenu` — layout publik (sticky navbar, navigasi smooth-scroll, menu mobile, footer) yang membungkus traffic pengunjung umum.
+- `src/layouts/PublicLayout.vue` — `scrollTo`, `toggleMobileMenu`, `toggleTheme` — layout publik (sticky navbar, navigasi smooth-scroll, menu mobile, footer) + switch dark/light mode pada web utama.
 - `src/views/public/Home.vue` — `v-fade` + section composition — orchestrator halaman publik berbasis component layering (UI modular per section).
 - `src/composables/public/home/useJadwal.ts` — `loadJadwal`, cache harian localStorage, fallback offline — logic layer jadwal sholat publik yang tahan gangguan API eksternal.
 - `src/composables/public/home/useKasSummary.ts` — `loadKas`, `formatRupiah` — logic layer widget kas publik dari endpoint read-only.
@@ -184,23 +194,23 @@ masjidnurulhuda/
 - `src/components/public/home/KabarMasjid.vue`, `src/components/public/home/GaleriWidget.vue`, `src/components/public/home/KritikSaran.vue` — section publik dengan overlay glassmorphism "Coming Soon" tanpa menutupi header section.
 - `src/stores/authStore.ts` — `login`, `logout`, `checkAuth` — sumber state autentikasi global frontend.
 - `src/views/admin/Login.vue` — `handleLogin` — UI login dan trigger autentikasi.
-- `src/layouts/AdminLayout.vue` — `handleLogout`, state sidebar/theme — kerangka UI panel admin.
+- `src/layouts/AdminLayout.vue` — `handleLogout`, state sidebar/theme, `toggleTheme` — kerangka UI panel admin dengan dark mode konsisten lintas halaman admin.
 - `src/views/admin/Dashboard.vue` — integrasi `useDashboard` — render kartu statistik dari composable dashboard.
 - `src/composables/admin/useDashboard.ts` — `fetchSummary` — state dan loading ringkasan dashboard via service.
-- `src/views/admin/KeuanganKas.vue` — integrasi `useKas` + `useAuthStore` — host tab kas dengan UI guard RBAC (role-based visibilitas tab).
-- `src/composables/admin/useKas.ts` — `loadData`, `filteredCategoriesInput`, `filteredCategoriesProposal`, `handleDirectInput`, `handleProposal`, `handleAction`, `handleDelete` — orkestrasi state + aksi transaksi kas serta filter kategori berbasis `jenis_arus`.
+- `src/views/admin/KeuanganKas.vue` — integrasi `useKas` + `useAuthStore` + helper `permissions` — host tab kas dengan UI guard RBAC berbasis allowlist (`canAccessKasInput`, `canViewProposalTab`).
+- `src/composables/admin/useKas.ts` — `loadData`, `filteredCategoriesInput`, `filteredCategoriesProposal`, `handleDirectInput`, `handleProposal`, `handleAction`, `handleDelete` — orkestrasi state + aksi transaksi kas, filter kategori berbasis `jenis_arus`, serta filter antrean proposal bertahap (`pending_ketua`/`pending_bendahara`).
 - `src/services/httpClient.ts` — `httpClient`, `ApiError` — jembatan fetch wrapper terpusat (default `credentials: include`) untuk intersepsi HTTP error non-2xx dan normalisasi error agar bisa dipakai notifikasi global (`vue-sonner`) di layer UI.
 - `src/services/admin/dashboardService.ts` — `getSummary` — API client dashboard admin berbasis `httpClient`.
 - `src/services/admin/kasService.ts` — `getMasterData`, `getTransactions`, `submitDirectTransaction`, `submitProposal`, `approveTransaction`, `deleteTransaction` — API client ke endpoint transaksi kas yang dipisah per intent.
-- `src/components/admin/kas/KasLaporan.vue` — tabel laporan + filter + ConfirmModal delete — UI guard RBAC untuk kolom/aksi delete.
-- `src/components/admin/kas/KasApproval.vue` — antrean approval/status proposal + ConfirmModal approve/reject — UI guard RBAC untuk label tab dan aksi approve/reject.
-- `src/components/admin/kas/KasInput.vue` — form kas langsung + validasi UI + ConfirmModal submit; pilihan seksi bersifat opsional dan disimpan bila dipilih.
-- `src/components/admin/kas/KasProposal.vue` — form proposal + validasi UI + ConfirmModal submit; `seksi_id` wajib sebelum dikirim ke backend.
+- `src/components/admin/kas/KasLaporan.vue` — tabel laporan + filter + ConfirmModal delete — UI guard RBAC untuk kolom/aksi delete berbasis helper `canDelete`; label audit `approved_at` dinamis (`Cair` untuk pengeluaran, `Masuk` untuk pemasukan).
+- `src/components/admin/kas/KasApproval.vue` — antrean approval/status proposal bertahap (tahap ketua & tahap bendahara) + ConfirmModal approve/reject — UI guard RBAC untuk urutan approval berjenjang.
+- `src/components/admin/kas/KasInput.vue` — form kas langsung + validasi UI + ConfirmModal submit; pilihan seksi bersifat opsional dan disimpan bila dipilih; input nominal memakai format ribuan realtime + guard non-digit.
+- `src/components/admin/kas/KasProposal.vue` — form proposal + validasi UI + ConfirmModal submit; `seksi_id` wajib sebelum dikirim ke backend; input nominal memakai format ribuan realtime + guard non-digit.
 - `src/components/ui/ConfirmModal.vue` — modal konfirmasi reusable berbasis Headless UI untuk aksi destructive/success/warning.
 - `src/views/admin/Pengaturan.vue` — integrasi `usePengaturan`, custom dropdown role/jenis_arus, ConfirmModal delete — UI manajemen kategori/seksi/akun.
 - `src/composables/admin/usePengaturan.ts` — `loadData`, `saveItem`, `deleteItem` — state dan CRUD pengaturan lintas tab via `pengaturanService`.
 - `src/services/admin/pengaturanService.ts` — `get/add/update/delete` kategori, seksi, users — API client pengaturan admin berbasis `httpClient` dengan DTO frontend.
-- `src/composables/admin/useTheme.ts` — `toggleTheme` — dark/light mode berbasis `localStorage`.
+- `src/composables/admin/useTheme.ts` — `initTheme`, `toggleTheme` — dark/light mode berbasis `localStorage` yang dipakai layout publik dan admin.
 - `functions/api/[[path]].ts` — `handle(app)` dari `hono/cloudflare-pages` — adapter wajib Cloudflare Pages Functions agar request `/api/*` masuk ke Hono, bukan dilayani sebagai static SPA/HTML.
 - `server/index.ts` — `app.route(...)` — entrypoint backend dan registrasi semua sub-router API.
 - `server/api/public/index.ts` — aggregator router domain publik (`/api/public/*`) untuk modularisasi endpoint public-facing.
@@ -215,11 +225,11 @@ masjidnurulhuda/
 - `server/api/admin/dashboard.ts` — `GET /summary` + middleware auth — endpoint ringkasan kas.
 - `server/services/dashboard.ts` — `getDashboardSummary` — delegasi business logic dashboard ke query.
 - `server/db/queries/dashboard.ts` — `getKasSummary` — agregasi pemasukan/pengeluaran approved.
-- `server/api/admin/transaction.ts` — `GET master-data/list/pending`, `POST add-direct/add-proposal/approve`, `DELETE :id` — endpoint transaksi kas dengan pemisahan jalur mutasi per intent (direct vs proposal), middleware auth/role reusable, validasi input manual, validasi param ID numerik, dan scoping data by role (`pengurus` vs approver).
-- `server/services/transaction.ts` — `createTransaction`, `getPendingTransactions(user)`, `getAllTransactions(user)`, `updateStatus`, `deleteTransaction` — operasi inti transaksi + data scoping pending/list by role.
+- `server/api/admin/transaction.ts` — `GET master-data/list/pending`, `POST add-direct/add-proposal/approve`, `DELETE :id` — endpoint transaksi kas dengan pemisahan jalur mutasi per intent (direct vs proposal), approval berjenjang ketua->bendahara, middleware auth/role reusable, validasi input manual, validasi param ID numerik, dan scoping data by role (`pengurus` vs approver).
+- `server/services/transaction.ts` — `createTransaction`, `getPendingTransactions(user)`, `getAllTransactions(user)`, `updateStatus`, `deleteTransaction` — operasi inti transaksi + state machine proposal (`pending_ketua` -> `pending_bendahara` -> `approved`) + data scoping pending/list by role.
 - `server/api/admin/pengaturan.ts` — CRUD kategori/seksi/users + middleware role — endpoint area pengaturan; kategori menerima `jenis_arus` dengan fallback `general`.
 - `server/services/kategori.ts` — CRUD `kategori_kas` termasuk kolom `jenis_arus` — layanan master kategori.
-- `server/services/seksi.ts` — CRUD `seksi_pengurus` — layanan master seksi.
+- `server/services/seksi.ts` — CRUD `seksi_pengurus` + `existsSeksiById` untuk hardening validasi FK payload transaksi.
 - `server/services/user.ts` — `getUsers`, `createUser`, `updateUserRole`, `resetPassword`, `deleteUser` — layanan akun pengurus.
 - `server/api/public/seksi.ts` — `GET /` — endpoint publik daftar seksi.
 - `server/api/public/kas.ts` — `GET /summary` (published as `/api/public/kas/summary`) — endpoint publik ringkasan kas dari D1 tanpa JWT.
@@ -232,6 +242,7 @@ masjidnurulhuda/
 - `wrangler.toml` — binding D1 + output Cloudflare Pages — konfigurasi deployment/runtime Cloudflare.
 
 # Data & Config
+
 - Lokasi `.env*`: `.env`, `.dev.vars` terdeteksi (isi tidak dibaca).
 - Konfigurasi utama:
   - `vite.config.ts`
@@ -262,11 +273,13 @@ masjidnurulhuda/
   - Runtime cookie client: `cookies.txt` (artefak lokal, harus tidak tracked).
 
 # External Integrations
+
 - Cloudflare D1 (SQLite managed) — dipakai oleh seluruh route backend via binding `c.env.DB`.
 - Cloudflare Workers/Pages runtime via Wrangler — konfigurasi di `wrangler.toml`, adapter dev di `vite.config.ts`, dan adapter production di `functions/api/[[path]].ts`.
 - Tidak ditemukan integrasi API pihak ketiga lain (payment gateway, email service, queue, webhook): Not found.
 
 # Risks / Blind Spots
+
 - Tidak ada layer repository konsisten untuk semua domain: sebagian query berada di `server/services/*` (transaction/kategori/seksi/user), sehingga boundary service-query tidak seragam.
 - `.dev.vars` dan `cookies.txt` sudah dikeluarkan dari index Git dan di-ignore; secret lokal sudah dirotasi, tetapi riwayat commit lokal lama pernah memuat file tersebut sehingga tetap perlu kehati-hatian sebelum publish history.
 - Rotasi secret JWT dan pengelolaan secret production baseline sudah dicatat di `RUNBOOK.md`; revoke/rotation drill tetap dapat diperdalam pada Day-2 Operations.
@@ -274,5 +287,7 @@ masjidnurulhuda/
 - Migration DDL dan seed sudah dipisah untuk fresh database, tetapi belum ada skrip reset/seed lokal yang konsisten atau test migration otomatis.
 - Pipeline CI/CD sudah berhasil deploy; lesson learned: readiness harus mengecek YAML quoting, Node runner aktif, Wrangler command valid, scope API token Cloudflare account-level, dan Pages Functions wrapper untuk API Hono.
 - Type safety belum tuntas menyeluruh: area admin utama dan backend auth/core service sudah memakai DTO/typed payload, tetapi masih ada `any` residual di `httpClient`, beberapa component props/catch non-kritis, query dashboard, dan area publik jadwal.
+- Sinkronisasi role lintas dokumen perlu dijaga ketat: beberapa catatan lama masih menyebut matrix `superadmin|ketua|pengurus`, sementara implementasi approval proposal kini sudah melibatkan role `bendahara`.
+- Testing baseline domain kas baru mencakup helper nominal (`formatInputRupiah`, `parseInputRupiah`, `formatRupiah`); integration test lintas approval ketua-bendahara belum otomatis.
 - Rate limiting login masih baseline in-memory; cukup untuk proteksi awal, tetapi tidak persisten lintas isolate/region Cloudflare. Jika trafik/risiko naik, pertimbangkan Cloudflare Turnstile, WAF rules, KV, D1, atau Redis-compatible storage.
 - Dokumentasi resmi arsitektur/operasional minim (README masih template), sehingga beberapa keputusan non-fungsional (monitoring, backup, recovery) tidak bisa dipetakan pasti.

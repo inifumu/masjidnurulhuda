@@ -1,9 +1,13 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+// 🟢 PERBAIKAN: Definisikan tipe secara strict!
+export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
+
 export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = ref(false);
-  const user = ref<{ id: number; name: string; role: string } | null>(null);
+  // 🟢 PERBAIKAN: Gunakan AuthRole, bukan sekadar string biasa
+  const user = ref<{ id: number; name: string; role: AuthRole } | null>(null);
   const isReady = ref(false);
 
   const login = async (email: string, password: string) => {
@@ -49,12 +53,10 @@ export const useAuthStore = defineStore("auth", () => {
       if (res.ok) {
         const result = await res.json();
 
-        // 🟢 KUNCI PERBAIKAN: Cek apakah status di JSON benar-benar 'success'
         if (result.status === "success") {
           isAuthenticated.value = true;
           user.value = result.data;
         } else {
-          // Jika statusnya 'unauthenticated' (Trik Soft 401), tolak loginnya
           isAuthenticated.value = false;
           user.value = null;
         }

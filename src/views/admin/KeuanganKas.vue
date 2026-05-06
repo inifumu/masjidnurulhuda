@@ -9,6 +9,7 @@ import {
 } from "lucide-vue-next";
 import { useKas } from "../../composables/admin/useKas";
 import { useAuthStore } from "../../stores/authStore"; // 🟢 Import Auth Store
+import { canAccessKasInput, canViewProposalTab } from "../../utils/permissions";
 
 import KasLaporan from "../../components/admin/kas/KasLaporan.vue";
 import KasApproval from "../../components/admin/kas/KasApproval.vue";
@@ -143,7 +144,7 @@ onUnmounted(() => document.removeEventListener("click", closeDropdowns));
         </button>
 
         <button
-          v-if="authStore.user?.role !== 'pengurus'"
+          v-if="canAccessKasInput(authStore.user?.role)"
           @click="activeTab = 'input'"
           :class="
             activeTab === 'input'
@@ -156,7 +157,7 @@ onUnmounted(() => document.removeEventListener("click", closeDropdowns));
         </button>
 
         <button
-          v-if="authStore.user?.role !== 'ketua'"
+          v-if="canViewProposalTab(authStore.user?.role)"
           @click="activeTab = 'proposal'"
           :class="
             activeTab === 'proposal'

@@ -37,3 +37,12 @@ export const deleteSeksi = async (db: D1Database, id: number) => {
     .bind(id)
     .run();
 };
+
+export const existsSeksiById = async (db: D1Database, id: number) => {
+  const result = await db
+    .prepare("SELECT 1 as found FROM seksi_pengurus WHERE id = ? LIMIT 1")
+    .bind(id)
+    .first<{ found: number }>();
+
+  return Boolean(result?.found);
+};
