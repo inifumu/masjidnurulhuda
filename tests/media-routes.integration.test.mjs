@@ -112,6 +112,7 @@ const createInMemoryEnv = () => {
   let autoId = 1;
   const rows = [];
   const objects = new Map();
+  const users = [{ id: 7, token_version: 0 }];
 
   const parseId = (value) => {
     const n = Number(value);
@@ -126,6 +127,17 @@ const createInMemoryEnv = () => {
         bind(...values) {
           return {
             async first() {
+              if (
+                normalized.includes(
+                  "SELECT id, token_version FROM users WHERE id = ?",
+                )
+              ) {
+                const userId = parseId(values[0]);
+                if (!userId) return null;
+                const foundUser = users.find((user) => user.id === userId);
+                return foundUser ?? null;
+              }
+
               if (
                 normalized.includes("SELECT COUNT(*) AS total FROM dokumentasi")
               ) {
@@ -292,7 +304,7 @@ const createInMemoryEnv = () => {
 
 const makeAuthedCookie = async () => {
   const token = await sign(
-    { id: 7, sub: 7, role: "superadmin" },
+    { id: 7, sub: 7, role: "superadmin", tv: 0 },
     JWT_SECRET,
     "HS256",
   );

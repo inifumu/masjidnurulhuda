@@ -12,6 +12,7 @@ export interface AuthUserRow {
   password_hash: string;
   name: string;
   role: AuthRole;
+  token_version?: number | null;
 }
 
 export const loginAdmin = async (
@@ -28,11 +29,19 @@ export const loginAdmin = async (
   const hashedInput = await hashPassword(password);
   if (user.password_hash !== hashedInput) return null;
 
+  const tokenVersion =
+    typeof user.token_version === "number" &&
+    Number.isInteger(user.token_version)
+      ? user.token_version
+      : 0;
+
   // Buat Payload JWT (kedaluwarsa dalam 1 hari)
   const payload = {
     sub: user.id,
+    id: user.id,
     name: user.name,
     role: user.role,
+    tv: tokenVersion,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
   };
 

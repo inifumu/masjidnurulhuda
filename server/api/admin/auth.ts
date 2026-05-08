@@ -2,6 +2,10 @@ import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
 import * as authService from "../../services/auth";
+import {
+  bumpUserTokenVersion,
+  getUserTokenVersionById,
+} from "../../db/queries/auth";
 import { sendSuccess, sendError } from "../../utils/response";
 // 🟢 Import 3 Fungsi Helper Rate Limiter
 import {
@@ -66,7 +70,30 @@ api.post("/login", async (c) => {
   }
 });
 
-api.post("/logout", (c) => {
+api.post("/logout", async (c) => {
+  const token = getCookie(c, "auth_token");
+
+  if (token) {
+    try {
+      const secret = c.env.JWT_SECRET;
+      if (secret) {
+        const decoded = await verify(token, secret, "HS256");
+        const userId =
+          typeof decoded.sub === "number"
+            ? decoded.sub
+            : typeof decoded.id === "number"
+              ? decoded.id
+              : null;
+
+        if (userId) {
+          await bumpUserTokenVersion(c.env.DB, userId);
+        }
+      }
+    } catch {
+      // noop: tetap lanjutkan clear cookie agar logout idempotent.
+    }
+  }
+
   deleteCookie(c, "auth_token", { path: "/" });
   return sendSuccess(c, "Berhasil logout");
 });
@@ -80,8 +107,36 @@ api.get("/me", async (c) => {
     if (!secret) return sendError(c, "JWT secret belum dikonfigurasi", 500);
 
     const decoded = await verify(token, secret, "HS256");
+    const userId =
+      typeof decoded.sub === "number"
+        ? decoded.sub
+        : typeof decoded.id === "number"
+          ? decoded.id
+          : null;
+
+    if (!userId) {
+      deleteCookie(c, "auth_token", { path: "/" });
+      return sendError(c, "Sesi tidak valid", 401);
+    }
+
+    const userVersion = await getUserTokenVersionById(c.env.DB, userId);
+    if (!userVersion) {
+      deleteCookie(c, "auth_token", { path: "/" });
+      return sendError(c, "Sesi tidak valid", 401);
+    }
+
+    const tokenVersion =
+      typeof decoded.tv === "number" && Number.isInteger(decoded.tv)
+        ? decoded.tv
+        : 0;
+
+    if (tokenVersion !== userVersion.token_version) {
+      deleteCookie(c, "auth_token", { path: "/" });
+      return sendError(c, "Sesi sudah tidak valid", 401);
+    }
+
     return sendSuccess(c, "Sesi valid", {
-      id: decoded.sub,
+      id: userId,
       name: decoded.name,
       role: decoded.role,
     });

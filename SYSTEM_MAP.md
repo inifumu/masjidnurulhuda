@@ -10,8 +10,9 @@
 
 # Core Logic Flow (Function-Level Flowchart)
 
-- `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Middleware] login rate limit baseline (IP+email, in-memory, 5 gagal/15 menit) -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> DB users`
-- `[Vue] router.beforeEach -> [Vue] authStore.checkAuth() -> [Hono] GET /api/admin/auth/me -> verify JWT cookie -> response user session`
+- `[Vue] Login.vue(handleLogin) -> [Vue] authStore.login() -> [Hono] POST /api/admin/auth/login -> [Middleware] login rate limit baseline (IP+email, in-memory, 5 gagal/15 menit) -> [Hono] authService.loginAdmin -> [Query] getUserByEmail(users) + hash verify -> payload JWT (`tv`+`exp` 24 jam) -> set cookie httpOnly (maxAge 24 jam)`
+- `[Vue] router.beforeEach -> [Vue] authStore.checkAuth() -> [Hono] GET /api/admin/auth/me -> verify JWT cookie + validasi claim `tv`vs`users.token_version` -> response user session`
+- `[Vue] AdminLayout(handleLogout) -> [Vue] authStore.logout() -> [Hono] POST /api/admin/auth/logout -> verify JWT cookie (best-effort) -> [Query] bumpUserTokenVersion(users) -> clear cookie -> token lama revoke server-side`
 - `[Vue] GET / (public route) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> section-based smooth-scroll landing (hero/jadwal/kas/kabar/galeri/saran)`
 - `[Vue] Home/JadwalSholat(useJadwal) -> [Vue] jadwalService.fetchJadwalToday -> [Hono] GET /api/public/jadwal/today (proxy + timeout/retry) -> [External API] MyQuran Kemenag -> cache harian localStorage + fallback offline`
 - `[Vue] Home/KasWidget(useKasSummary) -> [Vue] kasSummaryService.fetchSummary -> [Hono] GET /api/public/kas/summary -> [Query] aggregate kas approved bulanan -> DB kas_masjid`
@@ -66,7 +67,7 @@ Catatan enforcement:
 - Endpoint `GET /api/admin/transaction/list` juga menerapkan data scoping untuk role `pengurus`:
   - hanya data `approved` atau data yang dibuat user sendiri (`created_by = user.sub|user.id`),
   - role approver tetap melihat data global sesuai kebutuhan laporan.
-- Endpoint `POST /api/admin/transaction/add` sudah punya validasi manual input (required fields, nominal positif, whitelist tipe, sanitasi panjang minimal keterangan).
+- Endpoint `POST /api/admin/transaction/add-direct` dan `POST /api/admin/transaction/add-proposal` sudah punya validasi manual input (required fields, nominal positif, whitelist tipe, sanitasi panjang minimal keterangan), termasuk hardening FK `seksi_id` dan pemaksaan status by intent.
 
 # Clean Tree
 
@@ -86,6 +87,12 @@ masjidnurulhuda/
   migrations/
     0001_init_schema.sql
     0002_seed_initial_data.sql
+    0003_proposal_workflow.sql
+    0004_add_audit_columns.sql
+    0005_add_indexes.sql
+    0006_media_library.sql
+    0007_reconcile_bendahara_role.sql
+    0008_auth_token_version.sql
   functions/
     api/
       [[path]].ts
@@ -229,11 +236,11 @@ masjidnurulhuda/
 - `server/api/public/kas.ts` — `GET /summary` — endpoint read-only kas publik (approved-only aggregate).
 - `server/api/public/jadwal.ts` — `GET /today` — proxy API jadwal sholat (timeout + retry + cache headers) agar integrasi eksternal lebih stabil.
 - `server/utils/response.ts` — `sendSuccess`, `sendError` — factory response helper backend untuk standarisasi output JSON lintas endpoint.
-- `server/middleware/auth.ts` — `requireAuth`, `requireRole` — middleware reusable untuk autentikasi JWT dan otorisasi role lintas route admin.
+- `server/middleware/auth.ts` — `requireAuth`, `requireRole` — middleware reusable untuk autentikasi JWT + validasi token version (`tv` vs `users.token_version`) dan otorisasi role lintas route admin.
 - `server/middleware/rateLimit.ts` — `checkLoginRateLimit`, `recordFailedLogin`, `clearLoginAttempts` — rate limit baseline login admin berbasis in-memory Map dengan key `IP:email`, `Retry-After`, dan reset saat login sukses.
-- `server/api/admin/auth.ts` — `POST /login`, `POST /logout`, `GET /me` — autentikasi cookie JWT; login memvalidasi email/password, mengecek rate limit sebelum auth service, mencatat kegagalan, dan membersihkan attempt saat sukses.
-- `server/services/auth.ts` — `loginAdmin`, `AuthUserRow`, `AuthRole` — validasi kredensial typed, hash verify, dan pembuatan token JWT.
-- `server/db/queries/auth.ts` — `getUserByEmail` — query user by email untuk login.
+- `server/api/admin/auth.ts` — `POST /login`, `POST /logout`, `GET /me` — autentikasi cookie JWT; login memvalidasi email/password + rate limit, logout menginvalidasi sesi server-side via increment `users.token_version`, dan endpoint `me` memverifikasi kecocokan `tv` token terhadap `users.token_version`.
+- `server/services/auth.ts` — `loginAdmin`, `AuthUserRow`, `AuthRole` — validasi kredensial typed, hash verify, pembuatan token JWT dengan `tv` + `exp` 24 jam.
+- `server/db/queries/auth.ts` — `getUserByEmail`, `getUserTokenVersionById`, `bumpUserTokenVersion` — query auth login + revocation berbasis token version.
 - `server/api/admin/dashboard.ts` — `GET /summary` + middleware auth — endpoint ringkasan kas.
 - `server/services/dashboard.ts` — `getDashboardSummary` — delegasi business logic dashboard ke query.
 - `server/db/queries/dashboard.ts` — `getKasSummary` — agregasi pemasukan/pengeluaran approved.
@@ -265,16 +272,22 @@ masjidnurulhuda/
   - `.github/workflows/deploy.yml`
   - `src/assets/main.css` (styling global, termasuk utilitas Tailwind/custom class)
 - Skema data inti (dari `server/db/schema.sql`):
-  - `users` (akun admin/pengurus, role, password hash).
+  - `users` (akun admin/pengurus, role, password hash, `token_version` untuk revocation session).
   - `seksi_pengurus` (master seksi + nama pengurus).
   - `kategori_kas` (master kategori kas/pos anggaran dengan `jenis_arus`: `pemasukan|pengeluaran|general`).
   - `periode` (periode/event lintas bulan).
-  - `kas_masjid` (transaksi kas; FK ke `kategori_kas`, `periode`, `seksi_pengurus`, `users`).
-  - Relasi ringkas: `kas_masjid` many-to-one ke `users`, `kategori_kas`, `seksi_pengurus`, opsional ke `periode`.
+  - `kas_masjid` (transaksi kas; FK ke `kategori_kas`, `periode`, `seksi_pengurus`, `users`, dengan status bertahap `pending_ketua|pending_bendahara|approved|rejected` + `approved_at`).
+  - `dokumentasi` (metadata media admin: `storage_key`, `thumb_storage_key`, kategori penggunaan, metadata dimensi/ukuran, FK uploader).
+  - Relasi ringkas: `kas_masjid` many-to-one ke `users`, `kategori_kas`, `seksi_pengurus`, opsional ke `periode`; `dokumentasi` many-to-one ke `users` (uploader).
 - Lokasi migration/seed:
   - Migration awal DDL + index: `migrations/0001_init_schema.sql`.
   - Seed awal: `migrations/0002_seed_initial_data.sql`.
-  - Migration media library: `migrations/0006_media_library.sql` (tabel `dokumentasi`, constraint allowlist, FK uploader, unique `storage_key`, dan index listing admin).
+  - Workflow proposal & status bertahap: `migrations/0003_proposal_workflow.sql`.
+  - Audit columns transaksi: `migrations/0004_add_audit_columns.sql`.
+  - Index lanjutan transaksi: `migrations/0005_add_indexes.sql`.
+  - Migration media library: `migrations/0006_media_library.sql` (tabel `dokumentasi`, constraint allowlist, FK uploader, unique `storage_key` + `thumb_storage_key`, dan index listing admin).
+  - Reconcile role bendahara: `migrations/0007_reconcile_bendahara_role.sql` (diset no-op by design untuk stabilitas pipeline remote; eksekusi rekonsiliasi live dilakukan via `fix.sql` sesuai runbook).
+  - Migration auth token revocation: `migrations/0008_auth_token_version.sql` (kolom `users.token_version` + backfill default `0` untuk data lama).
   - Catatan kompatibilitas: struktur migration ini aman untuk D1 remote yang fresh; jika migration lama pernah apply di remote, perlu strategi reconcile sebelum publish.
 - Konfigurasi deploy:
   - Workflow CI/CD awal: `.github/workflows/deploy.yml` dengan step name di-quote, Node.js 24, dan migration command `npx wrangler d1 migrations apply masjidnurulhuda-db --remote`.
@@ -298,11 +311,11 @@ masjidnurulhuda/
 - Tidak ada layer repository konsisten untuk semua domain: sebagian query berada di `server/services/*` (transaction/kategori/seksi/user), sehingga boundary service-query tidak seragam.
 - `.dev.vars` dan `cookies.txt` sudah dikeluarkan dari index Git dan di-ignore; secret lokal sudah dirotasi, tetapi riwayat commit lokal lama pernah memuat file tersebut sehingga tetap perlu kehati-hatian sebelum publish history.
 - Rotasi secret JWT dan pengelolaan secret production baseline sudah dicatat di `RUNBOOK.md`; revoke/rotation drill tetap dapat diperdalam pada Day-2 Operations.
-- Struktur role berpotensi tidak sinkron jika akun lama masih menyimpan nilai role historis yang tidak masuk matrix final (`superadmin|ketua|pengurus`).
-- Migration DDL dan seed sudah dipisah untuk fresh database, tetapi belum ada skrip reset/seed lokal yang konsisten atau test migration otomatis.
+- Struktur role berpotensi tidak sinkron jika akun lama masih menyimpan nilai role historis yang tidak masuk matrix final (`superadmin|ketua|bendahara|pengurus`).
+- Migration DDL dan seed sudah dipisah untuk fresh database, dan reset lokal sudah distandarkan; namun test migration otomatis lintas skenario (fresh + non-fresh) masih belum tersedia.
 - Pipeline CI/CD sudah berhasil deploy; lesson learned: readiness harus mengecek YAML quoting, Node runner aktif, Wrangler command valid, scope API token Cloudflare account-level, dan Pages Functions wrapper untuk API Hono.
 - Type safety belum tuntas menyeluruh: area admin utama dan backend auth/core service sudah memakai DTO/typed payload, tetapi masih ada `any` residual di `httpClient`, beberapa component props/catch non-kritis, query dashboard, dan area publik jadwal.
-- Sinkronisasi role lintas dokumen perlu dijaga ketat: beberapa catatan lama masih menyebut matrix `superadmin|ketua|pengurus`, sementara implementasi approval proposal kini sudah melibatkan role `bendahara`.
+- Sinkronisasi role lintas dokumen perlu dijaga ketat agar seluruh artefak tetap konsisten pada matrix final (`superadmin|ketua|bendahara|pengurus`).
 - Testing baseline domain kas baru mencakup helper nominal (`formatInputRupiah`, `parseInputRupiah`, `formatRupiah`); integration test lintas approval ketua-bendahara belum otomatis.
 - Rate limiting login masih baseline in-memory; cukup untuk proteksi awal, tetapi tidak persisten lintas isolate/region Cloudflare. Jika trafik/risiko naik, pertimbangkan Cloudflare Turnstile, WAF rules, KV, D1, atau Redis-compatible storage.
 - Dokumentasi resmi arsitektur/operasional minim (README masih template), sehingga beberapa keputusan non-fungsional (monitoring, backup, recovery) tidak bisa dipetakan pasti.
