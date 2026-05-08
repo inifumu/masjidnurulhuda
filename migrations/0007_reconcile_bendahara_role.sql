@@ -1,25 +1,6 @@
 -- Migration number: 0007
--- Tujuan:
--- - PENAMBAHAN role `bendahara` pada constraint kolom `users.role` di DB live.
--- - Kompatibel D1 remote (tanpa PRAGMA writable_schema / edit sqlite_master).
--- - Tanpa mapping role legacy spekulatif.
---
--- Caller:
--- - wrangler d1 migrations apply --remote (CI/CD)
---
--- Dependensi:
--- - tabel users sudah ada dari migration sebelumnya
---
--- Main steps:
--- 1) Rebuild tabel users dengan CHECK role baru (include bendahara)
--- 2) Copy data existing dengan normalisasi minimal role NULL -> pengurus
--- 3) Rename table + restore index penting
---
--- Side effects:
--- - lock tulis sementara saat migrasi users
--- - tidak mengubah alur bisnis selain allowlist role
-
-PRAGMA foreign_keys=OFF;
+-- Gunakan defer_foreign_keys agar pengecekan relasi ditunda sampai COMMIT
+PRAGMA defer_foreign_keys = ON;
 
 CREATE TABLE users_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,22 +11,16 @@ CREATE TABLE users_new (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Copy semua data yang ada
 INSERT INTO users_new (id, name, email, password_hash, role, created_at)
-SELECT
-  id,
-  name,
-  email,
-  password_hash,
-  CASE
-    WHEN role IS NULL THEN 'pengurus'
-    ELSE role
-  END AS role,
-  created_at
-FROM users;
+SELECT id, name, email, password_hash, role, created_at FROM users;
 
+-- Sapu bersih orphan data di kas_masjid (mencegah error FK saat commit)
+UPDATE kas_masjid SET created_by = NULL WHERE created_by NOT IN (SELECT id FROM users_new);
+
+-- Ganti tabel
 DROP TABLE users;
 ALTER TABLE users_new RENAME TO users;
 
+-- Kembalikan index
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
-
-PRAGMA foreign_keys=ON;
