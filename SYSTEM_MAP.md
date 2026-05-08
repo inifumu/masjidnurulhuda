@@ -25,6 +25,12 @@
 - `[Vue] KasApproval tahap ketua (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid (pending_ketua -> pending_bendahara)`
 - `[Vue] KasApproval tahap bendahara (useKas.handleAction) -> [Vue] kasService.approveTransaction -> [Hono] POST /api/admin/transaction/approve/:id -> txService.updateStatus -> DB kas_masjid (pending_bendahara -> approved, pencairan dana masuk laporan kas)`
 - `[Vue] Pengaturan/usePengaturan.loadData|saveItem|deleteItem -> [Vue] pengaturanService/httpClient -> [Hono] /api/admin/pengaturan/(kategori|seksi|users) -> service kategori|seksi|user -> DB kategori_kas(jenis_arus)|seksi_pengurus|users`
+- `[Vue] Admin Media Library(useMediaUpload) -> [Vue] imagePipeline + mediaService.uploadMedia (file + thumb_file) -> [Vue] httpClient (multipart/form-data) -> [Hono] POST /api/admin/media -> validasi auth/role + MIME/size + storage_key/thumb_storage_key -> upload paralel 2 object R2 (`storage_key`+`thumb_storage_key`) + insert D1 `dokumentasi` + rollback dua object R2 saat insert gagal`
+- `[Vue] Admin Media Grid -> [Vue] mediaService.listMedia -> [Vue] httpClient -> [Hono] GET /api/admin/media?page&limit&kategori_penggunaan -> [Query] D1 dokumentasi (termasuk `thumb_storage_key`) -> [Vue] fallback render thumb: URL thumb gagal load (404/error) => fallback ke `file_url` utama`
+- `[Vue] Admin Media Delete -> [Vue] mediaService.deleteMedia -> [Vue] httpClient -> [Hono] DELETE /api/admin/media/:id -> lookup D1 row -> delete object R2 (`storage_key`+`thumb_storage_key`) via Promise.all -> delete row D1 (hard delete sinkron multi-object)`
+- `[Vue] Admin Media Alt Text Edit -> [Vue] mediaService.updateMediaMetadata -> [Vue] httpClient -> [Hono] PATCH /api/admin/media/:id -> validasi auth/role + validasi payload -> update metadata D1 dokumentasi`
+- `[Vue] Admin Galeri & Dokumentasi Placeholder -> [Vue] MediaPickerModal + useMediaPicker (lazy fetch on open, multi-select) -> [Vue] mediaService.listMedia -> [Vue] httpClient -> [Hono] GET /api/admin/media?page&limit&kategori_penggunaan -> [Query] D1 dokumentasi`
+- `[Browser Request] GET /api/public/media/* -> [Hono] server/api/public/index.ts -> [Utils] resolveMediaStorageKey(pathname canonical + fallback wildcard + sanitasi anti traversal) -> [R2] MEDIA_BUCKET.get(storage_key)`
 - `[Vue] Kas/Pengaturan delete/submit/approval -> ConfirmModal.vue + vue-sonner toast -> composable action -> API mutation`
 
 ## Authorization Matrix (RBAC)
@@ -183,7 +189,7 @@ masjidnurulhuda/
 
 - `src/main.ts` — `createApp`, `createPinia` — bootstrap Vue app + registrasi router/store.
 - `src/env.d.ts` — deklarasi tipe Vite + side-effect import font.
-- `src/router/index.ts` — `createRouter`, `beforeEach` — definisi route publik/admin dan guard berbasis sesi backend.
+- `src/router/index.ts` — `createRouter`, `beforeEach` — definisi route publik/admin dan guard berbasis sesi backend (termasuk route admin media: `/admin/media` dan `/admin/galeri-dokumentasi`).
 - `src/layouts/PublicLayout.vue` — `scrollTo`, `toggleMobileMenu`, `toggleTheme` — layout publik (sticky navbar, navigasi smooth-scroll, menu mobile, footer) + switch dark/light mode pada web utama.
 - `src/views/public/Home.vue` — `v-fade` + section composition — orchestrator halaman publik berbasis component layering (UI modular per section).
 - `src/composables/public/home/useJadwal.ts` — `loadJadwal`, cache harian localStorage, fallback offline — logic layer jadwal sholat publik yang tahan gangguan API eksternal.
@@ -194,7 +200,7 @@ masjidnurulhuda/
 - `src/components/public/home/KabarMasjid.vue`, `src/components/public/home/GaleriWidget.vue`, `src/components/public/home/KritikSaran.vue` — section publik dengan overlay glassmorphism "Coming Soon" tanpa menutupi header section.
 - `src/stores/authStore.ts` — `login`, `logout`, `checkAuth` — sumber state autentikasi global frontend.
 - `src/views/admin/Login.vue` — `handleLogin` — UI login dan trigger autentikasi.
-- `src/layouts/AdminLayout.vue` — `handleLogout`, state sidebar/theme, `toggleTheme` — kerangka UI panel admin dengan dark mode konsisten lintas halaman admin.
+- `src/layouts/AdminLayout.vue` — `handleLogout`, state sidebar/theme, `toggleTheme` — kerangka UI panel admin dengan dark mode konsisten lintas halaman admin, plus navigasi `Galeri & Dokumentasi`.
 - `src/views/admin/Dashboard.vue` — integrasi `useDashboard` — render kartu statistik dari composable dashboard.
 - `src/composables/admin/useDashboard.ts` — `fetchSummary` — state dan loading ringkasan dashboard via service.
 - `src/views/admin/KeuanganKas.vue` — integrasi `useKas` + `useAuthStore` + helper `permissions` — host tab kas dengan UI guard RBAC berbasis allowlist (`canAccessKasInput`, `canViewProposalTab`).
@@ -210,10 +216,16 @@ masjidnurulhuda/
 - `src/views/admin/Pengaturan.vue` — integrasi `usePengaturan`, custom dropdown role/jenis_arus, ConfirmModal delete — UI manajemen kategori/seksi/akun.
 - `src/composables/admin/usePengaturan.ts` — `loadData`, `saveItem`, `deleteItem` — state dan CRUD pengaturan lintas tab via `pengaturanService`.
 - `src/services/admin/pengaturanService.ts` — `get/add/update/delete` kategori, seksi, users — API client pengaturan admin berbasis `httpClient` dengan DTO frontend.
+- `src/services/admin/mediaService.ts` — `uploadMedia`, `listMedia`, `deleteMedia`, `updateMediaMetadata` — API client media library admin (multipart upload, list pagination/filter, hard delete, patch metadata).
+- `src/composables/admin/useMediaUpload.ts` — orchestrator batch upload media: progress per item, retry item gagal, dan state upload multi-file.
+- `src/composables/admin/useMediaPicker.ts` — composable reusable media picker (lazy fetch saat modal dibuka, state selected map, single/multi select).
+- `src/components/admin/media/MediaPickerModal.vue` — modal picker media reusable dengan grid preview, visual state selected, refresh list, emit `MediaItem[]`.
+- `src/views/admin/GaleriDokumentasi.vue` — placeholder caller fase awal untuk memilih/menampilkan multi media terpilih via `MediaPickerModal`.
+- `src/utils/media/imagePipeline.ts` — pipeline gambar FE: validasi MIME, resize/compress adaptive, fallback konversi WebP, dan generator storage key standar.
 - `src/composables/admin/useTheme.ts` — `initTheme`, `toggleTheme` — dark/light mode berbasis `localStorage` yang dipakai layout publik dan admin.
 - `functions/api/[[path]].ts` — `handle(app)` dari `hono/cloudflare-pages` — adapter wajib Cloudflare Pages Functions agar request `/api/*` masuk ke Hono, bukan dilayani sebagai static SPA/HTML.
 - `server/index.ts` — `app.route(...)` — entrypoint backend dan registrasi semua sub-router API.
-- `server/api/public/index.ts` — aggregator router domain publik (`/api/public/*`) untuk modularisasi endpoint public-facing.
+- `server/api/public/index.ts` — aggregator router domain publik (`/api/public/*`) untuk modularisasi endpoint public-facing, termasuk delivery media publik via parser key terpusat.
 - `server/api/public/kas.ts` — `GET /summary` — endpoint read-only kas publik (approved-only aggregate).
 - `server/api/public/jadwal.ts` — `GET /today` — proxy API jadwal sholat (timeout + retry + cache headers) agar integrasi eksternal lebih stabil.
 - `server/utils/response.ts` — `sendSuccess`, `sendError` — factory response helper backend untuk standarisasi output JSON lintas endpoint.
@@ -228,6 +240,8 @@ masjidnurulhuda/
 - `server/api/admin/transaction.ts` — `GET master-data/list/pending`, `POST add-direct/add-proposal/approve`, `DELETE :id` — endpoint transaksi kas dengan pemisahan jalur mutasi per intent (direct vs proposal), approval berjenjang ketua->bendahara, middleware auth/role reusable, validasi input manual, validasi param ID numerik, dan scoping data by role (`pengurus` vs approver).
 - `server/services/transaction.ts` — `createTransaction`, `getPendingTransactions(user)`, `getAllTransactions(user)`, `updateStatus`, `deleteTransaction` — operasi inti transaksi + state machine proposal (`pending_ketua` -> `pending_bendahara` -> `approved`) + data scoping pending/list by role.
 - `server/api/admin/pengaturan.ts` — CRUD kategori/seksi/users + middleware role — endpoint area pengaturan; kategori menerima `jenis_arus` dengan fallback `general`.
+- `server/api/admin/media.ts` — `POST /`, `GET /`, `PATCH /:id`, `DELETE /:id` — endpoint media admin (auth/role, validasi MIME-size + guard ukuran upload server-side, dual-upload `file` + `thumb_file` dengan `thumb_storage_key`, sinkronisasi D1+R2, rollback orphan object multi-key, update metadata `alt_text`/kategori, dan contextual error log ringan per operasi).
+- `server/utils/mediaPath.ts` — `resolveMediaStorageKey` — parser canonical URL media publik (`/api/public/media/*`) dengan fallback wildcard, backward-compat path legacy, dan sanitasi key.
 - `server/services/kategori.ts` — CRUD `kategori_kas` termasuk kolom `jenis_arus` — layanan master kategori.
 - `server/services/seksi.ts` — CRUD `seksi_pengurus` + `existsSeksiById` untuk hardening validasi FK payload transaksi.
 - `server/services/user.ts` — `getUsers`, `createUser`, `updateUserRole`, `resetPassword`, `deleteUser` — layanan akun pengurus.
@@ -260,6 +274,7 @@ masjidnurulhuda/
 - Lokasi migration/seed:
   - Migration awal DDL + index: `migrations/0001_init_schema.sql`.
   - Seed awal: `migrations/0002_seed_initial_data.sql`.
+  - Migration media library: `migrations/0006_media_library.sql` (tabel `dokumentasi`, constraint allowlist, FK uploader, unique `storage_key`, dan index listing admin).
   - Catatan kompatibilitas: struktur migration ini aman untuk D1 remote yang fresh; jika migration lama pernah apply di remote, perlu strategi reconcile sebelum publish.
 - Konfigurasi deploy:
   - Workflow CI/CD awal: `.github/workflows/deploy.yml` dengan step name di-quote, Node.js 24, dan migration command `npx wrangler d1 migrations apply masjidnurulhuda-db --remote`.

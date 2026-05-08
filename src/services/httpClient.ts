@@ -2,6 +2,7 @@
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
+  isFormData?: boolean;
 }
 
 // Custom Error Class untuk menangkap status HTTP
@@ -20,7 +21,7 @@ export const httpClient = async <T = any>(
   endpoint: string,
   options: FetchOptions = {},
 ): Promise<T> => {
-  const { params, ...customConfig } = options;
+  const { params, isFormData = false, ...customConfig } = options;
 
   // Set base URL (menyesuaikan environment Vite)
   const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
@@ -33,13 +34,18 @@ export const httpClient = async <T = any>(
   }
 
   // Konfigurasi default (wajib kirim cookie untuk auth)
+  const headers: HeadersInit = {
+    ...(customConfig.headers ?? {}),
+  };
+
+  if (!isFormData && !("Content-Type" in (headers as Record<string, string>))) {
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
+  }
+
   const config: RequestInit = {
     ...customConfig,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...customConfig.headers,
-    },
+    headers,
   };
 
   try {

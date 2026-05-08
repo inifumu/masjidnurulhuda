@@ -1,7 +1,7 @@
 import { getCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
 import type { Context, Next } from "hono";
-import { sendError } from "../utils/response";
+import { sendError } from "../utils/response.ts";
 
 type AuthBindings = {
   JWT_SECRET?: string;

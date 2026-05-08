@@ -46,6 +46,18 @@ const router = createRouter({
           component: () => import("../views/admin/Pengaturan.vue"),
           meta: { requiresAuth: true },
         },
+        {
+          path: "media",
+          name: "admin-media-library",
+          component: () => import("../views/admin/MediaLibrary.vue"),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: "galeri-dokumentasi",
+          name: "admin-galeri-dokumentasi",
+          component: () => import("../views/admin/GaleriDokumentasi.vue"),
+          meta: { requiresAuth: true },
+        },
       ],
     },
   ],

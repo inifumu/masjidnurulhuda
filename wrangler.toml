@@ -7,3 +7,7 @@ pages_build_output_dir = "dist"
 binding = "DB" # Nama variabel yang akan kita panggil di kode Hono
 database_name = "masjidnurulhuda-db"
 database_id = "b1082762-01af-4696-ab60-d245a653424f"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "masjidnurulhuda-media"

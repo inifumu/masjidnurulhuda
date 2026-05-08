@@ -9,7 +9,7 @@ import {
   Settings,
   LogOut,
   Menu,
-  BookOpen,
+  Images,
   PanelLeftClose,
   Moon,
   Sun,
@@ -109,11 +109,28 @@ const handleLogout = async () => {
             class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"
             ><FileText :size="18" :stroke-width="1.5" /> Artikel & Info</a
           >
-          <a
-            href="#"
-            class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"
-            ><BookOpen :size="18" :stroke-width="1.5" /> Dokumentasi</a
+          <router-link
+            to="/admin/galeri-dokumentasi"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"
+            :class="
+              $route.path.startsWith('/admin/galeri-dokumentasi')
+                ? 'bg-brand-green/10 text-brand-green'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+            "
           >
+            <Images :size="18" :stroke-width="1.5" /> Galeri & Dokumentasi
+          </router-link>
+          <router-link
+            to="/admin/media"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"
+            :class="
+              $route.path.startsWith('/admin/media')
+                ? 'bg-brand-green/10 text-brand-green'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+            "
+          >
+            <Images :size="18" :stroke-width="1.5" /> Media Library
+          </router-link>
           <router-link
             to="/admin/pengaturan"
             class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"

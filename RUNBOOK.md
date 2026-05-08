@@ -7,6 +7,7 @@ Dokumen ini dipakai untuk tindakan cepat saat deploy, insiden database, rollback
 **Nama database:** `masjidnurulhuda-db`
 
 **Status deploy awal:**
+
 - D1 remote fresh, dibuat via `npx wrangler d1 create`.
 - Belum ada tabel sebelum pipeline pertama berjalan.
 - Migration production berada di folder `migrations/` dan dijalankan oleh GitHub Actions:
@@ -14,11 +15,13 @@ Dokumen ini dipakai untuk tindakan cepat saat deploy, insiden database, rollback
   - `0002_seed_initial_data.sql`
 
 **Backup data remote:**
+
 ```bash
 npx wrangler d1 export masjidnurulhuda-db --remote --output=backup-YYYY-MM-DD.sql
 ```
 
 **Restore data remote:**
+
 ```bash
 npx wrangler d1 execute masjidnurulhuda-db --remote --file=backup-terakhir.sql
 ```
@@ -97,7 +100,33 @@ Cloudflare Pages Functions:
 - Trace production: `/api/*` -> `functions/api/[[path]].ts` -> `server/index.ts` -> router Hono.
 - Jika wrapper hilang, deploy hanya melayani file statis Vue dan API bisa gagal dengan HTML/405.
 
-## 6. Exit Criteria Deploy Awal
+## 6. Pre-Production Smoke Test (Local)
+
+Tujuan: verifikasi kesiapan deploy **sebelum push/deploy** (bukan hit domain production).
+
+Waktu eksekusi terakhir: **2026-05-08 09:47 WIB**  
+Environment: **local workspace (Windows 11, Node test runner + Vite build)**
+
+Checklist hasil:
+
+- [x] `npm test` -> **pass 21/21**
+- [x] `npm run build` -> **success** (bundle frontend terbangun tanpa error)
+- [x] Smoke media minimum via integration test:
+  - `GET /api/admin/media` (list + query guard)
+  - `GET /api/public/media/*` termasuk fallback legacy thumbnail
+  - rollback parsial upload media (R2 sukses, insert D1 gagal) tervalidasi
+- [~] Uji manual endpoint admin media dengan kredensial runtime nyata:
+  - `POST /api/admin/media`
+  - `PATCH /api/admin/media/:id`
+  - `DELETE /api/admin/media/:id`
+  - status: dijadwalkan pada tahap post-deploy/pages.dev karena butuh session admin aktif + binding remote.
+
+Catatan:
+
+- Smoke test pre-production difokuskan ke local candidate (test + build + integration) untuk mencegah false-positive dari domain yang belum aktif.
+- Post-deploy verification tetap wajib dilakukan di domain Pages aktif (`*.pages.dev`) setelah rilis.
+
+## 7. Exit Criteria Deploy Awal
 
 Sebelum push ke `main`, pastikan:
 

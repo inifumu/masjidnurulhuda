@@ -20,6 +20,7 @@
     "@headlessui/vue": "^1.7.23",
     "@hono/vite-dev-server": "^0.25.1",
     "@vueuse/core": "^14.2.1",
+    "browser-image-compression": "^2.0.2",
     "hono": "^4.12.14",
     "lucide-vue-next": "^1.0.0",
     "pinia": "^3.0.4",
