@@ -19,9 +19,20 @@ CREATE TABLE users_new (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Copy data lama ke tabel baru
+-- Copy data lama ke tabel baru.
+-- Normalisasi role legacy agar tidak gagal CHECK constraint di remote non-fresh.
 INSERT INTO users_new (id, name, email, password_hash, role, created_at)
-SELECT id, name, email, password_hash, role, created_at
+SELECT
+    id,
+    name,
+    email,
+    password_hash,
+    CASE
+        WHEN role IN ('superadmin', 'ketua', 'bendahara', 'pengurus') THEN role
+        WHEN role IN ('admin', 'takmir') THEN 'pengurus'
+        ELSE 'pengurus'
+    END AS role,
+    created_at
 FROM users;
 
 -- ==========================================
@@ -91,7 +102,7 @@ SELECT
     END AS metode_pembayaran,
     CASE
         WHEN km.created_by IS NULL THEN NULL
-        WHEN EXISTS (SELECT 1 FROM users u WHERE u.id = km.created_by) THEN km.created_by
+        WHEN EXISTS (SELECT 1 FROM users_new u WHERE u.id = km.created_by) THEN km.created_by
         ELSE NULL
     END AS created_by,
     km.created_at

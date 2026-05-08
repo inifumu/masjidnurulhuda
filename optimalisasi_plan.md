@@ -363,6 +363,7 @@ Trace-by-flow target:
 - [~] Apply + verifikasi migration D1 remote production (`0003` s.d `0006`).
   - update Mei 2026: percobaan apply remote mendeteksi gagal di `0003_proposal_workflow.sql` (FK constraint, lalu incompatibility explicit `BEGIN/COMMIT` code `7500`).
   - patch lanjutan `0003` sudah ditingkatkan ke mode **strict legacy-safe**: normalisasi enum (`status`, `metode_pembayaran`, `tipe`), sanitasi orphan FK (`kategori_id` fallback deterministik; `periode_id/seksi_id/created_by` invalid -> `NULL`), dan guard copy agar insert tidak memicu FK violation pada DB non-fresh.
+  - hotfix tambahan Mei 2026: copy `users` kini menormalkan `role` legacy ke matrix baru (`superadmin|ketua|bendahara|pengurus`) dan validasi `created_by` saat copy `kas_masjid` diarahkan ke `users_new` (parent hasil rebuild), untuk mencegah mismatch FK akibat row user legacy ter-drop oleh CHECK constraint.
   - next action: trigger ulang pipeline deploy (commit + push) agar remote apply memverifikasi chain final `0003` -> `0006` tanpa rerun manual.
 - [~] Jalankan smoke test media end-to-end di environment target:
   - pre-production local smoke (candidate) **sudah jalan**:
