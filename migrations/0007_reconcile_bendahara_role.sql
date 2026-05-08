@@ -1,58 +1,41 @@
 -- Migration number: 0007
 -- Tujuan:
--- - Reconcile schema role `users` agar matrix final eksplisit mengizinkan:
---   superadmin | ketua | bendahara | pengurus
--- - Kompatibel untuk environment D1 non-fresh yang sudah memiliki tabel relasional.
+-- - PENAMBAHAN role `bendahara` pada constraint kolom `users.role` di DB live.
+-- - Tidak memakai mapping role legacy spekulatif.
+-- - Menghindari rebuild/drop parent table `users` yang sebelumnya memicu FK failure di D1 remote.
 --
 -- Caller:
--- - wrangler d1 migrations apply (CI/CD GitHub bot)
+-- - wrangler d1 migrations apply --remote (CI/CD)
 --
 -- Dependensi:
--- - tabel `users` existing dari migration sebelumnya
--- - index unique `idx_users_email`
+-- - tabel users sudah ada dari migration sebelumnya
 --
 -- Main steps:
--- 1) nonaktifkan FK sementara
--- 2) rebuild tabel users dengan CHECK role final
--- 3) copy data existing (normalisasi role legacy)
--- 4) swap table + recreate index
--- 5) aktifkan FK kembali
+-- 1) Patch definisi CHECK constraint users.role langsung di sqlite_master
+-- 2) Normalisasi minimal data NULL -> 'pengurus'
 --
 -- Side effects:
--- - struktur tabel users direkonsiliasi, data user tetap dipertahankan.
+-- - mengubah metadata schema (`sqlite_master`) untuk tabel users
+-- - tidak mengubah relasi FK tabel lain
 
-PRAGMA foreign_keys = OFF;
+PRAGMA writable_schema = ON;
 
-DROP TABLE IF EXISTS users_new;
+UPDATE sqlite_master
+SET sql = REPLACE(
+  sql,
+  "role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','pengurus'))",
+  "role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','bendahara','pengurus'))"
+)
+WHERE type = 'table'
+  AND name = 'users'
+  AND sql LIKE "%CHECK(role IN ('superadmin','ketua','pengurus'))%";
 
-CREATE TABLE users_new (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'pengurus' CHECK(role IN ('superadmin', 'ketua', 'bendahara', 'pengurus')),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+PRAGMA writable_schema = OFF;
 
-INSERT INTO users_new (id, name, email, password_hash, role, created_at)
-SELECT
-  id,
-  name,
-  email,
-  password_hash,
-  CASE
-    WHEN role IN ('superadmin', 'ketua', 'bendahara', 'pengurus') THEN role
-    WHEN role IN ('admin', 'takmir') THEN 'superadmin'
-    WHEN role IN ('sekretaris') THEN 'ketua'
-    WHEN role IN ('staff_keuangan') THEN 'bendahara'
-    ELSE 'pengurus'
-  END AS role,
-  created_at
-FROM users;
+-- Trigger schema reload
+PRAGMA schema_version = schema_version + 1;
 
-DROP TABLE users;
-ALTER TABLE users_new RENAME TO users;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
-
-PRAGMA foreign_keys = ON;
+-- Normalisasi minimal data role kosong (bukan mapping role halu)
+UPDATE users
+SET role = 'pengurus'
+WHERE role IS NULL;
