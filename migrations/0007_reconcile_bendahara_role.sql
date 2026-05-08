@@ -23,19 +23,19 @@ PRAGMA foreign_keys=OFF;
 
 CREATE TABLE users_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nama TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','bendahara','pengurus')),
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT CHECK(role IN ('superadmin', 'ketua', 'bendahara', 'pengurus')) DEFAULT 'pengurus',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users_new (id, nama, email, password, role, created_at)
+INSERT INTO users_new (id, name, email, password_hash, role, created_at)
 SELECT
   id,
-  nama,
+  name,
   email,
-  password,
+  password_hash,
   CASE
     WHEN role IS NULL THEN 'pengurus'
     ELSE role
