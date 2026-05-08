@@ -35,8 +35,9 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - rotasi secret + runbook lifecycle secret belum finalized,
   - temuan pre-push: `.dev.vars` dan `cookies.txt` sudah dikeluarkan dari index Git dan secret lokal sudah dirotasi.
 - [~] Migration versioning D1:
-  - folder `migrations/` sudah berlanjut sampai `0005` (`0001_init_schema.sql` s.d `0005_add_indexes.sql`),
-  - DDL/index, seed, proposal workflow, audit columns, dan index lanjutan sudah dipisah per migration,
+  - folder `migrations/` sudah berlanjut sampai `0006` (`0001_init_schema.sql` s.d `0006_media_library.sql`),
+  - DDL/index, seed, proposal workflow, audit columns, index lanjutan, dan media library sudah dipisah per migration,
+  - hotfix Mei 2026: `migrations/0003_proposal_workflow.sql` dipatch agar kompatibel D1/SQLite (`PRAGMA foreign_keys=OFF` saat rebuild parent-child, transactional, seed `INSERT OR IGNORE`) setelah temuan gagal remote apply `SQLITE_CONSTRAINT_FOREIGNKEY`,
   - belum ada skrip apply/reset/seed yang konsisten,
   - perlu reconcile jika migration lama pernah apply di D1 remote non-fresh.
 
@@ -358,7 +359,8 @@ Trace-by-flow target:
 ### Hardening Pre-Production (Point 2 - Fokus Sekarang)
 
 - [ ] Verifikasi CORS R2 final (origin whitelist production + staging, tanpa wildcard).
-- [ ] Apply + verifikasi migration `0006_media_library.sql` di D1 remote production.
+- [~] Apply + verifikasi migration D1 remote production (`0003` s.d `0006`).
+  - update Mei 2026: percobaan apply remote mendeteksi gagal di `0003_proposal_workflow.sql` (FK constraint), patch migration sudah dilakukan; perlu re-run apply remote untuk verifikasi final chain `0003` -> `0006`.
 - [~] Jalankan smoke test media end-to-end di environment target:
   - pre-production local smoke (candidate) **sudah jalan**:
     - `npm test` = pass 21/21,
