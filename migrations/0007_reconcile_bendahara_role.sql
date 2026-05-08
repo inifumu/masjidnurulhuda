@@ -1,8 +1,8 @@
 -- Migration number: 0007
 -- Tujuan:
 -- - PENAMBAHAN role `bendahara` pada constraint kolom `users.role` di DB live.
--- - Tidak memakai mapping role legacy spekulatif.
--- - Menghindari rebuild/drop parent table `users` yang sebelumnya memicu FK failure di D1 remote.
+-- - Kompatibel D1 remote (tanpa PRAGMA writable_schema / edit sqlite_master).
+-- - Tanpa mapping role legacy spekulatif.
 --
 -- Caller:
 -- - wrangler d1 migrations apply --remote (CI/CD)
@@ -11,31 +11,41 @@
 -- - tabel users sudah ada dari migration sebelumnya
 --
 -- Main steps:
--- 1) Patch definisi CHECK constraint users.role langsung di sqlite_master
--- 2) Normalisasi minimal data NULL -> 'pengurus'
+-- 1) Rebuild tabel users dengan CHECK role baru (include bendahara)
+-- 2) Copy data existing dengan normalisasi minimal role NULL -> pengurus
+-- 3) Rename table + restore index penting
 --
 -- Side effects:
--- - mengubah metadata schema (`sqlite_master`) untuk tabel users
--- - tidak mengubah relasi FK tabel lain
+-- - lock tulis sementara saat migrasi users
+-- - tidak mengubah alur bisnis selain allowlist role
 
-PRAGMA writable_schema = ON;
+PRAGMA foreign_keys=OFF;
 
-UPDATE sqlite_master
-SET sql = REPLACE(
-  sql,
-  "role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','pengurus'))",
-  "role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','bendahara','pengurus'))"
-)
-WHERE type = 'table'
-  AND name = 'users'
-  AND sql LIKE "%CHECK(role IN ('superadmin','ketua','pengurus'))%";
+CREATE TABLE users_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('superadmin','ketua','bendahara','pengurus')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-PRAGMA writable_schema = OFF;
+INSERT INTO users_new (id, nama, email, password, role, created_at)
+SELECT
+  id,
+  nama,
+  email,
+  password,
+  CASE
+    WHEN role IS NULL THEN 'pengurus'
+    ELSE role
+  END AS role,
+  created_at
+FROM users;
 
--- Trigger schema reload
-PRAGMA schema_version = schema_version + 1;
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
 
--- Normalisasi minimal data role kosong (bukan mapping role halu)
-UPDATE users
-SET role = 'pengurus'
-WHERE role IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+PRAGMA foreign_keys=ON;
