@@ -14,7 +14,7 @@
 -- Main steps:
 -- 1) nonaktifkan FK sementara
 -- 2) rebuild tabel users dengan CHECK role final
--- 3) copy data existing
+-- 3) copy data existing (normalisasi role legacy)
 -- 4) swap table + recreate index
 -- 5) aktifkan FK kembali
 --
@@ -29,18 +29,24 @@ CREATE TABLE users_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'pengurus' CHECK(role IN ('superadmin', 'ketua', 'bendahara', 'pengurus')),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users_new (id, name, email, password, role, created_at)
+INSERT INTO users_new (id, name, email, password_hash, role, created_at)
 SELECT
   id,
   name,
   email,
-  password,
-  role,
+  password_hash,
+  CASE
+    WHEN role IN ('superadmin', 'ketua', 'bendahara', 'pengurus') THEN role
+    WHEN role IN ('admin', 'takmir') THEN 'superadmin'
+    WHEN role IN ('sekretaris') THEN 'ketua'
+    WHEN role IN ('staff_keuangan') THEN 'bendahara'
+    ELSE 'pengurus'
+  END AS role,
   created_at
 FROM users;
 
