@@ -1,43 +1,22 @@
 -- Migration number: 0003
 -- Tujuan: Penambahan Role Bendahara dan Alur Approval Kas Bertingkat
 -- Catatan kompatibilitas D1/SQLite:
--- - Rebuild tabel parent (`users`) dan child (`kas_masjid`) dilakukan dalam 1 transaksi.
--- - FK dimatikan sementara selama fase rebuild untuk menghindari constraint error saat DROP/RENAME.
+-- - Hindari rebuild parent table `users` pada remote non-fresh untuk mencegah FK constraint failure.
+-- - Role legacy dinormalisasi in-place, lalu rebuild hanya dilakukan pada `kas_masjid`.
+-- - FK dimatikan sementara selama fase rebuild child table.
 -- - Seed memakai INSERT OR IGNORE agar idempotent pada environment yang sudah pernah punya akun serupa.
 
 PRAGMA foreign_keys = OFF;
 
 -- ==========================================
--- 1. REBUILD TABEL USERS (Tambah role 'bendahara')
+-- 1. NORMALISASI ROLE USERS (tanpa rebuild tabel users)
 -- ==========================================
-CREATE TABLE users_new (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    role TEXT CHECK(role IN ('superadmin', 'ketua', 'bendahara', 'pengurus')) DEFAULT 'pengurus',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Copy data lama ke tabel baru.
--- Normalisasi role legacy agar tidak gagal CHECK constraint di remote non-fresh.
-INSERT INTO users_new (id, name, email, password_hash, role, created_at)
-SELECT
-    id,
-    name,
-    email,
-    password_hash,
-    CASE
-        WHEN role IN ('superadmin', 'ketua', 'bendahara', 'pengurus') THEN role
-        WHEN role IN ('admin', 'takmir') THEN 'pengurus'
-        ELSE 'pengurus'
-    END AS role,
-    created_at
-FROM users;
-
--- Finalisasi parent table users lebih dulu agar FK child mengacu ke parent final.
-DROP TABLE users;
-ALTER TABLE users_new RENAME TO users;
+UPDATE users
+SET role = CASE
+    WHEN role IN ('superadmin', 'ketua', 'bendahara', 'pengurus') THEN role
+    WHEN role IN ('admin', 'takmir') THEN 'pengurus'
+    ELSE 'pengurus'
+END;
 
 -- ==========================================
 -- 2. REBUILD TABEL KAS_MASJID (Ubah status approval)
@@ -118,7 +97,6 @@ DROP TABLE kas_masjid;
 ALTER TABLE kas_masjid_new RENAME TO kas_masjid;
 
 -- Rebuild index setelah rename
-CREATE UNIQUE INDEX idx_users_email ON users (email);
 CREATE INDEX idx_kas_status_tanggal ON kas_masjid (status, tanggal);
 CREATE INDEX idx_kas_masjid_kategori_id ON kas_masjid (kategori_id);
 CREATE INDEX idx_kas_masjid_seksi_id ON kas_masjid (seksi_id);
