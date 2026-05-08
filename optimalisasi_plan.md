@@ -360,13 +360,14 @@ Trace-by-flow target:
 ### Hardening Pre-Production (Point 2 - Fokus Sekarang)
 
 - [ ] Verifikasi CORS R2 final (origin whitelist production + staging, tanpa wildcard).
-- [~] Apply + verifikasi migration D1 remote production (`0003` s.d `0006`).
+- [~] Apply + verifikasi migration D1 remote production (`0003` s.d `0007`).
   - update Mei 2026: percobaan apply remote mendeteksi gagal di `0003_proposal_workflow.sql` (FK constraint, lalu incompatibility explicit `BEGIN/COMMIT` code `7500`).
   - patch lanjutan `0003` sudah ditingkatkan ke mode **strict legacy-safe**: normalisasi enum (`status`, `metode_pembayaran`, `tipe`), sanitasi orphan FK (`kategori_id` fallback deterministik; `periode_id/seksi_id/created_by` invalid -> `NULL`), dan guard copy agar insert tidak memicu FK violation pada DB non-fresh.
   - hotfix tambahan Mei 2026: copy `users` kini menormalkan `role` legacy ke matrix baru (`superadmin|ketua|bendahara|pengurus`) dan validasi `created_by` saat copy `kas_masjid` diarahkan ke parent yang valid.
   - hotfix lanjutan Mei 2026 (root-cause FK mismatch) sebelumnya mencoba reorder rebuild parent-child, namun gagal konsisten di remote D1 non-fresh.
   - strategi final anti-FK-failure: `0003` tidak lagi rebuild tabel `users`; migrasi diubah menjadi normalisasi role legacy via `UPDATE users ... CASE ...` dan rebuild hanya pada `kas_masjid` dengan sanitasi FK/enum ketat. Tujuannya menghindari operasi `DROP/RENAME` parent berelasi yang memicu constraint error pada engine D1 remote.
-  - next action: trigger ulang pipeline deploy (commit + push) agar remote apply memverifikasi chain final `0003` -> `0006` tanpa rerun manual.
+  - update Mei 2026 (role reconcile): `migrations/0007_reconcile_bendahara_role.sql` direvisi menjadi **schema-only** untuk memastikan CHECK constraint role `users` secara eksplisit mengizinkan `bendahara` (`superadmin|ketua|bendahara|pengurus`) tanpa forcing/mutasi akun spesifik.
+  - next action: trigger ulang pipeline deploy (commit + push) agar remote apply memverifikasi chain final `0003` -> `0007` tanpa rerun manual.
 - [~] Jalankan smoke test media end-to-end di environment target:
   - pre-production local smoke (candidate) **sudah jalan**:
     - `npm test` = pass 21/21,
