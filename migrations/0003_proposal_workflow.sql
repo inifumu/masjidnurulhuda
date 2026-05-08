@@ -47,16 +47,33 @@ CREATE TABLE kas_masjid_new (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Pindahkan data lama. Jika ada transaksi yang masih 'pending', otomatis dialihkan ke 'pending_ketua'
+-- Pindahkan data lama (schema-first, aman untuk data dummy/legacy).
+-- Sanitasi FK agar hanya referensi valid yang ikut dimigrasikan:
+-- - kategori_id orphan -> fallback ke kategori valid pertama (deterministik by id)
+-- - periode_id/seksi_id/created_by orphan -> NULL
 INSERT INTO kas_masjid_new (
     id, tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id,
     status, metode_pembayaran, created_by, created_at
 )
 SELECT
-    id, tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id,
-    CASE WHEN status = 'pending' THEN 'pending_ketua' ELSE status END AS status,
-    metode_pembayaran, created_by, created_at
-FROM kas_masjid;
+    km.id,
+    km.tipe,
+    km.jumlah,
+    km.keterangan,
+    km.tanggal,
+    COALESCE(
+        (SELECT kk.id FROM kategori_kas kk WHERE kk.id = km.kategori_id),
+        (SELECT kk2.id FROM kategori_kas kk2 ORDER BY kk2.id LIMIT 1)
+    ) AS kategori_id,
+    (SELECT p.id FROM periode p WHERE p.id = km.periode_id) AS periode_id,
+    (SELECT sp.id FROM seksi_pengurus sp WHERE sp.id = km.seksi_id) AS seksi_id,
+    CASE WHEN km.status = 'pending' THEN 'pending_ketua' ELSE km.status END AS status,
+    km.metode_pembayaran,
+    (SELECT u.id FROM users u WHERE u.id = km.created_by) AS created_by,
+    km.created_at
+FROM kas_masjid km
+WHERE EXISTS (SELECT 1 FROM kategori_kas kk WHERE kk.id = km.kategori_id)
+   OR EXISTS (SELECT 1 FROM kategori_kas kk);
 
 -- Ganti tabel lama dengan yang baru (child dulu, lalu parent)
 DROP TABLE kas_masjid;
