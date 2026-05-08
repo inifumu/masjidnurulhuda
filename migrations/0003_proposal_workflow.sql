@@ -6,7 +6,6 @@
 -- - Seed memakai INSERT OR IGNORE agar idempotent pada environment yang sudah pernah punya akun serupa.
 
 PRAGMA foreign_keys = OFF;
-BEGIN TRANSACTION;
 
 -- ==========================================
 -- 1. REBUILD TABEL USERS (Tambah role 'bendahara')
@@ -80,5 +79,4 @@ INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES
 ('Bendahara Masjid', 'bendahara@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'bendahara'),
 ('Seksi Dakwah', 'dakwah@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'pengurus');
 
-COMMIT;
 PRAGMA foreign_keys = ON;
