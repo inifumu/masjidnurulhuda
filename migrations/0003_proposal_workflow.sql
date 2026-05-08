@@ -35,6 +35,10 @@ SELECT
     created_at
 FROM users;
 
+-- Finalisasi parent table users lebih dulu agar FK child mengacu ke parent final.
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
+
 -- ==========================================
 -- 2. REBUILD TABEL KAS_MASJID (Ubah status approval)
 -- ==========================================
@@ -102,19 +106,16 @@ SELECT
     END AS metode_pembayaran,
     CASE
         WHEN km.created_by IS NULL THEN NULL
-        WHEN EXISTS (SELECT 1 FROM users_new u WHERE u.id = km.created_by) THEN km.created_by
+        WHEN EXISTS (SELECT 1 FROM users u WHERE u.id = km.created_by) THEN km.created_by
         ELSE NULL
     END AS created_by,
     km.created_at
 FROM kas_masjid km
 WHERE EXISTS (SELECT 1 FROM kategori_kas kk);
 
--- Ganti tabel lama dengan yang baru (child dulu, lalu parent)
+-- Ganti tabel kas_masjid lama dengan yang baru
 DROP TABLE kas_masjid;
 ALTER TABLE kas_masjid_new RENAME TO kas_masjid;
-
-DROP TABLE users;
-ALTER TABLE users_new RENAME TO users;
 
 -- Rebuild index setelah rename
 CREATE UNIQUE INDEX idx_users_email ON users (email);
