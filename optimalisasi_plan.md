@@ -362,8 +362,8 @@ Trace-by-flow target:
 - [ ] Verifikasi CORS R2 final (origin whitelist production + staging, tanpa wildcard).
 - [~] Apply + verifikasi migration D1 remote production (`0003` s.d `0006`).
   - update Mei 2026: percobaan apply remote mendeteksi gagal di `0003_proposal_workflow.sql` (FK constraint, lalu incompatibility explicit `BEGIN/COMMIT` code `7500`).
-  - patch lanjutan sudah diterapkan dengan mode schema-first + sanitasi orphan FK legacy saat copy data (`kategori_id` fallback deterministik ke kategori valid, `periode_id/seksi_id/created_by` invalid -> `NULL`) agar chain migrasi tidak terblokir data dummy/legacy.
-  - next action: re-run apply remote untuk verifikasi final chain `0003` -> `0006`.
+  - patch lanjutan `0003` sudah ditingkatkan ke mode **strict legacy-safe**: normalisasi enum (`status`, `metode_pembayaran`, `tipe`), sanitasi orphan FK (`kategori_id` fallback deterministik; `periode_id/seksi_id/created_by` invalid -> `NULL`), dan guard copy agar insert tidak memicu FK violation pada DB non-fresh.
+  - next action: trigger ulang pipeline deploy (commit + push) agar remote apply memverifikasi chain final `0003` -> `0006` tanpa rerun manual.
 - [~] Jalankan smoke test media end-to-end di environment target:
   - pre-production local smoke (candidate) **sudah jalan**:
     - `npm test` = pass 21/21,
