@@ -173,7 +173,6 @@ export const updateMediaMetadataById = async (
     binds.push(updates.kategori_penggunaan ?? null);
   }
 
-  setClauses.push("updated_at = CURRENT_TIMESTAMP");
   binds.push(id);
 
   return db

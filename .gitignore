@@ -17,6 +17,7 @@ dist-ssr
 .env.*.local
 .wrangler/
 
+*.cookie
 cookies*.txt
 .dev.vars*
 !.dev.vars.example

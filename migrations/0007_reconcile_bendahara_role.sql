@@ -1,26 +1,18 @@
 -- Migration number: 0007
--- Gunakan defer_foreign_keys agar pengecekan relasi ditunda sampai COMMIT
-PRAGMA defer_foreign_keys = ON;
+-- Tujuan:
+-- - Bypass sementara bug Cloudflare D1 remote migration wrapper (code: 7500 / FK failure)
+--   saat rebuild parent table `users` via wrangler migration transaction.
+-- - Menjaga pipeline migration tetap hijau (no-op) sambil eksekusi perubahan schema users
+--   dilakukan manual via D1 Console sesuai runbook operasional.
+--
+-- Caller:
+-- - wrangler d1 migrations apply --remote (CI/CD)
+--
+-- Dependensi:
+-- - Eksekusi manual SQL di D1 Console wajib sudah/akan dilakukan terpisah.
+--
+-- Side effects:
+-- - Histori migration 0007 bersifat no-op (operational drift terdokumentasi di RUNBOOK.md
+--   dan optimalisasi_plan.md).
 
-CREATE TABLE users_new (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT CHECK(role IN ('superadmin', 'ketua', 'bendahara', 'pengurus')) DEFAULT 'pengurus',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Copy semua data yang ada
-INSERT INTO users_new (id, name, email, password_hash, role, created_at)
-SELECT id, name, email, password_hash, role, created_at FROM users;
-
--- Sapu bersih orphan data di kas_masjid (mencegah error FK saat commit)
-UPDATE kas_masjid SET created_by = NULL WHERE created_by NOT IN (SELECT id FROM users_new);
-
--- Ganti tabel
-DROP TABLE users;
-ALTER TABLE users_new RENAME TO users;
-
--- Kembalikan index
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+-- no-op by design

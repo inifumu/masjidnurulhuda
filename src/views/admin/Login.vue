@@ -4,8 +4,8 @@ import { useAuthStore } from "../../stores/authStore";
 import { useRouter } from "vue-router";
 import { Mail, Lock, ArrowLeft } from "lucide-vue-next";
 
-const email = ref("admin@masjidnurulhuda.com");
-const password = ref("admin123");
+const email = ref("");
+const password = ref("");
 const errorMsg = ref("");
 
 const authStore = useAuthStore();
