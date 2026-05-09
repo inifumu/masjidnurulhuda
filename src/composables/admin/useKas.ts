@@ -9,6 +9,10 @@ import {
   type ProposalTransactionPayload,
 } from "../../services/admin/kasService";
 import {
+  dashboardService,
+  type DashboardSummary,
+} from "../../services/admin/dashboardService";
+import {
   formatRupiah,
   formatInputRupiah,
   parseInputRupiah,
@@ -17,6 +21,12 @@ import {
 const activeTab = ref<"laporan" | "approval" | "input" | "proposal">("laporan");
 const isLoading = ref(false);
 const transactions = ref<KasTransaction[]>([]);
+const kasSummary = ref<DashboardSummary>({
+  saldoAwal: 0,
+  totalPemasukan: 0,
+  totalPengeluaran: 0,
+  saldoAkhir: 0,
+});
 
 const selectedMonth = ref(new Date().getMonth() + 1);
 const selectedYear = ref(new Date().getFullYear());
@@ -26,6 +36,7 @@ const filterKategori = ref<number | "semua">("semua");
 const categories = ref<KasCategory[]>([]);
 const sections = ref<KasSection[]>([]);
 const methods = ref<KasMethod[]>([]);
+const hasLoadedMasterData = ref(false);
 
 type KasForm = {
   tipe: "pemasukan" | "pengeluaran";
@@ -77,7 +88,6 @@ export function useKas() {
     }).format(date);
   };
 
-  const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
   const filteredCategoriesInput = computed(() => {
@@ -108,42 +118,10 @@ export function useKas() {
   );
 
   // --- WIDGET GLOBAL & LAPORAN ---
-  const globalSaldoAwal = computed(() => {
-    return transactions.value.reduce((total, t) => {
-      const d = new Date(t.tanggal);
-      const isBefore =
-        d.getFullYear() < currentYear ||
-        (d.getFullYear() === currentYear && d.getMonth() + 1 < currentMonth);
-      if (t.status === "approved" && isBefore)
-        return t.tipe === "pemasukan" ? total + t.jumlah : total - t.jumlah;
-      return total;
-    }, 0);
-  });
-  const globalMasuk = computed(() =>
-    transactions.value
-      .filter(
-        (t) =>
-          t.status === "approved" &&
-          new Date(t.tanggal).getMonth() + 1 === currentMonth &&
-          new Date(t.tanggal).getFullYear() === currentYear &&
-          t.tipe === "pemasukan",
-      )
-      .reduce((sum, t) => sum + t.jumlah, 0),
-  );
-  const globalKeluar = computed(() =>
-    transactions.value
-      .filter(
-        (t) =>
-          t.status === "approved" &&
-          new Date(t.tanggal).getMonth() + 1 === currentMonth &&
-          new Date(t.tanggal).getFullYear() === currentYear &&
-          t.tipe === "pengeluaran",
-      )
-      .reduce((sum, t) => sum + t.jumlah, 0),
-  );
-  const globalSaldoAkhir = computed(
-    () => globalSaldoAwal.value + globalMasuk.value - globalKeluar.value,
-  );
+  const globalSaldoAwal = computed(() => kasSummary.value.saldoAwal);
+  const globalMasuk = computed(() => kasSummary.value.totalPemasukan);
+  const globalKeluar = computed(() => kasSummary.value.totalPengeluaran);
+  const globalSaldoAkhir = computed(() => kasSummary.value.saldoAkhir);
 
   const filteredLaporan = computed(() => {
     return transactions.value.filter((t) => t.status === "approved");
@@ -172,23 +150,40 @@ export function useKas() {
     transactions.value.filter((t) => t.status === "rejected"),
   );
 
+  const loadMasterData = async () => {
+    if (hasLoadedMasterData.value) return;
+
+    const master = await kasService.getMasterData();
+    categories.value = master.categories || master.kategori || [];
+    sections.value = master.sections || master.seksi || [];
+    methods.value = kasService.getMethods();
+    hasLoadedMasterData.value = true;
+  };
+
+  const loadTransactions = async () => {
+    const requestFilters = {
+      month: selectedMonth.value,
+      year: selectedYear.value,
+      tipe: filterTipe.value !== "semua" ? filterTipe.value : undefined,
+      kategori_id:
+        filterKategori.value !== "semua" ? filterKategori.value : undefined,
+    };
+
+    transactions.value = await kasService.getTransactions(requestFilters);
+  };
+
+  const loadSummary = async () => {
+    kasSummary.value = await dashboardService.getSummary({
+      month: selectedMonth.value,
+      year: selectedYear.value,
+    });
+  };
+
   const loadData = async () => {
     isLoading.value = true;
     try {
-      const master = await kasService.getMasterData();
-      categories.value = master.categories || master.kategori || [];
-      sections.value = master.sections || master.seksi || [];
-      methods.value = kasService.getMethods();
-
-      const requestFilters = {
-        month: selectedMonth.value,
-        year: selectedYear.value,
-        tipe: filterTipe.value !== "semua" ? filterTipe.value : undefined,
-        kategori_id:
-          filterKategori.value !== "semua" ? filterKategori.value : undefined,
-      };
-
-      transactions.value = await kasService.getTransactions(requestFilters);
+      await loadMasterData();
+      await Promise.all([loadTransactions(), loadSummary()]);
     } finally {
       isLoading.value = false;
     }
@@ -266,8 +261,12 @@ export function useKas() {
     await loadData();
   };
 
-  watch([selectedMonth, selectedYear, filterTipe, filterKategori], () => {
-    void loadData();
+  watch([selectedMonth, selectedYear], () => {
+    void Promise.all([loadTransactions(), loadSummary()]);
+  });
+
+  watch([filterTipe, filterKategori], () => {
+    void loadTransactions();
   });
 
   const availableYears = computed(() =>

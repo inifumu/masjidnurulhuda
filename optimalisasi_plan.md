@@ -42,12 +42,12 @@ Status fokus aktif saat ini: **gabungan final Prioritas 2 + pondasi Prioritas 3*
 
 ### Integrasi Frontend & UI Refactor (terkait task aktif)
 
-- [ ] Integrasi ke Dashboard (`Dashboard.vue` / `useDashboard`):
+- [x] Integrasi ke Dashboard (`Dashboard.vue` / `useDashboard`):
   - filter `month/year` ditarik ke state composable yang jelas,
   - request ke `dashboardService.getSummary(month, year)` konsisten,
   - loading/skeleton state dirapikan untuk UX redesign-ready.
 
-- [ ] Integrasi ke List Transaksi (`KeuanganKas.vue` / `useKas`):
+- [x] Integrasi ke List Transaksi (`KeuanganKas.vue` / `useKas`):
   - filter `month/year` + `tipe` + `kategori_id` dipusatkan di layer filter composable,
   - request ke `/api/admin/transaction/list` selalu lewat query filter tervalidasi,
   - sinkronisasi data list + summary UI tanpa fetch berulang yang tidak perlu.
@@ -329,6 +329,9 @@ Section ini menampung item pengembangan yang **ditunda** (deferred) agar tidak t
 - [ ] Guard volume dataset non-pagination:
   - rolling period guard + query bound untuk menjaga beban query/payload tetap stabil saat data tumbuh,
   - tetapkan acceptance limit awal (mis. max rows per request) sebelum rollout pagination penuh.
+- [ ] Surplus/Defisit ditambahkan pada fitur Export/Cetak PDF:
+  - hitung dari agregasi periode aktif (`total_pemasukan - total_pengeluaran`) agar konsisten dengan dashboard/list,
+  - tampilkan pada ringkasan PDF (header/summary block) agar laporan cetak memiliki indikator kesehatan kas yang eksplisit.
 
 ## Mode Eksekusi (Now / Next / Pre-Go-Live)
 

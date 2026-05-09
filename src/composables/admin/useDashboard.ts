@@ -7,6 +7,7 @@ import { toast } from "vue-sonner";
 
 export function useDashboard() {
   const summary = ref<DashboardSummary>({
+    saldoAwal: 0,
     totalPemasukan: 0,
     totalPengeluaran: 0,
     saldoAkhir: 0,
