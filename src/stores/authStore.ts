@@ -22,6 +22,7 @@ export const useAuthStore = defineStore("auth", () => {
       if (res.ok && result.status === "success") {
         isAuthenticated.value = true;
         user.value = result.data;
+        isReady.value = true;
         return true;
       }
       return false;
@@ -50,6 +51,12 @@ export const useAuthStore = defineStore("auth", () => {
         credentials: "include",
       });
 
+      if (res.status === 401) {
+        isAuthenticated.value = false;
+        user.value = null;
+        return;
+      }
+
       if (res.ok) {
         const result = await res.json();
 
@@ -61,10 +68,14 @@ export const useAuthStore = defineStore("auth", () => {
           user.value = null;
         }
       } else {
-        isAuthenticated.value = false;
+        // Non-401 (mis. 5xx) diperlakukan sebagai error operasional.
+        // Auth state tidak diubah agar bug backend tidak tersamarkan sebagai logout.
+        console.error("[authStore.checkAuth] Operational error:", res.status);
       }
     } catch (e) {
-      isAuthenticated.value = false;
+      // Network/runtime error diperlakukan sebagai error operasional.
+      // Auth state tidak diubah agar sesi terakhir tidak ter-reset ambigu.
+      console.error("[authStore.checkAuth] Network error:", e);
     } finally {
       isReady.value = true;
     }

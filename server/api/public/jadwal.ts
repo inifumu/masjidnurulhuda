@@ -16,6 +16,9 @@ type JadwalTodayResponse = {
   };
 };
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
+
 // 🟢 HELPER: Fetch dengan Timeout dan Auto-Retry
 const fetchWithRetry = async <T>(
   url: string,
@@ -30,10 +33,10 @@ const fetchWithRetry = async <T>(
       clearTimeout(id);
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
       return (await res.json()) as T;
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(id);
       console.warn(
-        `[Retry ${i}/${retries}] Gagal fetch ${url}: ${err.message}`,
+        `[Retry ${i}/${retries}] Gagal fetch ${url}: ${getErrorMessage(err)}`,
       );
       if (i === retries) throw err;
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -81,8 +84,8 @@ api.get("/today", async (c) => {
       lokasi: jadwalData.data.lokasi,
       jadwal: jadwalData.data.jadwal,
     });
-  } catch (error: any) {
-    console.error("Jadwal Proxy Error:", error.message);
+  } catch (error: unknown) {
+    console.error("Jadwal Proxy Error:", getErrorMessage(error));
     return sendError(c, "Gagal terhubung ke penyedia jadwal", 500);
   }
 });

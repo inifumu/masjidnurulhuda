@@ -12,9 +12,15 @@ export interface DashboardSummary {
 // ==========================================
 // 🚀 SERVICE METHODS
 // ==========================================
+type DashboardSummaryResponse = {
+  data: DashboardSummary;
+};
+
 export const dashboardService = {
   async getSummary(): Promise<DashboardSummary> {
-    const res = await httpClient("/api/admin/dashboard/summary");
+    const res = await httpClient<DashboardSummaryResponse>(
+      "/api/admin/dashboard/summary",
+    );
     return res.data;
   },
 };

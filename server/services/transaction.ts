@@ -1,4 +1,13 @@
+/**
+ * Tujuan: Service transaksi kas (create, list, approval, delete) dengan scoping RBAC.
+ * Caller: Route admin transaksi (`server/api/admin/transaction.ts`).
+ * Dependensi: Cloudflare D1 (`DB`) dan tabel `kas_masjid`, `kategori_kas`, `seksi_pengurus`.
+ * Main Functions: `createTransaction`, `getPendingTransactions`, `getAllTransactions`, `updateStatus`, `deleteTransaction`.
+ * Side Effects: Mutasi data transaksi + query list berbasis role/period/filter.
+ */
 type TransactionType = "pemasukan" | "pengeluaran";
+type SqlParam = string | number | null;
+
 type TransactionStatus =
   | "pending_ketua"
   | "pending_bendahara"
@@ -125,7 +134,7 @@ export const updateStatus = async (
 
   // 🟢 3. Rangkai Query Update dengan aman
   let query = "UPDATE kas_masjid SET status = ?";
-  const params: any[] = [newStatus];
+  const params: SqlParam[] = [newStatus];
 
   // 🟢 4. Audit Trail (POIN 5) - Catat kapan dana benar-benar dicairkan
   if (newStatus === "approved") {
@@ -157,9 +166,21 @@ export const updateStatus = async (
   return result;
 };
 
+type TransactionPeriodFilter = {
+  month: number;
+  year: number;
+};
+
+export type TransactionListFilter = {
+  tipe?: TransactionType;
+  kategoriId?: number;
+};
+
 export const getAllTransactions = async (
   db: D1Database,
   user: TransactionUserScope,
+  period: TransactionPeriodFilter,
+  filters: TransactionListFilter = {},
 ) => {
   let baseQuery = `
     SELECT 
@@ -169,21 +190,45 @@ export const getAllTransactions = async (
     FROM kas_masjid t
     JOIN kategori_kas k ON t.kategori_id = k.id
     LEFT JOIN seksi_pengurus s ON t.seksi_id = s.id
-    WHERE t.periode_id IS NULL 
+    WHERE t.periode_id IS NULL
+      AND CAST(strftime('%m', t.tanggal) AS INTEGER) = ?
+      AND CAST(strftime('%Y', t.tanggal) AS INTEGER) = ?
   `;
+
+  const baseParams: SqlParam[] = [period.month, period.year];
+
+  if (filters.tipe) {
+    baseQuery += ` AND t.tipe = ?`;
+    baseParams.push(filters.tipe);
+  }
+
+  if (filters.kategoriId !== undefined) {
+    baseQuery += ` AND t.kategori_id = ?`;
+    baseParams.push(filters.kategoriId);
+  }
 
   if (user && user.role === "pengurus") {
     const userId = user.sub || user.id;
     if (!userId) {
       baseQuery += ` AND t.status = 'approved' ORDER BY t.tanggal DESC, t.created_at DESC`;
-      return await db.prepare(baseQuery).all();
+      return await db
+        .prepare(baseQuery)
+        .bind(...baseParams)
+        .all();
     }
+
     baseQuery += ` AND (t.status = 'approved' OR t.created_by = ?) ORDER BY t.tanggal DESC, t.created_at DESC`;
-    return await db.prepare(baseQuery).bind(userId).all();
+    return await db
+      .prepare(baseQuery)
+      .bind(...baseParams, userId)
+      .all();
   }
 
   baseQuery += ` ORDER BY t.tanggal DESC, t.created_at DESC`;
-  return await db.prepare(baseQuery).all();
+  return await db
+    .prepare(baseQuery)
+    .bind(...baseParams)
+    .all();
 };
 
 export const deleteTransaction = async (db: D1Database, id: number) => {

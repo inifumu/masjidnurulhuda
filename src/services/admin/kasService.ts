@@ -63,6 +63,13 @@ export interface KasMethod {
   name: string;
 }
 
+export interface GetTransactionsParams {
+  month?: number;
+  year?: number;
+  tipe?: "pemasukan" | "pengeluaran";
+  kategori_id?: number;
+}
+
 // ==========================================
 // 🚀 SERVICE METHODS
 // ==========================================
@@ -82,11 +89,26 @@ export const kasService = {
     ];
   },
 
-  async getTransactions(): Promise<KasTransaction[]> {
+  async getTransactions(
+    params?: GetTransactionsParams,
+  ): Promise<KasTransaction[]> {
     try {
-      const res = await httpClient<{ data?: KasTransaction[] }>(
-        "/api/admin/transaction/list",
-      );
+      const search = new URLSearchParams();
+
+      if (params?.month !== undefined)
+        search.set("month", String(params.month));
+      if (params?.year !== undefined) search.set("year", String(params.year));
+      if (params?.tipe) search.set("tipe", params.tipe);
+      if (params?.kategori_id !== undefined) {
+        search.set("kategori_id", String(params.kategori_id));
+      }
+
+      const queryString = search.toString();
+      const endpoint = queryString
+        ? `/api/admin/transaction/list?${queryString}`
+        : "/api/admin/transaction/list";
+
+      const res = await httpClient<{ data?: KasTransaction[] }>(endpoint);
       return res.data || [];
     } catch (error) {
       console.error("Gagal load transaksi:", error);

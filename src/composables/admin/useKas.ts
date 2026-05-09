@@ -146,23 +146,7 @@ export function useKas() {
   );
 
   const filteredLaporan = computed(() => {
-    return transactions.value.filter((t) => {
-      if (t.status !== "approved") return false;
-      const d = new Date(t.tanggal);
-      if (
-        d.getMonth() + 1 !== selectedMonth.value ||
-        d.getFullYear() !== selectedYear.value
-      )
-        return false;
-      if (filterTipe.value !== "semua" && t.tipe !== filterTipe.value)
-        return false;
-      if (
-        filterKategori.value !== "semua" &&
-        t.kategori_id !== filterKategori.value
-      )
-        return false;
-      return true;
-    });
+    return transactions.value.filter((t) => t.status === "approved");
   });
 
   const filteredMasuk = computed(() =>
@@ -195,7 +179,16 @@ export function useKas() {
       categories.value = master.categories || master.kategori || [];
       sections.value = master.sections || master.seksi || [];
       methods.value = kasService.getMethods();
-      transactions.value = await kasService.getTransactions();
+
+      const requestFilters = {
+        month: selectedMonth.value,
+        year: selectedYear.value,
+        tipe: filterTipe.value !== "semua" ? filterTipe.value : undefined,
+        kategori_id:
+          filterKategori.value !== "semua" ? filterKategori.value : undefined,
+      };
+
+      transactions.value = await kasService.getTransactions(requestFilters);
     } finally {
       isLoading.value = false;
     }
@@ -272,6 +265,10 @@ export function useKas() {
     await kasService.deleteTransaction(id);
     await loadData();
   };
+
+  watch([selectedMonth, selectedYear, filterTipe, filterKategori], () => {
+    void loadData();
+  });
 
   const availableYears = computed(() =>
     Array.from({ length: 5 }, (_, i) => currentYear - 2 + i),

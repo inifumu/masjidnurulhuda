@@ -8,16 +8,16 @@ interface FetchOptions extends RequestInit {
 // Custom Error Class untuk menangkap status HTTP
 export class ApiError extends Error {
   status: number;
-  data: any;
+  data: unknown;
 
-  constructor(status: number, message: string, data?: any) {
+  constructor(status: number, message: string, data?: unknown) {
     super(message);
     this.status = status;
     this.data = data;
   }
 }
 
-export const httpClient = async <T = any>(
+export const httpClient = async <T = unknown>(
   endpoint: string,
   options: FetchOptions = {},
 ): Promise<T> => {

@@ -2,6 +2,61 @@
 
 Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, **In Progress**, dan **Not Yet**, dengan prioritas tetap mengikuti level dampak.
 
+## Task Aktif — Redesign, Modularisasi, dan Ekstraksi
+
+Status fokus aktif saat ini: **gabungan final Prioritas 2 + pondasi Prioritas 3** untuk merapikan arsitektur frontend admin sebelum redesign visual besar.
+
+### Tujuan Aktif
+
+- Menutup sisa item Prioritas 2 yang belum selesai:
+  - modularisasi composable admin besar,
+  - ekstraksi komponen dropdown reusable.
+- Menyiapkan fondasi redesign UI Admin dan Login agar iterasi visual berikutnya tidak perlu bongkar ulang logic layer.
+- Menjaga integrasi filter periodik `month/year` tetap konsisten dari UI -> composable -> service -> API (`/summary` dan `/list`).
+
+### Checklist Eksekusi Aktif
+
+- [ ] Modularisasi composable admin besar.
+  - Scope `useKas`:
+    - pecah menjadi `useKasState`, `useKasFilters`, `useKasActions` (opsional `useKasComputed`),
+    - `useKas.ts` dipertahankan sebagai facade kompatibel agar caller existing tetap aman,
+    - state loading/submitting dipisah per aksi untuk anti double-submit.
+  - Scope `usePengaturan`:
+    - pecah per domain tab (`kategori`, `seksi`, `akun`) + state modal/dropdown,
+    - pisahkan orchestration `openModal/closeModal/resetForm` dari logic CRUD,
+    - jaga kontrak return agar `Pengaturan.vue` bisa migrasi bertahap tanpa rewrite total.
+
+- [ ] Ekstraksi komponen dropdown reusable lintas admin.
+  - Buat komponen dasar `AppDropdown` (single-select) dengan standar:
+    - keyboard navigation,
+    - close-on-outside click,
+    - disabled/loading state,
+    - z-index dan positioning konsisten.
+  - Integrasi target awal:
+    - `Pengaturan.vue` (role + jenis arus),
+    - `KasInput.vue` (kategori/seksi/metode jika ada),
+    - `KasProposal.vue` (kategori/seksi/metode),
+    - `KasLaporan.vue` (bulan/tahun/tipe/kategori),
+    - `Dashboard.vue` (bulan/tahun summary).
+  - Kurangi duplikasi logic dropdown manual agar behavior tidak divergen antar halaman.
+
+### Integrasi Frontend & UI Refactor (terkait task aktif)
+
+- [ ] Integrasi ke Dashboard (`Dashboard.vue` / `useDashboard`):
+  - filter `month/year` ditarik ke state composable yang jelas,
+  - request ke `dashboardService.getSummary(month, year)` konsisten,
+  - loading/skeleton state dirapikan untuk UX redesign-ready.
+
+- [ ] Integrasi ke List Transaksi (`KeuanganKas.vue` / `useKas`):
+  - filter `month/year` + `tipe` + `kategori_id` dipusatkan di layer filter composable,
+  - request ke `/api/admin/transaction/list` selalu lewat query filter tervalidasi,
+  - sinkronisasi data list + summary UI tanpa fetch berulang yang tidak perlu.
+
+- [ ] Fondasi redesign UI Admin & Login:
+  - standardisasi primitive UI (dropdown/button/input) sebelum ganti visual besar,
+  - harmonisasi state error/loading/disabled lintas form admin,
+  - menjaga perubahan tetap non-breaking ke alur auth/transaksi existing.
+
 ## Prioritas 1 (Wajib, dampak tinggi)
 
 ### Done
@@ -35,6 +90,10 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - endpoint `GET /api/admin/auth/me` dan middleware `requireAuth` memverifikasi kecocokan claim JWT `tv` terhadap `users.token_version`,
   - token lama otomatis ditolak (`401`) setelah logout (revocation efektif) tanpa menunggu expiry,
   - TTL access token sudah 24 jam (`exp`) dengan cookie `maxAge` 24 jam agar konsisten.
+- [x] Hardening normalisasi status auth frontend (`checkAuth`):
+  - `src/stores/authStore.ts` hanya menormalisasi sesi ke logged-out pada `401` dari `/api/admin/auth/me`,
+  - status non-401 (`5xx`) dan network/runtime error diperlakukan sebagai error operasional (state auth tidak di-force logout),
+  - tujuan: mencegah bug backend/outage tersamarkan sebagai logout biasa.
 - [x] Migration versioning D1:
   - migration auth revocation sudah ditambahkan di `migrations/0008_auth_token_version.sql` (`ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0` + normalisasi data lama),
   - versi migration kini berlanjut konsisten (`0001` s.d `0008`) dan siap di-apply berurutan via skrip `db:apply:local` / `db:apply:remote`,
@@ -75,34 +134,36 @@ Dokumen ini dirapikan berbasis status eksekusi agar tidak tercampur: **Done**, *
   - [x] route param `:id` di pengaturan kategori/seksi/users/reset-password/delete sudah validasi integer positif seperti endpoint transaksi.
   - [x] test pendukung ditambahkan untuk helper validasi existence seksi (`tests/seksi-service.test.mjs`) dan total test suite kini 13 pass.
   - catatan sinkronisasi frontend: dropdown role di `Pengaturan.vue` + `UserRole` di `pengaturanService` sudah memasukkan `bendahara` agar konsisten dengan backend.
+- [x] Konsistensi RBAC lintas modul admin:
+  - transaksi sudah fail-closed,
+  - modul dashboard sudah sinkron allowlist role operasional (`superadmin`, `ketua`, `bendahara`, `pengurus`) pada `GET /api/admin/dashboard/summary`,
+  - audit route admin inti tervalidasi memakai `requireAuth` + `requireRole` eksplisit.
+- [x] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`):
+  - payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload/list `usePengaturan`, `dashboardService`, dan `pengaturanService` memakai DTO eksplisit,
+  - area backend terkait (`server/utils/response.ts`, `server/middleware/auth.ts`, `server/services/transaction.ts`, `server/services/user.ts`, `server/services/auth.ts`) sudah bebas `any`,
+  - hardening tambahan selesai di `server/api/admin/transaction.ts`, `server/db/queries/dashboard.ts`, `server/api/public/jadwal.ts`, `server/services/transaction.ts`, `src/services/httpClient.ts`, `src/services/admin/dashboardService.ts`,
+  - verifikasi `npm run build` dan `npm test` lulus (21/21 test pass).
+- [x] Tambahkan helper permission frontend terpusat (`canApprove`, `canDelete`, `canViewProposalTab`):
+  - `src/utils/permissions.ts` aktif sebagai allowlist RBAC UI terpusat.
+  - `KeuanganKas.vue` dan `KasLaporan.vue` sudah migrasi dari guard inline (`role !== ...`) ke helper permission.
+- [x] Index D1 prioritas transaksi & auth sudah tersedia:
+  - `kas_masjid(status,tanggal)`, `kas_masjid(kategori_id)`, `kas_masjid(seksi_id)`, `users(email)` sudah ada di schema/migration.
+- [x] Optimasi query dashboard periodik:
+  - endpoint `GET /api/admin/dashboard/summary` sudah mendukung filter `month/year`,
+  - fallback default period mengikuti WIB (`Asia/Jakarta`) dan pola validasi periodik konsisten dengan endpoint transaksi `/list`,
+  - query agregasi dashboard sudah difilter periodik (`strftime('%m', tanggal)` + `strftime('%Y', tanggal)`) agar menghindari scan historis penuh.
+- [x] Sinkronisasi filter laporan kas ke server-side:
+  - [x] filter `month/year` diproses di backend `GET /api/admin/transaction/list` (default current month/year bila query kosong/tidak valid),
+  - [x] filter `tipe` (`pemasukan|pengeluaran`) dan `kategori_id` (integer positif) diparse/validasi di route lalu diteruskan ke clause SQL optional,
+  - [x] `useKas` dan `kasService.getTransactions` sudah mengirim query filter ke backend sehingga data list lebih terbatasi sebelum render client.
 
 ### In Progress
 
-- [~] Konsistensi RBAC lintas modul admin:
-  - transaksi sudah fail-closed,
-  - modul admin lain masih perlu audit seragam.
-  - temuan audit selesai: `GET /api/admin/dashboard/summary` sudah memakai `requireAuth` + allowlist role eksplisit.
-- [~] Type safety menyeluruh frontend-backend (DTO request/response + minim `any`).
-  - update Day-2: payload `kasService.submitDirectTransaction`, `kasService.submitProposal`, form `useKas`, payload/list `usePengaturan`, `dashboardService`, dan `pengaturanService` sudah memakai DTO eksplisit.
-  - update backend: `server/utils/response.ts`, `server/middleware/auth.ts`, `server/services/transaction.ts`, `server/services/user.ts`, dan `server/services/auth.ts` sudah bebas `any`.
-  - sisa audit: `any` residual masih ada di `src/services/httpClient.ts`, beberapa component props/catch admin, query dashboard, dan area publik jadwal.
+Not found (semua item sebelumnya sudah dipindah ke **Done** atau masih masuk **Not Yet**)
 
 ### Not Yet
 
-- [ ] Optimasi query dan indexing D1:
-  - index `kas_masjid(status,tanggal)`, `kas_masjid(kategori_id)`, `kas_masjid(seksi_id)`, `users(email)`,
-  - query pagination-ready,
-  - query dashboard periodik agar tidak full-scan.
-  - status audit terbaru: index `kas_masjid(status,tanggal)`, `kas_masjid(kategori_id)`, `kas_masjid(seksi_id)`, dan `users(email)` sudah ada di schema/migration.
-- [ ] Modularisasi composable admin besar:
-  - `useKas` -> `useKasState/useKasFilters/useKasActions`,
-  - `usePengaturan` per domain tab.
-- [ ] Ekstraksi komponen dropdown reusable:
-  - custom dropdown role/kategori/seksi/metode/bulan/tahun masih tersebar di `Pengaturan.vue`, `KasInput.vue`, `KasProposal.vue`, dan `KasLaporan.vue`,
-  - berisiko inkonsisten untuk keyboard navigation, close-on-outside, z-index, dan loading state.
-- [x] Tambahkan helper permission frontend terpusat (`canApprove`, `canDelete`, `canViewProposalTab`).
-  - `src/utils/permissions.ts` aktif sebagai allowlist RBAC UI terpusat.
-  - `KeuanganKas.vue` dan `KasLaporan.vue` sudah migrasi dari guard inline (`role !== ...`) ke helper permission.
+Not found (seluruh sisa pekerjaan Prioritas 2 dipindahkan ke section **Task Aktif — Redesign, Modularisasi, dan Ekstraksi** di bagian atas dokumen).
 
 ## Prioritas 3 (UX, performa, observability)
 
@@ -253,6 +314,22 @@ Catatan scope yang memang ditunda (bukan blocker fase ini):
   - log contextual endpoint media + request-id sudah aktif,
   - standardisasi full structured logging lintas modul masih berjalan.
 
+## Future Development Plan
+
+Section ini menampung item pengembangan yang **ditunda** (deferred) agar tidak tercampur dengan backlog eksekusi aktif per prioritas.
+
+### Deferred dari Prioritas 2 (Stabilitas & Maintainability)
+
+- [ ] Penerapan pagination server-side untuk transaksi admin:
+  - target endpoint `GET /api/admin/transaction/list` dengan kontrak `page`, `limit`, `total`, `hasNext`,
+  - sinkronisasi frontend (`kasService`/`useKas`) agar konsumsi data berbasis page state, bukan full list.
+- [ ] Pembatasan volume data endpoint pending:
+  - target endpoint `GET /api/admin/transaction/pending` agar tidak mengembalikan full dataset,
+  - opsi implementasi: pagination atau windowed result berbasis period + bound limit.
+- [ ] Guard volume dataset non-pagination:
+  - rolling period guard + query bound untuk menjaga beban query/payload tetap stabil saat data tumbuh,
+  - tetapkan acceptance limit awal (mis. max rows per request) sebelum rollout pagination penuh.
+
 ## Mode Eksekusi (Now / Next / Pre-Go-Live)
 
 ### Now (dampak langsung)
@@ -265,8 +342,9 @@ Catatan scope yang memang ditunda (bukan blocker fase ini):
 
 ### Next (setelah flow stabil)
 
-- [~] Type safety menyeluruh + kurangi `any`.
-  - backend auth/core service sudah dibersihkan bertahap; sisa fokus berikutnya di `httpClient`, props/catch component admin, query dashboard, dan jadwal publik.
+- [x] Type safety menyeluruh + kurangi `any`.
+  - backend auth/core service + area `httpClient`, service dashboard, query dashboard, dan proxy jadwal publik sudah di-hardening,
+  - audit cepat residual `any` pada file TypeScript aktif menunjukkan 0 temuan.
 - [ ] Refactor backend konsisten `Route -> Service -> Query`.
 - [ ] Loading UX halus + observability dasar.
 

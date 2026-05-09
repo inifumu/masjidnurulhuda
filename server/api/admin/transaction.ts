@@ -16,6 +16,98 @@ type JwtPayload = {
   role?: string;
 };
 
+type TransactionPeriodFilter = {
+  month: number;
+  year: number;
+};
+
+type TransactionListFilter = {
+  tipe?: "pemasukan" | "pengeluaran";
+  kategoriId?: number;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
+
+const getCurrentWibPeriod = (): TransactionPeriodFilter => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+
+  const monthPart = parts.find((part) => part.type === "month")?.value;
+  const yearPart = parts.find((part) => part.type === "year")?.value;
+
+  const month = Number(monthPart);
+  const year = Number(yearPart);
+
+  if (!Number.isFinite(month) || !Number.isFinite(year)) {
+    const now = new Date();
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  }
+
+  return { month, year };
+};
+
+const parsePeriodFilter = (
+  monthRaw: string | undefined,
+  yearRaw: string | undefined,
+): { period: TransactionPeriodFilter; error?: string } => {
+  const currentPeriod = getCurrentWibPeriod();
+
+  if (monthRaw === undefined && yearRaw === undefined) {
+    return { period: currentPeriod };
+  }
+
+  if (monthRaw === undefined || yearRaw === undefined) {
+    return {
+      period: currentPeriod,
+      error: "month dan year harus dikirim bersamaan",
+    };
+  }
+
+  const month = Number(monthRaw);
+  const year = Number(yearRaw);
+
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return { period: currentPeriod, error: "month tidak valid (1-12)" };
+  }
+
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return { period: currentPeriod, error: "year tidak valid (2000-2100)" };
+  }
+
+  return { period: { month, year } };
+};
+
+const parseListFilter = (
+  tipeRaw: string | undefined,
+  kategoriRaw: string | undefined,
+): { filters: TransactionListFilter; error?: string } => {
+  const filters: TransactionListFilter = {};
+
+  if (tipeRaw !== undefined) {
+    if (tipeRaw !== "pemasukan" && tipeRaw !== "pengeluaran") {
+      return {
+        filters,
+        error: "tipe tidak valid (pemasukan|pengeluaran)",
+      };
+    }
+    filters.tipe = tipeRaw;
+  }
+
+  if (kategoriRaw !== undefined) {
+    const kategoriId = parsePositiveInt(kategoriRaw);
+    if (kategoriId === null) {
+      return { filters, error: "kategori_id tidak valid (integer positif)" };
+    }
+    filters.kategoriId = kategoriId;
+  }
+
+  return { filters };
+};
+
 const api = new Hono<{
   Bindings: { DB: D1Database; JWT_SECRET: string };
   Variables: { jwtPayload: JwtPayload };
@@ -179,8 +271,32 @@ api.get("/pending", async (c) => {
 
 api.get("/list", async (c) => {
   try {
+    const monthRaw = c.req.query("month");
+    const yearRaw = c.req.query("year");
+    const tipeRaw = c.req.query("tipe");
+    const kategoriRaw = c.req.query("kategori_id");
+
+    const parsedPeriod = parsePeriodFilter(monthRaw, yearRaw);
+    if (parsedPeriod.error) {
+      return sendError(c, parsedPeriod.error, 400);
+    }
+
+    const parsedFilters = parseListFilter(tipeRaw, kategoriRaw);
+    if (parsedFilters.error) {
+      return sendError(c, parsedFilters.error, 400);
+    }
+
     const user = c.get("jwtPayload");
-    const result = await txService.getAllTransactions(c.env.DB, user);
+    const result = await txService.getAllTransactions(
+      c.env.DB,
+      user,
+      {
+        month: parsedPeriod.period.month,
+        year: parsedPeriod.period.year,
+      },
+      parsedFilters.filters,
+    );
+
     return sendSuccess(c, "Berhasil memuat daftar transaksi", result.results);
   } catch (error) {
     return sendError(c, "Gagal mengambil data transaksi", 500);
@@ -203,10 +319,7 @@ api.post(
 
       const user = c.get("jwtPayload");
 
-      const tx = (await txService.getTransactionById(c.env.DB, id)) as Record<
-        string,
-        any
-      >;
+      const tx = await txService.getTransactionById(c.env.DB, id);
       if (!tx) return sendError(c, "Transaksi tidak ditemukan", 404);
 
       // 🟢 UPDATE TERBARU: Validasi ketat untuk aksi Reject (Stage-Locked)
@@ -269,10 +382,10 @@ api.post(
       }
 
       return sendError(c, "Aksi tidak valid", 400);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return sendError(
         c,
-        error.message || "Gagal memproses persetujuan transaksi",
+        getErrorMessage(error) || "Gagal memproses persetujuan transaksi",
         400,
       );
     }
