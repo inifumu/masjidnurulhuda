@@ -1,20 +1,20 @@
 // Header Doc:
-// Tujuan: Bootstrap aplikasi Vue dan registrasi styling global runtime.
+// Tujuan: Bootstrap aplikasi Vue dan registrasi provider global (Pinia, Router) + styling runtime.
 // Caller: Entry point frontend Vite.
-// Dependensi: Pinia, Vue Router, Tailwind global CSS, vue-sonner stylesheet.
+// Dependensi: Vue, Pinia, Vue Router, Tailwind global CSS, vue-sonner stylesheet, font Inter.
 // Main Functions: createApp(), app.use(), app.mount().
-// Side Effects: Mengaktifkan provider global app dan style notifikasi toast.
-import "@fontsource-variable/inter"; // Import font inter native
+// Side Effects: Mengaktifkan provider global app serta style global aplikasi.
+import "@fontsource-variable/inter";
 import "vue-sonner/style.css";
 import "./assets/main.css";
 import { createApp } from "vue";
-import { createPinia } from "pinia"; // Tambahkan ini
+import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 
 const app = createApp(App);
-const pinia = createPinia(); // Inisiasi Pinia
+const pinia = createPinia();
 
-app.use(pinia); // Gunakan Pinia SEBELUM router
+app.use(pinia);
 app.use(router);
 app.mount("#app");

@@ -41,3 +41,9 @@ cookies*.txt
 *.njsproj
 *.sln
 *.sw?
+
+# Temp testing files
+tmp-auth-cookie.txt
+tmp-smoke-patch.json
+tmp-smoke-prod.png
+

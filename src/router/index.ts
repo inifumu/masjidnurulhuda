@@ -20,30 +20,30 @@ const router = createRouter({
     {
       path: "/admin/login",
       name: "admin-login",
-      component: () => import("../views/admin/Login.vue"),
+      component: () => import("../views/admin/LoginV2.vue"),
     },
     // 🟢 ROUTE ADMIN
     {
       path: "/admin",
-      component: () => import("../layouts/AdminLayout.vue"),
+      component: () => import("../layouts/AdminLayoutV2.vue"),
       meta: { requiresAuth: true },
       children: [
         { path: "", redirect: "/admin/dashboard" },
         {
           path: "dashboard",
           name: "admin-dashboard",
-          component: () => import("../views/admin/Dashboard.vue"),
+          component: () => import("../views/admin/DashboardV2.vue"),
         },
         {
-          path: "keuangan",
-          name: "keuangan",
-          component: () => import("../views/admin/KeuanganKas.vue"),
+          path: "finance",
+          name: "admin-finance",
+          component: () => import("../views/admin/FinanceV2.vue"),
           meta: { requiresAuth: true },
         },
         {
           path: "pengaturan",
           name: "AdminPengaturan",
-          component: () => import("../views/admin/Pengaturan.vue"),
+          component: () => import("../views/admin/PengaturanV2.vue"),
           meta: { requiresAuth: true },
         },
         {

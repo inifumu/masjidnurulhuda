@@ -1,3 +1,10 @@
+/**
+ * Tujuan: Menjadi single source of truth untuk API Pengaturan + orchestration CRUD per tab.
+ * Caller: usePengaturanActions (frontend orchestration state/UI), watcher pengaturan.
+ * Dependensi: httpClient.
+ * Main Functions: CRUD kategori/seksi/akun + helper load/save/delete by tab.
+ * Side Effects: Network request ke endpoint `/api/admin/pengaturan/*`.
+ */
 import { httpClient } from "../httpClient";
 
 // ==========================================
@@ -47,6 +54,87 @@ export interface UpdateUserPayload {
   name: string;
   role: UserRole;
 }
+
+export type PengaturanTab = "kategori" | "seksi" | "akun";
+
+export interface PengaturanFormState {
+  nama: string;
+  jenis_arus: JenisArus;
+  nama_pengurus_list: string[];
+  role: UserRole;
+  email: string;
+  password: string;
+}
+
+export interface PengaturanSaveContext {
+  tab: PengaturanTab;
+  editId: number | null;
+  form: PengaturanFormState;
+}
+
+export interface PengaturanSaveResult {
+  shouldWarnRelogin: boolean;
+}
+
+const extractFilledNames = (items: string[]) =>
+  items.map((item) => item.trim()).filter((item) => item !== "");
+
+const buildKategoriPayload = (form: PengaturanFormState): KategoriPayload => {
+  const nama_kategori = form.nama.trim();
+  if (!nama_kategori) {
+    throw new Error("Nama kategori wajib diisi");
+  }
+
+  return {
+    nama_kategori,
+    jenis_arus: form.jenis_arus,
+  };
+};
+
+const buildSeksiPayload = (form: PengaturanFormState): SeksiPayload => {
+  const nama_seksi = form.nama.trim();
+  if (!nama_seksi) {
+    throw new Error("Nama seksi wajib diisi");
+  }
+
+  return {
+    nama_seksi,
+    nama_pengurus: extractFilledNames(form.nama_pengurus_list).join(", "),
+  };
+};
+
+const buildCreateUserPayload = (
+  form: PengaturanFormState,
+): CreateUserPayload => {
+  const name = form.nama.trim();
+  const email = form.email.trim();
+  const password = form.password;
+
+  if (!name || !email || !password) {
+    throw new Error("Nama, Email, dan Password wajib diisi");
+  }
+
+  return {
+    name,
+    email,
+    password,
+    role: form.role,
+  };
+};
+
+const buildUpdateUserPayload = (
+  form: PengaturanFormState,
+): UpdateUserPayload => {
+  const name = form.nama.trim();
+  if (!name) {
+    throw new Error("Nama pengguna wajib diisi");
+  }
+
+  return {
+    name,
+    role: form.role,
+  };
+};
 
 // ==========================================
 // 🚀 SERVICE METHODS
@@ -125,5 +213,73 @@ export const pengaturanService = {
     return await httpClient(`/api/admin/pengaturan/users/${id}`, {
       method: "DELETE",
     });
+  },
+
+  async loadByTab(tab: PengaturanTab) {
+    if (tab === "kategori") {
+      return {
+        kategori: await this.getKategori(),
+      };
+    }
+
+    if (tab === "seksi") {
+      return {
+        seksi: await this.getSeksi(),
+      };
+    }
+
+    return {
+      akun: await this.getUsers(),
+    };
+  },
+
+  async saveByTab(
+    context: PengaturanSaveContext,
+  ): Promise<PengaturanSaveResult> {
+    const { tab, editId, form } = context;
+
+    if (tab === "kategori") {
+      const payload = buildKategoriPayload(form);
+      if (editId === null) {
+        await this.addKategori(payload);
+      } else {
+        await this.updateKategori(editId, payload);
+      }
+
+      return { shouldWarnRelogin: false };
+    }
+
+    if (tab === "seksi") {
+      const payload = buildSeksiPayload(form);
+      if (editId === null) {
+        await this.addSeksi(payload);
+      } else {
+        await this.updateSeksi(editId, payload);
+      }
+
+      return { shouldWarnRelogin: false };
+    }
+
+    if (editId === null) {
+      await this.addUser(buildCreateUserPayload(form));
+      return { shouldWarnRelogin: false };
+    }
+
+    await this.updateUser(editId, buildUpdateUserPayload(form));
+    return { shouldWarnRelogin: true };
+  },
+
+  async deleteByTab(tab: PengaturanTab, id: number) {
+    if (tab === "kategori") {
+      await this.deleteKategori(id);
+      return;
+    }
+
+    if (tab === "seksi") {
+      await this.deleteSeksi(id);
+      return;
+    }
+
+    await this.deleteUser(id);
   },
 };

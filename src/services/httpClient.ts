@@ -1,4 +1,10 @@
-// src/services/httpClient.ts
+/**
+ * Tujuan: Wrapper HTTP client terpusat untuk request frontend ke API dengan normalisasi error non-2xx.
+ * Caller: Seluruh service layer frontend (admin/public) yang melakukan network I/O.
+ * Dependensi: Fetch API browser, konfigurasi `VITE_API_URL`.
+ * Main Functions: `httpClient<T>()`, `ApiError`.
+ * Side Effects: Mengirim request jaringan dengan `credentials: include` dan melempar error terstandar.
+ */
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;

@@ -311,7 +311,7 @@ const makeAuthedCookie = async () => {
   return `auth_token=${token}`;
 };
 
-test("media routes integration: upload/list/patch/delete + request-id + public legacy fallback", async () => {
+test("stage1 gate: media routes smoke/parity/rollback compatibility", async () => {
   const env = createInMemoryEnv();
   const executionCtx = createExecutionCtx();
   const authCookie = await makeAuthedCookie();
@@ -371,7 +371,12 @@ test("media routes integration: upload/list/patch/delete + request-id + public l
   assert.equal(Array.isArray(listJson.data.items), true);
   assert.equal(listJson.data.items.length, 1);
 
-  const mediaId = listJson.data.items[0].id;
+  const createdItem = listJson.data.items[0];
+  assert.equal(createdItem.storage_key, "media/2026/05/hero.webp");
+  assert.equal(createdItem.kategori_penggunaan, "galeri");
+  assert.equal(createdItem.alt_text, "hero awal");
+
+  const mediaId = createdItem.id;
 
   const patchRes = await app.request(
     `http://localhost/api/admin/media/${mediaId}`,
@@ -395,6 +400,27 @@ test("media routes integration: upload/list/patch/delete + request-id + public l
   const patchJson = await patchRes.json();
   assert.equal(patchJson.data.alt_text, "hero update");
   assert.equal(patchJson.data.kategori_penggunaan, "artikel");
+
+  const parityListRes = await app.request(
+    "http://localhost/api/admin/media?page=1&limit=12&kategori_penggunaan=artikel",
+    {
+      method: "GET",
+      headers: {
+        Cookie: authCookie,
+        "x-request-id": "req-media-list-2",
+      },
+    },
+    env,
+    executionCtx,
+  );
+  assert.equal(parityListRes.status, 200);
+  assert.equal(parityListRes.headers.get("x-request-id"), "req-media-list-2");
+  const parityListJson = await parityListRes.json();
+  assert.equal(parityListJson.status, "success");
+  assert.equal(parityListJson.data.items.length, 1);
+  assert.equal(parityListJson.data.items[0].id, mediaId);
+  assert.equal(parityListJson.data.items[0].alt_text, "hero update");
+  assert.equal(parityListJson.data.items[0].kategori_penggunaan, "artikel");
 
   // Simulasi object baru hilang, object legacy (.thumb.webp) masih ada.
   env._objects.delete("media/2026/05/hero-thumb.webp");
@@ -424,6 +450,26 @@ test("media routes integration: upload/list/patch/delete + request-id + public l
     "req-media-public-legacy-1",
   );
 
+  const rollbackDeleteRes = await app.request(
+    "http://localhost/api/admin/media/99999",
+    {
+      method: "DELETE",
+      headers: {
+        Cookie: authCookie,
+        "x-request-id": "req-media-delete-miss-1",
+      },
+    },
+    env,
+    executionCtx,
+  );
+  assert.equal(rollbackDeleteRes.status, 404);
+  assert.equal(
+    rollbackDeleteRes.headers.get("x-request-id"),
+    "req-media-delete-miss-1",
+  );
+  const rollbackDeleteJson = await rollbackDeleteRes.json();
+  assert.equal(rollbackDeleteJson.status, "error");
+
   const deleteRes = await app.request(
     `http://localhost/api/admin/media/${mediaId}`,
     {
@@ -440,4 +486,21 @@ test("media routes integration: upload/list/patch/delete + request-id + public l
   assert.equal(deleteRes.headers.get("x-request-id"), "req-media-delete-1");
   const deleteJson = await deleteRes.json();
   assert.equal(deleteJson.status, "success");
+
+  const publicAfterDeleteRes = await app.request(
+    "http://localhost/api/public/media/2026/05/hero.webp",
+    {
+      method: "GET",
+      headers: {
+        "x-request-id": "req-media-public-after-delete-1",
+      },
+    },
+    env,
+    executionCtx,
+  );
+  assert.equal(publicAfterDeleteRes.status, 404);
+  assert.equal(
+    publicAfterDeleteRes.headers.get("x-request-id"),
+    "req-media-public-after-delete-1",
+  );
 });
