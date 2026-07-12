@@ -1,135 +1,72 @@
-# AGENTS.md
+# AGENTS.md — Masjid Nurul Huda
 
-ATURAN NAVIGASI, KONTEKS & OPTIMASI
-TECH STACK: Vue.js + Tailwind CSS + Hono.js
+Instruksi lintas-agent untuk repository Vue 3 + TypeScript + Hono + Cloudflare D1/R2.
+Gunakan Bahasa Indonesia untuk laporan teknis. Zona waktu bisnis: `Asia/Jakarta`.
 
-## 1. Mandatory Context Check
+Hermes Agent menggunakan `.hermes.md` sebagai project context utama. File ini adalah fallback kompatibilitas untuk agent lain dan tidak dimaksudkan dimuat bersamaan oleh Hermes.
 
-Sebelum menganalisis, mengedit, atau membuat fitur baru, baca file berikut di root proyek jika tersedia:
+## Sumber kebenaran
 
-1. `SYSTEM_MAP.md`
-2. `optimalisasi_plan.md`
+1. Permintaan dan batasan eksplisit pengguna.
+2. Instruksi proses/safety dalam context agent aktif.
+3. Source code, migration, konfigurasi runtime, dan automated test sebagai fakta behavior operasional.
+4. `SYSTEM_MAP.md` sebagai peta yang harus diverifikasi terhadap source.
+5. `ROADMAP.md` sebagai backlog improvement aktif.
+6. `docs/archive/` hanya sebagai histori.
 
-Gunakan kedua file tersebut sebagai kompas utama. Jangan melakukan blind scan seluruh repository jika informasi target sudah tersedia.
+`optimalisasi_plan.md` telah deprecated. Jangan gunakan sebagai roadmap atau gate aktif.
 
-Jika salah satu file tidak ditemukan, lanjutkan dengan analisis minimal dan tulis `Not found` pada catatan kerja.
+## Workflow wajib
 
-## 2. Trace-by-Flow Workflow
+Gunakan trace terarah:
 
-Gunakan workflow `trace-by-function` / `trace-by-flow`.
+`User action → Route/View → Component/Composable/Store → Frontend Service/httpClient → Hono Route/Middleware → Service/Policy → Repository/Query → D1/R2/External API`
 
-Urutan pelacakan utama:
+Sebelum edit:
 
-User Action / Vue Component
--> State / Composables / API Client
--> Hono Route
--> Hono Handler / Service
--> Repository / Query
--> Database / External API / Queue
+- baca bagian relevan `SYSTEM_MAP.md`;
+- temukan entrypoint dan caller aktual;
+- periksa test dan migration terkait;
+- bedakan current implementation, known gap, dan target roadmap;
+- tampilkan trace singkat, target file, alasan, dan tingkat risiko.
 
-Prioritaskan entrypoint berikut:
+Jangan melakukan blind scan. Abaikan `node_modules`, `.git`, `dist`, `build`, `coverage`, cache, log, minified asset, source map, dan lockfile kecuali task terkait dependency.
 
-- Vue: `main.ts`, `main.js`, router, layout utama, composables utama
-- Hono: `index.ts`, `app.ts`, route registry, handler utama
+## Editing dan validasi
 
-Jangan membaca file besar secara penuh kecuali benar-benar diperlukan. Untuk file lebih dari 500 baris, baca blok fungsi/class terkait saja.
+- Patch minimal lebih disukai daripada rewrite besar.
+- Jangan membuat V3, bridge, atau fallback baru hanya untuk eksperimen visual.
+- Jangan menambah business logic ke komponen legacy.
+- Backend adalah otoritas RBAC dan state transition; guard UI hanya untuk UX.
+- Jangan mengubah migration lama yang mungkin sudah diterapkan; gunakan migration baru.
+- Jangan melakukan deployment, migration remote, penghapusan data, atau operasi produksi destruktif tanpa permintaan eksplisit.
+- Jangan commit/push kecuali diminta atau telah disepakati sebagai bagian workflow.
+- Jangan menyatakan selesai tanpa menjalankan validasi relevan: typecheck/build, test, integration/security negative path, migration check, atau responsive/accessibility check sesuai scope.
 
-## 3. Universal Exclusions
+## Domain kritis dan known gaps
 
-Abaikan folder dan file berikut kecuali diminta eksplisit:
+Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau lifecycle media. Target berikut ada di `ROADMAP.md` dan belum boleh dianggap selesai tanpa evidence:
 
-- `node_modules`
-- `.venv`, `venv`, `env`
-- `vendor`
-- `target`
-- `.gradle`
-- `bin`, `obj`, `pkg`
-- `.git`
-- `.vscode`
-- `.idea`
-- `__pycache__`
-- `dist`
-- `build`
-- `tmp`
-- `coverage`
-- `.next`
-- `.nuxt`
-- `.cache`
-- `.output`
-- `*.log`
-- `*.lock`
-- `*.min.*`
-- `*.map`
+- audit trail serta void/reversal transaksi approved;
+- affected-row conflict handling dan idempotency;
+- shared typed validation/contracts;
+- CSRF/origin protection dan persistent login rate limit;
+- safe referenced-media deletion dan rekonsiliasi D1–R2;
+- critical-flow integration/E2E tests.
 
-Gunakan search command hanya secara terarah. `rg` boleh dipakai untuk mencari simbol/path tertentu, tetapi jangan dipakai untuk scan liar tanpa tujuan.
+## UI migration
 
-## 4. Pre-Edit Trace Note
+- UI V2 pada working tree adalah bahan improvement, bukan desain final yang wajib dipertahankan.
+- Pertahankan behavior dan contract yang terbukti benar saat redesain.
+- `DashboardV2` aktif dan native; `FinanceV2` aktif tetapi monolitik; `PengaturanV2` masih memakai legacy bridge; `KeuanganKasV2` tidak memiliki route aktif.
+- Jangan cleanup/rename canonical sebelum parity, test, build, dan smoke flow lulus.
+- Desain harus clean, profesional, mobile-first 360 px, accessible, role-aware, dan memiliki loading/empty/error/submitting/conflict/permission state sesuai kebutuhan.
 
-Sebelum menulis atau mengubah kode, tampilkan catatan singkat:
+## Dokumentasi
 
-- file target yang akan disentuh
-- alur fungsi yang terlibat
-- alasan perubahan
+- Update `SYSTEM_MAP.md` jika route, flow, state machine, schema, atau ownership modul berubah.
+- Update `ROADMAP.md` jika status, dependency, scope, atau acceptance criteria berubah.
+- Jangan menulis progress log kosmetik panjang di dokumen aktif.
+- Gunakan `docs/AI_AGENT_PLAYBOOK.md` untuk prosedur rinci.
 
-Format singkat:
-
-`Trace: [Vue Component] -> [API Client] -> [Hono Route] -> [Service/Repository]. Target edit: path/file.`
-
-## 5. Editing Rules
-
-- Jangan ubah struktur besar di luar request tanpa meminta izin.
-- Perubahan kecil boleh dilakukan jika langsung terkait dengan bug/fitur.
-- Pecah logika kompleks ke:
-  - Vue: composables, reusable components, atau utils
-  - Hono: handler, service/usecase, repository/query
-- Jangan menulis ulang file besar jika hanya perlu patch kecil.
-- Hindari perubahan kosmetik massal yang tidak diminta.
-
-## 6. Header Documentation
-
-Setiap file baru atau file yang diubah secara signifikan wajib memiliki header doc singkat di bagian atas file, jika gaya proyek memungkinkan.
-
-Isi header doc:
-
-- Tujuan file
-- Caller / pemanggil utama
-- Dependensi penting
-- Main functions
-- Side effects
-
-Jika file existing tidak memakai header dan perubahan hanya kecil, jangan paksa refactor besar. Tambahkan header hanya jika aman dan tidak mengganggu style proyek.
-
-## 7. Documentation Sync
-
-Jika mengubah flow utama aplikasi, update `SYSTEM_MAP.md`.
-
-Jika menyelesaikan item optimasi, update status di `optimalisasi_plan.md`.
-
-Jika menemukan code smell, performa lambat, re-render tidak perlu di Vue, N+1 query di Hono, query berat, atau class Tailwind redundan, catat sebagai item baru di `optimalisasi_plan.md`.
-
-## 8. Database & Query Standard
-
-Untuk perubahan DB-heavy:
-
-- Minimalkan I/O
-- Perhatikan selectivity filter
-- Perhatikan index
-- Hindari N+1 query
-- Evaluasi strategi join
-- Hindari lock contention yang tidak perlu
-
-Sebelum finalize, jelaskan singkat:
-
-- alasan efisiensi
-- trade-off
-- risiko performa yang dihindari
-
-## 9. Output Style
-
-Gunakan Bahasa Indonesia untuk penjelasan.
-
-Jangan menyalin kode panjang ke jawaban jika tidak perlu.
-
-Ringkas, teknis, dan mudah dipindai.
-
-Jika data tidak ditemukan, tulis `Not found`, jangan berasumsi.
+Jika fakta tidak ditemukan, tulis `Not found`; jangan berasumsi.

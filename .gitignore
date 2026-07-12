@@ -47,3 +47,14 @@ tmp-auth-cookie.txt
 tmp-smoke-patch.json
 tmp-smoke-prod.png
 
+# Local AI-agent runtime/profile artifacts (project instructions remain tracked)
+.openclaw/
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+
+# Download bundle is redundant after extraction
+docs/chatgpt-proposal/HERMES_AI_AGENT_DOCS.zip
+
