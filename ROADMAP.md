@@ -535,7 +535,7 @@ Evidence closure:
 
 ## Phase R3 — Admin Shell dan Authentication
 
-**Status:** In Progress
+**Status:** Done (2026-07-16)
 
 - admin navigation berdasarkan IA dan role;
 - mobile drawer, tablet rail, desktop sidebar;
@@ -560,6 +560,8 @@ Evidence berjalan:
 - geometry konsisten per display: seluruh shell control desktop 32 px, mobile 44 px, account row 48 px, header 64 px; collapse logo/avatar dan submenu memiliki motion sinkron serta reduced-motion fallback;
 - browser matrix mencakup `superadmin`, `ketua`, `bendahara`, dan `pengurus` pada 360×800, 768×1024, dan 1366×900, termasuk mobile Sheet, icon-collapse reveal submenu, nested Escape, popup collision, account/theme/navigation, focus restoration, reduced motion, dan overflow;
 - role preview tetap belum diimplementasikan: kebutuhan QA presentation dibuktikan melalui fixture role browser sehingga tidak ada perubahan JWT, backend authorization, atau data scope pada slice corrective ini.
+- independent pre-commit review final lulus setelah relasi `aria-controls`, ID target, label, dan landmark navigasi mobile/desktop diverifikasi pada DOM;
+- commit corrective R3 dipromosikan ke branch/resource testing terisolasi; GitHub Actions verify/deploy lulus dan HTTP + custom browser matrix live testing lulus pada `masjidnurulhuda-testing.pages.dev`.
 
 Corrective refinement sebelum closure R3:
 

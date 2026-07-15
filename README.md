@@ -75,9 +75,9 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 ## Dokumentasi aktif
 
-Status redesign: R1 Design Foundation dan R2 Public Publication Experience `Done`; R3 Admin Shell dan Authentication `In Progress`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
+Status redesign: R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
 
-R3 telah dirombak ke shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, account footer, geometry desktop 32 px / mobile 44 px / account 48 px, serta motion collapse yang sinkron. Candidate superadmin role preview untuk QA masih berada pada discovery keamanan dan belum implemented; corrective R3 juga masih memerlukan cleanup staging, review independen final, dan promosi testing terbaru sebelum closure milestone.
+R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, account footer, geometry desktop 32 px / mobile 44 px / account 48 px, motion collapse sinkron, dan ikon shell 20 px. Independent review, CI testing, HTTP smoke, serta browser matrix live testing telah lulus. Candidate superadmin role preview tetap discovery keamanan dan bukan bagian closure R3.
 
 - `.hermes.md` — aturan proses, safety, dan quality gate utama
 - `AGENTS.md` — instruksi ringkas untuk coding agent lain

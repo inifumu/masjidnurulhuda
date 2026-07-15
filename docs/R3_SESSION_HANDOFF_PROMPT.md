@@ -1,10 +1,10 @@
-# Prompt Handoff — Lanjutkan Closure Corrective R3 Shadcn Sidebar
+# Prompt Handoff — R3 Corrective Closure Selesai
 
 Salin seluruh isi prompt di bawah ini ke sesi Hermes baru.
 
 ---
 
-Lanjutkan closure R3 Admin Shell dan Authentication Masjid Nurul Huda dari working tree saat ini.
+R3 Admin Shell dan Authentication telah ditutup. Gunakan dokumen ini sebagai histori evidence; workstream aktif berikutnya ditentukan dari `ROADMAP.md`.
 
 Repository:
 - Branch: `improve/project-foundation`
@@ -34,7 +34,7 @@ Status milestone:
 - Corrective security closure: `Done`.
 - R1 Design Foundation: `Done`.
 - R2 Public Publication Experience: `Done`.
-- R3 Admin Shell dan Authentication: `In Progress`.
+- R3 Admin Shell dan Authentication: `Done` (2026-07-16).
 - Migration latest: `0017`.
 - Fresh database tidak memiliki privileged universal credential.
 
@@ -91,50 +91,14 @@ Perbaikan penting yang sudah selesai:
 - nested `<main>` sudah diperbaiki (hanya satu landmark `main` dari `SidebarInset`).
 - browser gate sekarang mengassert focus kembali ke `data-account-trigger` setelah Escape menutup popup akun.
 
-Independent review terakhir:
-- Review lama sempat FAIL karena nested `<main>` dan staging hygiene.
-- Nested `<main>` sudah diperbaiki.
-- Staging hygiene belum dilakukan (working tree masih berisi banyak untracked probe lokal).
-- Review independen baru perlu diminta lagi setelah re-check diff final, karena source berubah setelah verdict FAIL lama.
-
-Yang harus dilakukan pertama kali di sesi baru:
-1. Re-check `git status --short --branch`.
-2. Sebelum audit final, commit, atau push, perbaiki dulu temuan visual tambahan berikut pada shell R3:
-   - ikon tiga titik pada profile mobile display harus sejajar dengan ikon `X` close drawer dan ikon arrow/chevron submenu di area atas drawer;
-   - ganti ikon sidebar trigger untuk mobile display ke ikon hamburger/menu yang lebih tepat;
-   - audit ulang konsistensi ukuran ikon: ikon tema saat ini terasa lebih besar daripada ikon lain (sekitar 20 px vs 16 px). Samakan style tile ikon tema dengan ikon shell lain;
-   - samakan ukuran SVG ikon shell lain agar mengikuti ukuran ikon tema, yaitu 20 px, bila hasil visualnya paling konsisten;
-   - lakukan perbaikan ini lebih dulu, lalu baru ulang audit geometry/interaction shell secara menyeluruh.
-3. Pastikan hanya file source/test/docs yang benar-benar ingin di-commit akan di-stage.
-4. Konfirmasi tidak ada diff content pada file yang hanya kena line-ending metadata (`src/components/ui/button/index.ts`, `src/components/ui/input/Input.vue`, `src/components/ui/sheet/SheetContent.vue`). Jika benar tidak ada content diff, jangan stage.
-5. Minta fresh independent pre-commit review karena verdict lama sudah stale setelah perbaikan.
-6. Jika PASS, commit slice koheren corrective R3.
-7. Push branch kerja dan push commit yang sama ke branch `testing`.
-8. Tunggu GitHub Actions testing selesai.
-9. Smoke live testing (`masjidnurulhuda-testing.pages.dev`) dengan HTTP + custom R3 browser gate pada deployment live.
-
-Candidate tracked files yang kemungkinan memang perlu di-stage (verifikasi ulang sebelum commit):
-- `README.md`
-- `SYSTEM_MAP.md`
-- `ROADMAP.md`
-- `RUNBOOK.md`
-- `docs/AI_AGENT_PLAYBOOK.md`
-- `docs/UI_UX_REDESIGN_AUDIT.md`
-- `docs/R3_SESSION_HANDOFF_PROMPT.md`
-- `src/assets/main.css`
-- `src/layouts/AdminLayoutV2.vue`
-- `src/components/admin/shell/AdminSidebar.vue`
-- `src/components/ui/collapsible/*`
-- `src/components/ui/separator/*`
-- `src/components/ui/sidebar/*`
-- `src/components/ui/tooltip/*`
-- `tests/r3-admin-shell.test.mjs`
-- `tests/scripts/r3-admin-browser.mjs`
-
-Candidate yang TIDAK boleh masuk commit:
-- `.hermes/**`
-- `x.name)`
-- file dengan perubahan metadata-only/line ending tanpa content diff
+Closure evidence final:
+- commit corrective source `a6d9e2b` telah melalui independent review PASS;
+- ikon shell 20 px, alignment mobile, hamburger trigger, nested Escape, focus restoration, popup collision, reduced motion, dan landmark/ARIA telah diverifikasi;
+- gate lokal lulus: `npm run test` 145/145, `npm run build`, `npm run test:e2e:browser`, custom R3 browser matrix empat role × tiga viewport, dan `git diff --check`;
+- GitHub Actions testing run `29453040378` lulus verify/deploy;
+- HTTP smoke dan custom R3 browser matrix live lulus pada `https://masjidnurulhuda-testing.pages.dev`;
+- `.hermes/**`, `x.name)`, dan file metadata-only tidak masuk commit;
+- `main` dan resource production tidak berubah.
 
 Testing environment terisolasi:
 - Pages: `masjidnurulhuda-testing`

@@ -174,7 +174,7 @@ Shell dan homepage aktif telah diadopsi ke Civic Editorial. Data source nyata te
 
 ### R3 — Admin shell dan authentication
 
-**Status:** In Progress
+**Status:** Done
 
 - shell/navigation/header/user actions;
 - role-aware IA;
@@ -189,6 +189,7 @@ Corrective audit terbuka sebelum R3 dapat ditutup:
 - geometry dipisahkan konsisten per display: desktop shell controls 32 px; mobile controls 44 px; account row 48 px; header mobile/desktop 64 px. Long label tetap single-line/truncated dan header optical spacing terukur simetris;
 - state system collapse/submenu/Sheet/account/theme/navigation telah diverifikasi untuk active/open/pressed/focus, nested Escape/focus restoration, popup collision, reduced motion, dan overflow pada matrix empat role × tiga viewport;
 - role preview superadmin diperlakukan sebagai discovery security. Preview UI hanya menguji presentation; impersonation backend memerlukan audit/expiry/banner/exit/revocation dan test terpisah.
+- closure R3 lulus independent review, CI testing terisolasi, HTTP smoke, dan custom browser matrix live empat role × tiga viewport; role preview tetap kandidat terpisah dan tidak mengubah status closure.
 
 ### R4 — Financial workflows
 
