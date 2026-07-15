@@ -48,6 +48,7 @@ tmp-smoke-patch.json
 tmp-smoke-prod.png
 
 # Local AI-agent runtime/profile artifacts (project instructions remain tracked)
+.hermes/backups/
 .openclaw/
 HEARTBEAT.md
 IDENTITY.md

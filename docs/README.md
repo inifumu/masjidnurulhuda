@@ -6,6 +6,8 @@
 - `AGENTS.md` — kompatibilitas untuk AI coding agent lain.
 - `SYSTEM_MAP.md` — peta arsitektur, flow, modul, RBAC, data, dan integrasi aktual.
 - `ROADMAP.md` — backlog improvement aktif.
+- `DESIGN.md` — kontrak visual canonical Nurul Huda Civic Editorial.
+- `docs/UI_UX_REDESIGN_AUDIT.md` — audit/adoption matrix, urutan migrasi, dan anti-drift redesign.
 - `docs/AI_AGENT_PLAYBOOK.md` — prosedur kerja rinci, quality gate, dan template laporan.
 - `RUNBOOK.md` — deployment, migration, backup, restore, incident, dan secret operation.
 

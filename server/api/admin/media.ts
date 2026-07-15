@@ -50,6 +50,7 @@ const STORAGE_KEY_PREFIX = "media/";
 const HTTP_BAD_REQUEST: ContentfulStatusCode = 400;
 const HTTP_UNAUTHORIZED: ContentfulStatusCode = 401;
 const HTTP_CREATED: ContentfulStatusCode = 201;
+const HTTP_ACCEPTED: ContentfulStatusCode = 202;
 const HTTP_INTERNAL_ERROR: ContentfulStatusCode = 500;
 
 const parsePositiveInt = (value: string | null): number | null => {
@@ -339,7 +340,7 @@ api.delete("/:id", async (c) => {
     if (!id) return sendError(c, "ID media tidak valid", 400);
 
     const deleted = await removeMedia(c.env, id);
-    return sendSuccess(c, "Media berhasil dihapus", deleted);
+    return sendSuccess(c, "Penghapusan media dijadwalkan", deleted, HTTP_ACCEPTED);
   } catch (error) {
     const requestId = c.get("requestId") ?? "unknown-request-id";
     console.error("[media][DELETE /api/admin/media/:id] delete_failed", {

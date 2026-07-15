@@ -8,19 +8,13 @@
 import { parseInputRupiah } from "../../utils/currency";
 import { dashboardService, type DashboardSummary } from "./dashboardService";
 import { httpClient } from "../httpClient";
+import type { ApprovalAction, CategoryFlow, TransactionRequest, TransactionStatus, TransactionType } from "../../../shared/contracts";
 
 // ==========================================
 // 🛡️ INTERFACES / DTO (Data Transfer Objects)
 // ==========================================
 
-export interface TransactionBasePayload {
-  tipe: "pemasukan" | "pengeluaran";
-  jumlah: number;
-  keterangan: string;
-  tanggal: string; // Format: YYYY-MM-DD
-  kategori_id: number;
-  metode: string;
-}
+export type TransactionBasePayload = Omit<TransactionRequest, "seksi_id">;
 
 // Seksi_id opsional untuk Kas Langsung
 export interface DirectTransactionPayload extends TransactionBasePayload {
@@ -35,7 +29,7 @@ export interface ProposalTransactionPayload extends TransactionBasePayload {
 export interface KasCategory {
   id: number;
   nama_kategori: string;
-  jenis_arus: "pemasukan" | "pengeluaran" | "general";
+  jenis_arus: CategoryFlow;
   name?: string;
 }
 
@@ -55,9 +49,28 @@ export interface KasTransaction {
   kategori: string; // 🟢 Wajib ada (sudah dialias dari DB)
   seksi_id?: number | null;
   seksi: string | null; // 🟢 Wajib ada (walau isinya bisa null)
-  status: "pending_ketua" | "pending_bendahara" | "approved" | "rejected";
+  status: TransactionStatus;
   created_at?: string;
   approved_at?: string | null; // 🟢 Tambahan Audit Trail
+  voided_at?: string | null;
+  voided_by?: number | null;
+  void_reason?: string | null;
+}
+
+export interface TransactionAuditEvent {
+  id: number;
+  event_type: string;
+  from_status: string | null;
+  to_status: string;
+  actor_id: number;
+  actor_name: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface TransactionAuditTimeline {
+  events: TransactionAuditEvent[];
+  history_available: boolean;
 }
 
 export interface TransactionMasterData {
@@ -79,7 +92,7 @@ export interface GetTransactionsParams {
   kategori_id?: number;
 }
 
-export type KasFilterTipe = "semua" | "pemasukan" | "pengeluaran";
+export type KasFilterTipe = "semua" | TransactionType;
 
 export interface KasFilters {
   month: number;
@@ -126,6 +139,8 @@ const buildRequestFilters = (filters: KasFilters): GetTransactionsParams => ({
   kategori_id: filters.kategori !== "semua" ? filters.kategori : undefined,
 });
 
+const createIdempotencyKey = () => crypto.randomUUID();
+
 const validateNominal = (value: string) => {
   const nominal = parseInputRupiah(value);
   if (!Number.isFinite(nominal) || nominal <= 0) {
@@ -133,6 +148,30 @@ const validateNominal = (value: string) => {
   }
 
   return nominal;
+};
+
+export const buildDirectTransactionPayload = (
+  form: KasTransactionFormState,
+): DirectTransactionPayload => {
+  if (!form.kategori_id) throw new Error("Kategori wajib dipilih");
+  return {
+    ...form,
+    jumlah: validateNominal(form.jumlah),
+    kategori_id: form.kategori_id,
+  };
+};
+
+export const buildProposalTransactionPayload = (
+  form: KasTransactionFormState,
+): ProposalTransactionPayload => {
+  if (!form.kategori_id) throw new Error("Kategori wajib dipilih");
+  if (!form.seksi_id) throw new Error("Seksi wajib dipilih");
+  return {
+    ...form,
+    jumlah: validateNominal(form.jumlah),
+    kategori_id: form.kategori_id,
+    seksi_id: form.seksi_id,
+  };
 };
 
 // ==========================================
@@ -178,63 +217,56 @@ export const kasService = {
     };
   },
 
-  async submitDirectTransaction(payload: DirectTransactionPayload) {
+  async submitDirectTransaction(payload: DirectTransactionPayload, idempotencyKey: string = createIdempotencyKey()) {
     return await httpClient("/api/admin/transaction/add-direct", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(payload),
     });
   },
 
-  async submitDirectTransactionFromForm(form: KasTransactionFormState) {
-    if (!form.kategori_id) {
-      throw new Error("Kategori wajib dipilih");
-    }
-
-    const payload: DirectTransactionPayload = {
-      ...form,
-      jumlah: validateNominal(form.jumlah),
-      kategori_id: form.kategori_id,
-    };
-
-    return await this.submitDirectTransaction(payload);
+  async submitDirectTransactionFromForm(form: KasTransactionFormState, idempotencyKey?: string) {
+    return await this.submitDirectTransaction(
+      buildDirectTransactionPayload(form),
+      idempotencyKey,
+    );
   },
 
-  async submitProposal(payload: ProposalTransactionPayload) {
+  async submitProposal(payload: ProposalTransactionPayload, idempotencyKey: string = createIdempotencyKey()) {
     return await httpClient("/api/admin/transaction/add-proposal", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(payload),
     });
   },
 
-  async submitProposalFromForm(form: KasTransactionFormState) {
-    if (!form.kategori_id) {
-      throw new Error("Kategori wajib dipilih");
-    }
-
-    if (!form.seksi_id) {
-      throw new Error("Seksi wajib dipilih");
-    }
-
-    const payload: ProposalTransactionPayload = {
-      ...form,
-      jumlah: validateNominal(form.jumlah),
-      kategori_id: form.kategori_id,
-      seksi_id: form.seksi_id,
-    };
-
-    return await this.submitProposal(payload);
+  async submitProposalFromForm(form: KasTransactionFormState, idempotencyKey?: string) {
+    return await this.submitProposal(
+      buildProposalTransactionPayload(form),
+      idempotencyKey,
+    );
   },
 
-  async approveTransaction(id: number, action: "approve" | "reject") {
+  async approveTransaction(id: number, action: ApprovalAction, reason?: string, idempotencyKey: string = createIdempotencyKey()) {
     return await httpClient(`/api/admin/transaction/approve/${id}`, {
       method: "POST",
-      body: JSON.stringify({ action }),
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ action, reason }),
     });
   },
 
-  async deleteTransaction(id: number) {
-    return await httpClient(`/api/admin/transaction/${id}`, {
-      method: "DELETE",
+  async voidTransaction(id: number, reason: string, idempotencyKey: string = createIdempotencyKey()) {
+    return await httpClient(`/api/admin/transaction/${id}/void`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ reason }),
     });
+  },
+
+  async getTransactionTimeline(id: number): Promise<TransactionAuditTimeline> {
+    const res = await httpClient<{ data: TransactionAuditTimeline }>(
+      `/api/admin/transaction/${id}/timeline`,
+    );
+    return res.data;
   },
 };

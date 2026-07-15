@@ -35,18 +35,20 @@ export const globalKeluar = computed(() => kasSummary.value.totalPengeluaran);
 export const globalSaldoAkhir = computed(() => kasSummary.value.saldoAkhir);
 
 export const filteredLaporan = computed(() => {
-  return transactions.value.filter((t) => t.status === "approved");
+  return transactions.value.filter(
+    (t) => t.status === "approved" || t.status === "void",
+  );
 });
 
 export const filteredMasuk = computed(() =>
   filteredLaporan.value
-    .filter((t) => t.tipe === "pemasukan")
+    .filter((t) => t.status === "approved" && t.tipe === "pemasukan")
     .reduce((sum, t) => sum + t.jumlah, 0),
 );
 
 export const filteredKeluar = computed(() =>
   filteredLaporan.value
-    .filter((t) => t.tipe === "pengeluaran")
+    .filter((t) => t.status === "approved" && t.tipe === "pengeluaran")
     .reduce((sum, t) => sum + t.jumlah, 0),
 );
 

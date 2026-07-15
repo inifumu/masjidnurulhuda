@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { useAuthStore } from "./stores/authStore";
 import { Toaster } from "vue-sonner"; // 🟢 Import Toaster
+import { computed } from "vue";
 
 const authStore = useAuthStore();
+const isDevelopmentLab = computed(
+  () => import.meta.env.DEV && window.location.pathname === "/_design-system",
+);
 // Baris authStore.checkAuth() sudah DIBUANG dari sini agar tidak dobel!
 </script>
 
@@ -10,7 +14,7 @@ const authStore = useAuthStore();
   <Toaster position="top-right" richColors />
 
   <div
-    v-if="!authStore.isReady"
+    v-if="!isDevelopmentLab && (authStore.authStatus === 'idle' || authStore.authStatus === 'loading')"
     class="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] dark:bg-[#0e131f]"
   >
     <img

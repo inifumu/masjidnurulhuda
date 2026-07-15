@@ -6,6 +6,7 @@
  * Side Effects: Network request ke endpoint `/api/admin/pengaturan/*`.
  */
 import { httpClient } from "../httpClient";
+import type { AdminRole, CategoryFlow } from "../../../shared/contracts";
 
 // ==========================================
 // 🛡️ INTERFACES / DTO
@@ -20,8 +21,8 @@ export interface SeksiPayload {
   nama_pengurus: string;
 }
 
-export type JenisArus = "pemasukan" | "pengeluaran" | "general";
-export type UserRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
+export type JenisArus = CategoryFlow;
+export type UserRole = AdminRole;
 
 export interface KategoriItem {
   id: number;
@@ -41,6 +42,7 @@ export interface UserItem {
   name: string;
   email: string;
   role: UserRole;
+  is_active: number;
 }
 
 export interface CreateUserPayload {
@@ -212,6 +214,12 @@ export const pengaturanService = {
   async deleteUser(id: number) {
     return await httpClient(`/api/admin/pengaturan/users/${id}`, {
       method: "DELETE",
+    });
+  },
+  async setUserActive(id: number, is_active: boolean) {
+    return await httpClient(`/api/admin/pengaturan/users/${id}/active`, {
+      method: "PUT",
+      body: JSON.stringify({ is_active }),
     });
   },
 

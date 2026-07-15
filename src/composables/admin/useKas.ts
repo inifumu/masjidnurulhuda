@@ -12,7 +12,7 @@ import {
 } from "../../utils/currency";
 import {
   handleAction,
-  handleDelete,
+  handleVoid,
   handleDirectInput,
   handleProposal,
   loadData,
@@ -42,9 +42,13 @@ import {
   filterTipe,
   formInput,
   formProposal,
+  hasLoadedData,
   isLoading,
+  isLoadingData,
+  loadError,
   methods,
   openDropdown,
+  pendingMutationIds,
   sections,
   selectedMonth,
   selectedYear,
@@ -59,6 +63,9 @@ export function useKas() {
   return {
     activeTab,
     isLoading,
+    isLoadingData,
+    loadError,
+    hasLoadedData,
     transactions,
     categories,
     filteredCategoriesInput,
@@ -68,6 +75,7 @@ export function useKas() {
     formInput,
     formProposal,
     openDropdown,
+    pendingMutationIds,
     toggleDropdown,
     closeDropdowns,
     formatRupiah,
@@ -92,6 +100,6 @@ export function useKas() {
     handleDirectInput,
     handleProposal,
     handleAction,
-    handleDelete,
+    handleVoid,
   };
 }

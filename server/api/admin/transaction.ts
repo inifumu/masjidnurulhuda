@@ -1,19 +1,22 @@
 import { Hono } from "hono";
-import * as txService from "../../services/transaction";
-import * as seksiService from "../../services/seksi";
-import * as kategoriService from "../../services/kategori";
-import { requireAuth, requireRole } from "../../middleware/auth";
-import { sendSuccess, sendError } from "../../utils/response";
+import * as txService from "../../services/transaction.ts";
+import * as seksiService from "../../services/seksi.ts";
+import * as kategoriService from "../../services/kategori.ts";
+import { requireAuth, requireRole } from "../../middleware/auth.ts";
+import { sendSuccess, sendError } from "../../utils/response.ts";
 import {
   VALID_TIPE,
   parsePositiveInt,
   parseFiniteAmount,
-} from "../../utils/transactionValidation";
+  parseVoidReason,
+} from "../../utils/transactionValidation.ts";
+import { canonicalRequestHash, getIdempotencyRecord, parseIdempotencyKey, resolveClaimFailure, resolveIdempotencyReplay, type IdempotencyContext } from "../../services/transactionIdempotency.ts";
+import { getCurrentWibPeriod, parseBusinessPeriod, parseDirectTransaction, parseProposalTransaction, type AdminRole } from "../../../shared/contracts/index.ts";
 
 type JwtPayload = {
   sub?: number;
   id?: number;
-  role?: string;
+  role?: AdminRole;
 };
 
 type TransactionPeriodFilter = {
@@ -29,57 +32,32 @@ type TransactionListFilter = {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
 
-const getCurrentWibPeriod = (): TransactionPeriodFilter => {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
+const getConflictCode = (error: txService.TransactionConflictError) =>
+  /idempoten|idempotency/i.test(error.message)
+    ? "IDEMPOTENCY_CONFLICT" as const
+    : "TRANSACTION_STATE_CHANGED" as const;
 
-  const monthPart = parts.find((part) => part.type === "month")?.value;
-  const yearPart = parts.find((part) => part.type === "year")?.value;
-
-  const month = Number(monthPart);
-  const year = Number(yearPart);
-
-  if (!Number.isFinite(month) || !Number.isFinite(year)) {
-    const now = new Date();
-    return { month: now.getMonth() + 1, year: now.getFullYear() };
-  }
-
-  return { month, year };
+const prepareIdempotency = async (db: D1Database, actorId: number, operation: IdempotencyContext["operation"], keyRaw: unknown, payload: unknown) => {
+  const key = parseIdempotencyKey(keyRaw);
+  if (!key) return { error: "Idempotency-Key wajib berupa token 16-128 karakter" };
+  const requestHash = await canonicalRequestHash(payload);
+  const context = { key, operation, requestHash } satisfies IdempotencyContext;
+  const stored = await getIdempotencyRecord(db, actorId, operation, key);
+  return { context, replay: stored ? resolveIdempotencyReplay(stored, requestHash) : null };
 };
 
-const parsePeriodFilter = (
-  monthRaw: string | undefined,
-  yearRaw: string | undefined,
-): { period: TransactionPeriodFilter; error?: string } => {
-  const currentPeriod = getCurrentWibPeriod();
-
-  if (monthRaw === undefined && yearRaw === undefined) {
-    return { period: currentPeriod };
+const runClaimFirst = async <T>(db: D1Database, actorId: number, context: IdempotencyContext, mutation: () => Promise<T>) => {
+  try { return { result: await mutation(), replay: null }; }
+  catch (error) {
+    if (error instanceof txService.TransactionConflictError && !/idempoten/i.test(error.message)) throw error;
+    try { return { result: null, replay: await resolveClaimFailure(db, actorId, context) }; }
+    catch (claimError) {
+      if (claimError instanceof txService.TransactionConflictError) throw claimError;
+      throw error;
+    }
   }
-
-  if (monthRaw === undefined || yearRaw === undefined) {
-    return {
-      period: currentPeriod,
-      error: "month dan year harus dikirim bersamaan",
-    };
-  }
-
-  const month = Number(monthRaw);
-  const year = Number(yearRaw);
-
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    return { period: currentPeriod, error: "month tidak valid (1-12)" };
-  }
-
-  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    return { period: currentPeriod, error: "year tidak valid (2000-2100)" };
-  }
-
-  return { period: { month, year } };
 };
+
 
 const parseListFilter = (
   tipeRaw: string | undefined,
@@ -134,9 +112,12 @@ api.get("/master-data", async (c) => {
   }
 });
 
-api.post("/add-direct", async (c) => {
+api.post("/add-direct", requireRole(["superadmin", "ketua", "bendahara"]), async (c) => {
   try {
     const body = await c.req.json();
+    const parsedBody = parseDirectTransaction(body);
+    if (!parsedBody.ok) return sendError(c, "Periksa kembali data transaksi.", 400, parsedBody.fields, "VALIDATION_ERROR");
+    Object.assign(body, parsedBody.value);
 
     if (
       !body.tipe ||
@@ -190,9 +171,14 @@ api.post("/add-direct", async (c) => {
     body.seksi_id = seksiId;
     body.status = "approved";
 
-    await txService.createTransaction(c.env.DB, body, userId);
-    return sendSuccess(c, "Transaksi Kas Baru berhasil dicatat.", null, 201);
-  } catch {
+    const idem = await prepareIdempotency(c.env.DB, userId, "create_direct", c.req.header("Idempotency-Key"), body);
+    if (idem.error) return sendError(c, idem.error, 400, undefined, "IDEMPOTENCY_REQUIRED");
+    if (idem.replay) return sendSuccess(c, "Transaksi sebelumnya berhasil dicatat.", idem.replay.body, idem.replay.status);
+    const outcome = await runClaimFirst(c.env.DB, userId, idem.context!, () => txService.createTransaction(c.env.DB, body, userId, idem.context!));
+    if (outcome.replay) return sendSuccess(c, "Transaksi sebelumnya berhasil dicatat.", outcome.replay.body, outcome.replay.status);
+    return sendSuccess(c, "Transaksi Kas Baru berhasil dicatat.", { transaction_id: outcome.result!.transactionId }, 201);
+  } catch (error) {
+    if (error instanceof txService.TransactionConflictError) return sendError(c, error.message, 409, undefined, getConflictCode(error));
     return sendError(c, "Terjadi kesalahan saat menyimpan transaksi", 500);
   }
 });
@@ -200,6 +186,9 @@ api.post("/add-direct", async (c) => {
 api.post("/add-proposal", async (c) => {
   try {
     const body = await c.req.json();
+    const parsedBody = parseProposalTransaction(body);
+    if (!parsedBody.ok) return sendError(c, "Periksa kembali data proposal.", 400, parsedBody.fields, "VALIDATION_ERROR");
+    Object.assign(body, parsedBody.value);
     if (
       !body.tipe ||
       body.jumlah === undefined ||
@@ -252,9 +241,14 @@ api.post("/add-proposal", async (c) => {
     body.seksi_id = seksiId;
     body.status = "pending_ketua";
 
-    await txService.createTransaction(c.env.DB, body, userId);
-    return sendSuccess(c, "Proposal berhasil diajukan ke Ketua.", null, 201);
-  } catch {
+    const idem = await prepareIdempotency(c.env.DB, userId, "submit_proposal", c.req.header("Idempotency-Key"), body);
+    if (idem.error) return sendError(c, idem.error, 400, undefined, "IDEMPOTENCY_REQUIRED");
+    if (idem.replay) return sendSuccess(c, "Proposal sebelumnya berhasil diajukan.", idem.replay.body, idem.replay.status);
+    const outcome = await runClaimFirst(c.env.DB, userId, idem.context!, () => txService.createTransaction(c.env.DB, body, userId, idem.context!));
+    if (outcome.replay) return sendSuccess(c, "Proposal sebelumnya berhasil diajukan.", outcome.replay.body, outcome.replay.status);
+    return sendSuccess(c, "Proposal berhasil diajukan ke Ketua.", { transaction_id: outcome.result!.transactionId }, 201);
+  } catch (error) {
+    if (error instanceof txService.TransactionConflictError) return sendError(c, error.message, 409, undefined, getConflictCode(error));
     return sendError(c, "Terjadi kesalahan saat mengajukan proposal", 500);
   }
 });
@@ -276,10 +270,10 @@ api.get("/list", async (c) => {
     const tipeRaw = c.req.query("tipe");
     const kategoriRaw = c.req.query("kategori_id");
 
-    const parsedPeriod = parsePeriodFilter(monthRaw, yearRaw);
-    if (parsedPeriod.error) {
-      return sendError(c, parsedPeriod.error, 400);
-    }
+    const parsedPeriod = monthRaw === undefined && yearRaw === undefined
+      ? { ok: true as const, value: getCurrentWibPeriod() }
+      : parseBusinessPeriod(monthRaw, yearRaw);
+    if (!parsedPeriod.ok) return sendError(c, "Periode tidak valid.", 400, parsedPeriod.fields, "VALIDATION_ERROR");
 
     const parsedFilters = parseListFilter(tipeRaw, kategoriRaw);
     if (parsedFilters.error) {
@@ -290,10 +284,7 @@ api.get("/list", async (c) => {
     const result = await txService.getAllTransactions(
       c.env.DB,
       user,
-      {
-        month: parsedPeriod.period.month,
-        year: parsedPeriod.period.year,
-      },
+      parsedPeriod.value,
       parsedFilters.filters,
     );
 
@@ -313,14 +304,23 @@ api.post(
       if (!Number.isFinite(id) || id <= 0)
         return sendError(c, "ID transaksi tidak valid", 400);
 
-      const { action } = await c.req.json();
+      const { action, reason: reasonRaw } = await c.req.json();
       if (action !== "approve" && action !== "reject")
         return sendError(c, "Aksi tidak valid!", 400);
 
       const user = c.get("jwtPayload");
+      const actorId = user.sub ?? user.id;
+      if (!actorId) return sendError(c, "Sesi tidak valid", 401);
 
       const tx = await txService.getTransactionById(c.env.DB, id);
       if (!tx) return sendError(c, "Transaksi tidak ditemukan", 404);
+
+      const operation = action === "reject" ? "reject"
+        : tx.status === "pending_ketua" ? "approve_ketua" : "approve_bendahara";
+      const payload = { transaction_id: id, action, reason: action === "reject" ? parseVoidReason(reasonRaw) : null };
+      const idem = await prepareIdempotency(c.env.DB, actorId, operation, c.req.header("Idempotency-Key"), payload);
+      if (idem.error) return sendError(c, idem.error, 400, undefined, "IDEMPOTENCY_REQUIRED");
+      if (idem.replay) return sendSuccess(c, "Mutasi sebelumnya sudah berhasil.", idem.replay.body, idem.replay.status);
 
       // 🟢 UPDATE TERBARU: Validasi ketat untuk aksi Reject (Stage-Locked)
       if (action === "reject") {
@@ -341,10 +341,13 @@ api.post(
             );
           }
         } else {
-          return sendError(c, "Status proposal tidak valid untuk ditolak", 400);
+          return sendError(c, "Status proposal tidak valid untuk ditolak", 409);
         }
 
-        await txService.updateStatus(c.env.DB, id, "rejected");
+        const reason = parseVoidReason(reasonRaw);
+        if (!reason) return sendError(c, "Alasan penolakan wajib 10-500 karakter", 400);
+        const outcome = await runClaimFirst(c.env.DB, actorId, idem.context!, () => txService.updateStatus(c.env.DB, id, "rejected", actorId, reason, undefined, idem.context!));
+        if (outcome.replay) return sendSuccess(c, "Proposal sebelumnya sudah ditolak.", outcome.replay.body, outcome.replay.status);
         return sendSuccess(c, "Proposal berhasil ditolak.");
       }
 
@@ -357,7 +360,8 @@ api.post(
               403,
             );
           }
-          await txService.updateStatus(c.env.DB, id, "pending_bendahara");
+          const outcome = await runClaimFirst(c.env.DB, actorId, idem.context!, () => txService.updateStatus(c.env.DB, id, "pending_bendahara", actorId, null, undefined, idem.context!));
+          if (outcome.replay) return sendSuccess(c, "Persetujuan sebelumnya sudah berhasil.", outcome.replay.body, outcome.replay.status);
           return sendSuccess(c, "Disetujui! Diteruskan ke Bendahara.");
         }
 
@@ -374,15 +378,19 @@ api.post(
             timeZone: "Asia/Jakarta",
           }).format(new Date());
 
-          await txService.updateStatus(c.env.DB, id, "approved", hariIniWIB);
+          const outcome = await runClaimFirst(c.env.DB, actorId, idem.context!, () => txService.updateStatus(c.env.DB, id, "approved", actorId, null, hariIniWIB, idem.context!));
+          if (outcome.replay) return sendSuccess(c, "Pencairan sebelumnya sudah berhasil.", outcome.replay.body, outcome.replay.status);
           return sendSuccess(c, "Cair! Transaksi masuk ke laporan hari ini.");
         }
 
-        return sendError(c, "Proposal sudah diproses sebelumnya.", 400);
+        return sendError(c, "Proposal sudah diproses sebelumnya.", 409, undefined, "TRANSACTION_STATE_CHANGED");
       }
 
       return sendError(c, "Aksi tidak valid", 400);
     } catch (error: unknown) {
+      if (error instanceof txService.TransactionConflictError) {
+        return sendError(c, error.message, 409, undefined, getConflictCode(error));
+      }
       return sendError(
         c,
         getErrorMessage(error) || "Gagal memproses persetujuan transaksi",
@@ -395,15 +403,72 @@ api.post(
 api.delete(
   "/:id",
   requireRole(["superadmin", "ketua", "bendahara"]),
+  (c) =>
+    sendError(
+      c,
+      "Transaksi tidak dapat dihapus permanen. Gunakan pembatalan transaksi.",
+      405,
+    ),
+);
+
+api.get("/:id/timeline", async (c) => {
+  const id = parsePositiveInt(c.req.param("id"));
+  if (id === null) return sendError(c, "ID transaksi tidak valid", 400);
+  try {
+    const result = await txService.getTransactionAuditTimeline(c.env.DB, id, c.get("jwtPayload"));
+    return sendSuccess(c, "Berhasil memuat riwayat transaksi", result);
+  } catch (error) {
+    if (error instanceof txService.TransactionConflictError) return sendError(c, error.message, 403, undefined, "FORBIDDEN");
+    if (getErrorMessage(error).includes("tidak ditemukan")) return sendError(c, "Transaksi tidak ditemukan", 404);
+    return sendError(c, "Gagal memuat riwayat transaksi", 500);
+  }
+});
+
+api.post(
+  "/:id/void",
+  requireRole(["superadmin", "bendahara"]),
   async (c) => {
+    const id = parsePositiveInt(c.req.param("id"));
+    if (id === null) return sendError(c, "ID transaksi tidak valid", 400);
+
+    const user = c.get("jwtPayload");
+    const actorId = user.sub ?? user.id;
+    if (!actorId) return sendError(c, "Sesi tidak valid", 401);
+
+    let body: unknown;
     try {
-      const id = Number(c.req.param("id"));
-      if (!Number.isFinite(id) || id <= 0)
-        return sendError(c, "ID transaksi tidak valid", 400);
-      await txService.deleteTransaction(c.env.DB, id);
-      return sendSuccess(c, "Transaksi berhasil dihapus");
+      body = await c.req.json();
+    } catch {
+      return sendError(c, "Payload tidak valid", 400);
+    }
+
+    const reason = parseVoidReason(
+      typeof body === "object" && body !== null && "reason" in body
+        ? (body as { reason?: unknown }).reason
+        : null,
+    );
+    if (!reason) {
+      return sendError(c, "Alasan pembatalan wajib 10-500 karakter", 400);
+    }
+
+    try {
+      const idem = await prepareIdempotency(c.env.DB, actorId, "void", c.req.header("Idempotency-Key"), { transaction_id: id, reason });
+      if (idem.error) return sendError(c, idem.error, 400, undefined, "IDEMPOTENCY_REQUIRED");
+      if (idem.replay) return sendSuccess(c, "Pembatalan sebelumnya sudah berhasil", idem.replay.body, idem.replay.status);
+      const outcome = await runClaimFirst(c.env.DB, actorId, idem.context!, () => txService.voidTransaction(
+        c.env.DB, id, actorId, reason, idem.context!,
+      ));
+      if (outcome.replay) return sendSuccess(c, "Pembatalan sebelumnya sudah berhasil", outcome.replay.body, outcome.replay.status);
+      const result = outcome.result;
+      return sendSuccess(c, "Transaksi berhasil dibatalkan", result);
     } catch (error) {
-      return sendError(c, "Gagal menghapus transaksi", 500);
+      if (error instanceof txService.TransactionConflictError) {
+        return sendError(c, error.message, 409, undefined, getConflictCode(error));
+      }
+      if (getErrorMessage(error).includes("tidak ditemukan")) {
+        return sendError(c, "Transaksi tidak ditemukan", 404);
+      }
+      return sendError(c, "Gagal membatalkan transaksi", 500);
     }
   },
 );

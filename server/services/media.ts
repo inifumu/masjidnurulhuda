@@ -22,7 +22,8 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   countMedia,
-  deleteMediaById,
+  countMediaReferences,
+  enqueueMediaDeletion,
   getMediaById,
   insertMedia,
   listMedia,
@@ -63,7 +64,7 @@ export const deriveThumbStorageKey = (storageKey: string): string => {
 
 export const toMediaResponseItem = (row: MediaRow): MediaResponseItem => ({
   ...row,
-  thumb_url: `/api/public/${deriveThumbStorageKey(row.storage_key)}`,
+  thumb_url: `/api/public/${row.thumb_storage_key ?? deriveThumbStorageKey(row.storage_key)}`,
 });
 
 export class MediaDomainError extends Error {
@@ -125,25 +126,28 @@ export const uploadMedia = async (
   const fileBuffer = await file.arrayBuffer();
   const thumbFileBuffer = await thumbFile.arrayBuffer();
 
-  await Promise.all([
-    env.MEDIA_BUCKET.put(storageKey, fileBuffer, {
+  const createdKeys: string[] = [];
+  const putIfAbsent = async (key: string, body: ArrayBuffer, contentType: string) => {
+    const created = await env.MEDIA_BUCKET.put(key, body, {
       httpMetadata: {
-        contentType: file.type,
+        contentType,
         cacheControl: "public, max-age=31536000, immutable",
       },
-    }),
-    env.MEDIA_BUCKET.put(thumbStorageKey, thumbFileBuffer, {
-      httpMetadata: {
-        contentType: thumbFile.type,
-        cacheControl: "public, max-age=31536000, immutable",
-      },
-    }),
-  ]);
+      onlyIf: { etagDoesNotMatch: "*" },
+    });
+    if (!created) {
+      throw new MediaDomainError("Storage key media sudah digunakan", 409);
+    }
+    createdKeys.push(key);
+  };
 
   try {
+    await putIfAbsent(storageKey, fileBuffer, file.type);
+    await putIfAbsent(thumbStorageKey, thumbFileBuffer, thumbFile.type);
     const created = await insertMedia(env.DB, {
       file_url: `/api/public/${storageKey}`,
       storage_key: storageKey,
+      thumb_storage_key: thumbStorageKey,
       kategori_penggunaan: category,
       alt_text: altText,
       mime_type: file.type as "image/webp" | "image/jpeg" | "image/png",
@@ -154,19 +158,12 @@ export const uploadMedia = async (
     });
 
     if (!created) {
-      await Promise.allSettled([
-        env.MEDIA_BUCKET.delete(storageKey),
-        env.MEDIA_BUCKET.delete(thumbStorageKey),
-      ]);
       throw new MediaDomainError("Gagal menyimpan metadata media", 500);
     }
 
     return toMediaResponseItem(created);
   } catch (error) {
-    await Promise.allSettled([
-      env.MEDIA_BUCKET.delete(storageKey),
-      env.MEDIA_BUCKET.delete(thumbStorageKey),
-    ]);
+    await Promise.allSettled(createdKeys.map((key) => env.MEDIA_BUCKET.delete(key)));
     throw asDomainError(error, "Gagal upload media");
   }
 };
@@ -242,14 +239,47 @@ export const removeMedia = async (
 
   const keysToDelete = [
     existing.storage_key,
-    deriveThumbStorageKey(existing.storage_key),
+    existing.thumb_storage_key ?? deriveThumbStorageKey(existing.storage_key),
   ].filter(
     (value): value is string =>
       typeof value === "string" && value.trim().length > 0,
   );
 
-  await Promise.all(keysToDelete.map((key) => env.MEDIA_BUCKET.delete(key)));
-  await deleteMediaById(env.DB, id);
-
+  const references = await countMediaReferences(env.DB, id);
+  if (Number(references?.total ?? 0) > 0) {
+    throw new MediaDomainError("Media masih direferensikan", 409);
+  }
+  const results = await enqueueMediaDeletion(env.DB, existing, keysToDelete);
+  if ((results[0]?.meta?.changes ?? 0) !== 1) {
+    throw new MediaDomainError("Media masih direferensikan atau sudah diproses", 409);
+  }
+  if (results.slice(1).some((result) => (result.meta?.changes ?? 0) !== 1)) {
+    throw new MediaDomainError("Antrean penghapusan media gagal disimpan", 500);
+  }
   return { id };
+};
+
+type OutboxRow = { id: number; media_id: number; storage_key: string };
+export const processMediaDeletionOutbox = async (env: MediaBindings, options: { limit?: number } = {}) => {
+  const limit = Math.max(1, Math.min(options.limit ?? 25, 100));
+  const rows = await env.DB.prepare(`SELECT id, media_id, storage_key FROM media_deletion_outbox WHERE status IN ('pending','failed') AND next_attempt_at <= CURRENT_TIMESTAMP ORDER BY id LIMIT ?`).bind(limit).all<OutboxRow>();
+  let processed = 0;
+  for (const job of rows.results ?? []) {
+    try {
+      await env.MEDIA_BUCKET.delete(job.storage_key);
+      await env.DB.prepare("UPDATE media_deletion_outbox SET status = 'completed', attempts = attempts + 1, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP, last_error = NULL WHERE id = ?").bind(job.id).run();
+      await env.DB.prepare(`UPDATE dokumentasi SET status = 'deleted', deleted_at = CURRENT_TIMESTAMP, deletion_error = NULL WHERE id = ? AND status IN ('pending_delete','delete_failed') AND NOT EXISTS (SELECT 1 FROM media_deletion_outbox WHERE media_id = ? AND status != 'completed')`).bind(job.media_id, job.media_id).run();
+      processed++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await env.DB.prepare("UPDATE media_deletion_outbox SET status = 'failed', attempts = attempts + 1, last_error = ?, next_attempt_at = datetime(CURRENT_TIMESTAMP, '+' || MIN(attempts + 1, 60) || ' minutes'), updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(message, job.id).run();
+      await env.DB.prepare("UPDATE dokumentasi SET status = 'delete_failed', deletion_error = ? WHERE id = ? AND status = 'pending_delete'").bind(message, job.media_id).run();
+    }
+  }
+  return { processed, attempted: rows.results?.length ?? 0 };
+};
+
+export const reconcileMediaDeletions = async (env: MediaBindings) => {
+  const result = await env.DB.prepare(`UPDATE dokumentasi SET status = 'delete_failed', deletion_error = 'missing deletion outbox' WHERE status = 'pending_delete' AND NOT EXISTS (SELECT 1 FROM media_deletion_outbox o WHERE o.media_id = dokumentasi.id)`).bind().run();
+  return { markedFailed: result.meta.changes ?? 0 };
 };

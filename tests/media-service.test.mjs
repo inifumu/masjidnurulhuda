@@ -20,7 +20,33 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getMediaList, uploadMedia } from "../server/services/media.ts";
+import {
+  getMediaList,
+  processMediaDeletionOutbox,
+  reconcileMediaDeletions,
+  uploadMedia,
+} from "../server/services/media.ts";
+
+test("uploadMedia: collision tidak menimpa atau menghapus object existing", async () => {
+  const putCalls = [];
+  const deleteCalls = [];
+  const env = {
+    DB: { prepare() { throw new Error("D1 tidak boleh disentuh saat collision"); } },
+    MEDIA_BUCKET: {
+      async put(key, _body, options) { putCalls.push({ key, options }); return null; },
+      async delete(key) { deleteCalls.push(key); },
+    },
+  };
+  const file = new File(["original"], "hero.webp", { type: "image/webp" });
+  const thumbFile = new File(["thumb"], "hero-thumb.webp", { type: "image/webp" });
+  await assert.rejects(() => uploadMedia(env, {
+    file, thumbFile, storageKey: "media/existing.webp", thumbStorageKey: "media/existing-thumb.webp",
+    category: "galeri", altText: null, width: 10, height: 10, uploadedBy: 7,
+  }), /sudah digunakan/i);
+  assert.equal(putCalls.length, 1);
+  assert.deepEqual(putCalls[0].options.onlyIf, { etagDoesNotMatch: "*" });
+  assert.deepEqual(deleteCalls, []);
+});
 
 test("uploadMedia: rollback object R2 saat insert metadata D1 gagal", async () => {
   const putCalls = [];
@@ -43,6 +69,7 @@ test("uploadMedia: rollback object R2 saat insert metadata D1 gagal", async () =
     MEDIA_BUCKET: {
       async put(key) {
         putCalls.push(key);
+        return { key };
       },
       async delete(key) {
         deleteCalls.push(key);
@@ -158,4 +185,28 @@ test("getMediaList: guard limit fallback ke default 12 saat limit invalid atau m
   assert.equal(observedBinds[0][0], 12);
   assert.equal(observedBinds[1][0], 12);
   assert.equal(observedBinds[2][0], 24);
+});
+
+test("processor deletion melanjutkan partial retry dan finalize tombstone setelah semua key terhapus", async () => {
+  const deleted = [];
+  const statements = [];
+  const env = {
+    DB: { prepare(sql) { return { bind(...values) { statements.push({ sql, values }); return {
+      async all() { return { results: [{ id: 11, media_id: 4, storage_key: "media/main.webp" }] }; },
+      async run() { return { success: true, meta: { changes: 1 } }; },
+    }; } }; } },
+    MEDIA_BUCKET: { async delete(key) { deleted.push(key); } },
+  };
+  const result = await processMediaDeletionOutbox(env, { limit: 10 });
+  assert.deepEqual(deleted, ["media/main.webp"]);
+  assert.equal(result.processed, 1);
+  assert.ok(statements.some(({ sql }) => /status = 'deleted'/.test(sql)));
+});
+
+test("reconciliation mengembalikan pending tanpa outbox menjadi delete_failed", async () => {
+  const calls = [];
+  const db = { prepare(sql) { return { bind(...values) { calls.push({ sql, values }); return { async run() { return { meta: { changes: 2 } }; } }; } }; } };
+  const result = await reconcileMediaDeletions({ DB: db, MEDIA_BUCKET: {} });
+  assert.equal(result.markedFailed, 2);
+  assert.match(calls[0].sql, /NOT EXISTS/i);
 });

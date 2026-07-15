@@ -1,11 +1,14 @@
 type UserTokenVersionRow = {
   id: number;
   token_version: number;
+  is_active: number;
 };
 
 export const getUserByEmail = async (db: D1Database, email: string) => {
   return await db
-    .prepare("SELECT * FROM users WHERE email = ?")
+    .prepare(`SELECT id, email, password_hash, name,
+      COALESCE(operational_role, role) AS role, token_version, is_active
+      FROM users WHERE email = ?`)
     .bind(email)
     .first();
 };
@@ -15,9 +18,9 @@ export const getUserTokenVersionById = async (
   userId: number,
 ): Promise<UserTokenVersionRow | null> => {
   const row = await db
-    .prepare("SELECT id, token_version FROM users WHERE id = ?")
+    .prepare("SELECT id, token_version, is_active FROM users WHERE id = ?")
     .bind(userId)
-    .first<{ id: number; token_version: number | null }>();
+    .first<{ id: number; token_version: number | null; is_active: number | null }>();
 
   if (!row) return null;
   return {
@@ -27,6 +30,7 @@ export const getUserTokenVersionById = async (
       Number.isInteger(row.token_version)
         ? row.token_version
         : 0,
+    is_active: row.is_active === 0 ? 0 : 1,
   };
 };
 

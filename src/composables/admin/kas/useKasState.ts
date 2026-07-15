@@ -31,6 +31,10 @@ const getTodayDate = () => new Date().toISOString().split("T")[0];
 
 export const activeTab = ref<KasTab>("laporan");
 export const isLoading = ref(false);
+export const isLoadingData = ref(false);
+export const loadError = ref("");
+export const hasLoadedData = ref(false);
+export const pendingMutationIds = ref<Set<number>>(new Set());
 export const transactions = ref<KasTransaction[]>([]);
 
 export const kasSummary = ref<DashboardSummary>({

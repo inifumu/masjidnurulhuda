@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { buildApiError, type ApiErrorCode, type FieldErrorMap } from "../../shared/contracts/index.ts";
 
 // 🟢 Helper untuk Response Sukses (Menggunakan Generic <T>)
 export const sendSuccess = <T = unknown>(
@@ -25,14 +26,14 @@ export const sendError = (
   message: string,
   statusCode: ContentfulStatusCode = 500,
   errors: unknown = null,
+  code: ApiErrorCode = statusCode === 401 ? "UNAUTHORIZED"
+    : statusCode === 403 ? "FORBIDDEN"
+      : statusCode === 404 ? "NOT_FOUND"
+        : statusCode === 409 ? "CONFLICT"
+          : statusCode === 429 ? "RATE_LIMITED"
+          : statusCode >= 500 ? "INTERNAL_ERROR" : "VALIDATION_ERROR",
 ) => {
-  return c.json(
-    {
-      status: "error",
-      message,
-      // Field 'errors' dipakai kalau ada list error validasi form (array/object)
-      ...(errors !== null && errors !== undefined && { errors }),
-    },
-    statusCode,
-  );
+  const fields = errors && typeof errors === "object" && !Array.isArray(errors)
+    ? errors as FieldErrorMap : undefined;
+  return c.json(buildApiError(code, message, fields), statusCode);
 };

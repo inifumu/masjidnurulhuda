@@ -6,6 +6,7 @@ import transactionRouter from "./api/admin/transaction";
 import pengaturanRouter from "./api/admin/pengaturan";
 import mediaRouter from "./api/admin/media";
 import publicApi from "./api/public/index";
+import { requireSameOrigin, securityHeaders } from "./middleware/security";
 
 type AppBindings = {
   DB: D1Database;
@@ -21,6 +22,9 @@ const app = new Hono<{
   Bindings: AppBindings;
   Variables: AppVariables;
 }>();
+
+app.use("*", securityHeaders);
+app.use("/api/admin/*", requireSameOrigin);
 
 app.use("*", async (c, next) => {
   const start = Date.now();

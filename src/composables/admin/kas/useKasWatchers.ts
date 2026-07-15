@@ -20,11 +20,11 @@ export const registerKasWatchers = () => {
   if (isWatcherRegistered) return;
 
   watch([selectedMonth, selectedYear], () => {
-    void loadData();
+    void loadData().catch(() => undefined);
   });
 
   watch([filterTipe, filterKategori], () => {
-    void loadTransactions();
+    void loadTransactions().catch(() => undefined);
   });
 
   isWatcherRegistered = true;

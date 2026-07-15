@@ -5,14 +5,15 @@
  * Main Functions: `createTransaction`, `getPendingTransactions`, `getAllTransactions`, `updateStatus`, `deleteTransaction`.
  * Side Effects: Mutasi data transaksi + query list berbasis role/period/filter.
  */
-type TransactionType = "pemasukan" | "pengeluaran";
+import type { AdminRole, BusinessPeriod, TransactionStatus, TransactionType } from "../../shared/contracts/index.ts";
 type SqlParam = string | number | null;
 
-type TransactionStatus =
-  | "pending_ketua"
-  | "pending_bendahara"
-  | "approved"
-  | "rejected";
+export class TransactionConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransactionConflictError";
+  }
+}
 
 export interface TransactionPayload {
   tipe: TransactionType;
@@ -29,8 +30,14 @@ export interface TransactionPayload {
 export interface TransactionUserScope {
   sub?: number;
   id?: number;
-  role?: string;
+  role?: AdminRole;
 }
+
+export type TransactionIdempotencyContext = {
+  key: string;
+  operation: "create_direct" | "submit_proposal" | "approve_ketua" | "approve_bendahara" | "reject" | "void";
+  requestHash: string;
+};
 
 export const getTransactionById = async (db: D1Database, id: number) => {
   return await db
@@ -43,6 +50,7 @@ export const createTransaction = async (
   db: D1Database,
   data: TransactionPayload,
   userId: number,
+  idempotency?: TransactionIdempotencyContext,
 ) => {
   const {
     tipe,
@@ -58,27 +66,58 @@ export const createTransaction = async (
 
   const finalStatus = status || "pending_ketua";
 
-  return await db
-    .prepare(
-      `
-      INSERT INTO kas_masjid 
-      (tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    )
-    .bind(
-      tipe ?? null,
-      jumlah ?? null,
-      keterangan ?? null,
-      tanggal ?? null,
-      kategori_id ?? null,
-      periode_id ?? null,
-      seksi_id ?? null,
-      metode ?? null,
-      userId,
-      finalStatus,
-    )
-    .run();
+  const randomBytes = idempotency ? crypto.getRandomValues(new Uint32Array(1)) : null;
+  const transactionId = randomBytes ? (randomBytes[0] & 0x7fffffff) || 1 : null;
+  const insertStatement = db.prepare(
+    transactionId
+      ? `INSERT INTO kas_masjid
+         (id, tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT INTO kas_masjid
+         (tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    ...(transactionId ? [transactionId] : []), tipe, jumlah, keterangan, tanggal,
+    kategori_id, periode_id ?? null, seksi_id ?? null, metode ?? null, userId, finalStatus,
+  );
+  const eventType = finalStatus === "approved" ? "created" : "submitted";
+  const auditStatement = db.prepare(
+    `INSERT INTO transaction_audit_events
+     (transaction_id, event_type, from_status, to_status, actor_id)
+     VALUES (${transactionId ? "?" : "last_insert_rowid()"}, ?, NULL, ?, ?)`,
+  ).bind(...(transactionId ? [transactionId] : []), eventType, finalStatus, userId);
+
+  if (!idempotency || !transactionId) {
+    const results = await db.batch([insertStatement, auditStatement]);
+    if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
+      throw new TransactionConflictError("Transaksi dan audit event gagal disimpan secara atomic.");
+    }
+    return {
+      ...results[0],
+      transactionId: transactionId ?? Number(results[0]?.meta?.last_row_id),
+    };
+  }
+
+  const responseBody = JSON.stringify({ transaction_id: transactionId });
+  const claim = db.prepare(
+    `INSERT INTO transaction_idempotency_keys
+     (actor_id, operation, idempotency_key, request_hash, state)
+     VALUES (?, ?, ?, ?, 'processing')`,
+  ).bind(userId, idempotency.operation, idempotency.key, idempotency.requestHash);
+  const finalize = db.prepare(
+    `UPDATE transaction_idempotency_keys
+     SET state = 'completed', transaction_id = ?, response_status = 201, response_body = ?
+     WHERE actor_id = ? AND operation = ? AND idempotency_key = ? AND state = 'processing'`,
+  ).bind(transactionId, responseBody, userId, idempotency.operation, idempotency.key);
+  const results = await db.batch([claim, insertStatement, auditStatement, finalize]);
+  if (results.some((result) => (result.meta?.changes ?? 0) !== 1)) {
+    console.error("[transaction_idempotency_batch_mismatch]", {
+      operation: idempotency.operation,
+      changes: results.map((result) => result.meta?.changes ?? 0),
+    });
+    throw new TransactionConflictError("Mutasi idempotent gagal disimpan secara atomic.");
+  }
+  return { ...results[1], transactionId };
 };
 
 export const getPendingTransactions = async (
@@ -105,71 +144,63 @@ export const getPendingTransactions = async (
 };
 
 export const updateStatus = async (
-  db: D1Database,
-  id: number,
-  newStatus: TransactionStatus,
-  accDate?: string,
+  db: D1Database, id: number, newStatus: TransactionStatus, actorId: number,
+  reason?: string | null, accDate?: string, idempotency?: TransactionIdempotencyContext,
 ) => {
-  // 🟢 1. Ambil state saat ini untuk validasi Race Condition (POIN 2)
-  const current = await db
-    .prepare("SELECT status FROM kas_masjid WHERE id = ?")
-    .bind(id)
-    .first();
+  const current = await db.prepare("SELECT status FROM kas_masjid WHERE id = ?").bind(id).first();
   if (!current) throw new Error("Transaksi tidak ditemukan.");
-
-  const currentStatus = current.status as string;
-
-  // 🟢 2. Validasi Alur Logika (Cegah lompat status atau dobel klik)
-  if (newStatus === "pending_bendahara" && currentStatus !== "pending_ketua") {
-    throw new Error("Gagal! Proposal ini sudah tidak ada di antrean Ketua.");
-  }
-  if (newStatus === "approved" && currentStatus !== "pending_bendahara") {
-    throw new Error(
-      "Gagal! Proposal ini sudah tidak ada di antrean Bendahara.",
-    );
-  }
-  if (newStatus === "rejected" && currentStatus === "approved") {
-    throw new Error("Gagal! Tidak bisa menolak proposal yang sudah cair.");
-  }
-
-  // 🟢 3. Rangkai Query Update dengan aman
+  const currentStatus = current.status as TransactionStatus;
+  if (newStatus === "pending_bendahara" && currentStatus !== "pending_ketua") throw new TransactionConflictError("Proposal sudah tidak ada di antrean Ketua.");
+  if (newStatus === "approved" && currentStatus !== "pending_bendahara") throw new TransactionConflictError("Proposal sudah tidak ada di antrean Bendahara.");
+  if (newStatus === "rejected" && !["pending_ketua", "pending_bendahara"].includes(currentStatus)) throw new TransactionConflictError("Status proposal tidak valid untuk ditolak.");
+  if (newStatus === "rejected" && !reason) throw new Error("Alasan penolakan wajib diisi.");
   let query = "UPDATE kas_masjid SET status = ?";
   const params: SqlParam[] = [newStatus];
-
-  // 🟢 4. Audit Trail (POIN 5) - Catat kapan dana benar-benar dicairkan
   if (newStatus === "approved") {
     query += ", approved_at = CURRENT_TIMESTAMP";
-
-    // Jika bendahara mengubah tanggal untuk laporan buku kas, biarkan ditimpa
-    // Karena sekarang kita punya approved_at dan created_at sebagai backup jejak aslinya
-    if (accDate) {
-      query += ", tanggal = ?";
-      params.push(accDate);
-    }
+    if (accDate) { query += ", tanggal = ?"; params.push(accDate); }
   }
-
-  // 🟢 5. Eksekusi Optimistic Locking
   query += " WHERE id = ? AND status = ?";
   params.push(id, currentStatus);
+  const eventType = newStatus === "pending_bendahara" ? "approved_ketua" : newStatus === "approved" ? "approved_bendahara" : "rejected";
+  const update = db.prepare(query).bind(...params);
+  const audit = db.prepare(`INSERT INTO transaction_audit_events
+    (transaction_id, event_type, from_status, to_status, actor_id, reason)
+    SELECT ?, ?, ?, ?, ?, ? WHERE changes() = 1`).bind(id, eventType, currentStatus, newStatus, actorId, reason ?? null);
+  const claim = idempotency && db.prepare(`INSERT INTO transaction_idempotency_keys
+    (actor_id, operation, idempotency_key, request_hash, transaction_id, state)
+    VALUES (?, ?, ?, ?, ?, 'processing')`).bind(actorId, idempotency.operation, idempotency.key, idempotency.requestHash, id);
+  const finalize = idempotency && db.prepare(`UPDATE transaction_idempotency_keys
+    SET state = 'completed', response_status = 200, response_body = ?
+    WHERE actor_id = ? AND operation = ? AND idempotency_key = ? AND state = 'processing'`)
+    .bind(JSON.stringify({ transaction_id: id, status: newStatus }), actorId, idempotency.operation, idempotency.key);
+  const results = await db.batch(claim && finalize ? [claim, update, audit, finalize] : [update, audit]);
+  if (results.some((result) => (result.meta?.changes ?? 0) !== 1)) throw new TransactionConflictError("Konflik status transaksi; data mungkin telah diubah pengguna lain.");
+  return results[claim ? 1 : 0];
+};
 
-  const result = await db
-    .prepare(query)
-    .bind(...params)
-    .run();
-
-  if (result.meta.changes === 0) {
-    throw new Error(
-      "Gagal memproses! Data mungkin telah diubah oleh pengguna lain.",
-    );
+export const assertFinancialFieldsMutable = (status: TransactionStatus) => {
+  if (status === "approved" || status === "void") {
+    throw new TransactionConflictError("Field finansial transaksi yang sudah approved tidak dapat diubah.");
   }
-
-  return result;
 };
 
-type TransactionPeriodFilter = {
-  month: number;
-  year: number;
+export const getTransactionAuditTimeline = async (db: D1Database, id: number, user?: TransactionUserScope) => {
+  const transaction = await db.prepare("SELECT id, status, created_by FROM kas_masjid WHERE id = ?").bind(id)
+    .first<{ id: number; status: TransactionStatus; created_by: number | null }>();
+  if (!transaction) throw new Error("Transaksi tidak ditemukan.");
+  const userId = user?.sub ?? user?.id;
+  if (user?.role === "pengurus" && transaction.status !== "approved" && transaction.created_by !== userId) {
+    throw new TransactionConflictError("Anda tidak memiliki akses ke riwayat transaksi ini.");
+  }
+  const result = await db.prepare(`SELECT e.id, e.event_type, e.from_status, e.to_status, e.reason, e.created_at, e.actor_id, u.name as actor_name
+    FROM transaction_audit_events e LEFT JOIN users u ON u.id = e.actor_id
+    WHERE e.transaction_id = ? ORDER BY e.created_at ASC, e.id ASC`).bind(id).all();
+  const events = result.results ?? [];
+  return { events, history_available: events.length > 0 };
 };
+
+type TransactionPeriodFilter = BusinessPeriod;
 
 export type TransactionListFilter = {
   tipe?: TransactionType;
@@ -231,6 +262,61 @@ export const getAllTransactions = async (
     .all();
 };
 
-export const deleteTransaction = async (db: D1Database, id: number) => {
-  return await db.prepare("DELETE FROM kas_masjid WHERE id = ?").bind(id).run();
+export const voidTransaction = async (
+  db: D1Database,
+  id: number,
+  actorId: number,
+  reason: string,
+  idempotency?: TransactionIdempotencyContext,
+) => {
+  const current = await db
+    .prepare("SELECT status FROM kas_masjid WHERE id = ?")
+    .bind(id)
+    .first<{ status: TransactionStatus }>();
+
+  if (!current) {
+    throw new Error("Transaksi tidak ditemukan.");
+  }
+
+  if (current.status !== "approved") {
+    throw new TransactionConflictError(
+      "Transaksi hanya dapat dibatalkan dari status approved.",
+    );
+  }
+
+  const updateStatement = db
+    .prepare(
+      `UPDATE kas_masjid
+       SET status = 'void', voided_at = CURRENT_TIMESTAMP, voided_by = ?, void_reason = ?
+       WHERE id = ? AND status = 'approved'`,
+    )
+    .bind(actorId, reason, id);
+
+  const auditStatement = db
+    .prepare(
+      `INSERT INTO transaction_audit_events
+       (transaction_id, event_type, from_status, to_status, actor_id, reason)
+       SELECT ?, ?, ?, ?, ?, ?
+       WHERE changes() = 1`,
+    )
+    .bind(id, "voided", "approved", "void", actorId, reason);
+
+  const claim = idempotency && db.prepare(`INSERT INTO transaction_idempotency_keys
+    (actor_id, operation, idempotency_key, request_hash, transaction_id, state)
+    VALUES (?, ?, ?, ?, ?, 'processing')`).bind(actorId, idempotency.operation, idempotency.key, idempotency.requestHash, id);
+  const finalize = idempotency && db.prepare(`UPDATE transaction_idempotency_keys
+    SET state = 'completed', response_status = 200, response_body = ?
+    WHERE actor_id = ? AND operation = ? AND idempotency_key = ? AND state = 'processing'`)
+    .bind(JSON.stringify({ transaction_id: id, status: "void" }), actorId, idempotency.operation, idempotency.key);
+  const results = await db.batch(claim && finalize
+    ? [claim, updateStatement, auditStatement, finalize]
+    : [updateStatement, auditStatement]);
+
+  if (results.some((result) => (result.meta?.changes ?? 0) !== 1)) {
+    throw new TransactionConflictError(
+      "Konflik status transaksi; data mungkin telah diubah pengguna lain.",
+    );
+  }
+
+  return { id, status: "void" as const };
 };

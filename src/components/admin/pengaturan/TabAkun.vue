@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Edit2, Trash2 } from "lucide-vue-next";
+import { Edit2, PowerOff } from "lucide-vue-next";
 import { useAuthStore } from "../../../stores/authStore";
+import type { UserItem } from "../../../services/admin/pengaturanService";
 
 const authStore = useAuthStore();
-defineProps<{ data: any[]; isLoading: boolean }>();
+defineProps<{ data: UserItem[]; isLoading: boolean }>();
 defineEmits(["edit", "delete"]);
 </script>
 
@@ -42,6 +43,7 @@ defineEmits(["edit", "delete"]);
               class="py-3 px-4 font-medium text-slate-700 dark:text-slate-200"
             >
               {{ item.name }}
+              <span v-if="item.is_active === 0" class="ml-2 text-[10px] text-slate-400">Nonaktif</span>
               <span
                 v-if="item.id === authStore.user?.id"
                 class="ml-2 text-[10px] bg-brand-green/10 text-brand-green px-2 py-0.5 rounded-full"
@@ -79,7 +81,7 @@ defineEmits(["edit", "delete"]);
                   @click="$emit('delete', item.id)"
                   class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded transition-colors"
                 >
-                  <Trash2 :size="16" />
+                  <PowerOff :size="16" />
                 </button>
               </div>
             </td>

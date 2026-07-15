@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import * as kategoriService from "../../services/kategori";
-import * as seksiService from "../../services/seksi";
-import * as userService from "../../services/user";
-import type { UserRole } from "../../services/user";
-import { requireAuth, requireRole } from "../../middleware/auth";
-import { sendSuccess, sendError } from "../../utils/response"; // 🟢 Import Helper
+import * as kategoriService from "../../services/kategori.ts";
+import * as seksiService from "../../services/seksi.ts";
+import * as userService from "../../services/user.ts";
+import type { UserRole } from "../../services/user.ts";
+import { requireAuth, requireRole, type AuthJwtPayload } from "../../middleware/auth.ts";
+import { sendSuccess, sendError } from "../../utils/response.ts";
 
 const VALID_ARUS = new Set(["pemasukan", "pengeluaran", "general"]);
 const VALID_ROLE = new Set<UserRole>([
@@ -25,6 +25,17 @@ const api = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>();
 // Menerapkan autentikasi dan otorisasi level file
 api.use("/*", requireAuth);
 api.use("/*", requireRole(["superadmin", "ketua"]));
+api.use("/users", requireRole(["superadmin"]));
+api.use("/users/*", requireRole(["superadmin"]));
+
+const actorId = (value: unknown): number => {
+  const payload = value && typeof value === "object"
+    ? value as AuthJwtPayload
+    : {};
+  const id = typeof payload.sub === "number" ? payload.sub : payload.id;
+  if (typeof id !== "number") throw new Error("Actor ID tidak valid");
+  return id;
+};
 
 // === ROUTE KATEGORI ===
 api.get("/kategori", async (c) => {
@@ -189,7 +200,7 @@ api.post("/users", async (c) => {
       return sendError(c, "Role tidak valid!", 400);
     }
 
-    await userService.createUser(c.env.DB, {
+    await userService.createUser(c.env.DB, actorId(c.get("jwtPayload")), {
       ...body,
       role: body.role as UserRole,
     });
@@ -218,7 +229,7 @@ api.put("/users/:id", async (c) => {
       return sendError(c, "ID user tidak valid", 400);
     }
 
-    await userService.updateUserRole(c.env.DB, userId, role as UserRole, name);
+    await userService.updateUser(c.env.DB, actorId(c.get("jwtPayload")), userId, role as UserRole, name);
     return sendSuccess(c, "Akun berhasil diupdate");
   } catch (error) {
     console.error("ERROR PUT /users:", error);
@@ -238,7 +249,7 @@ api.put("/users/:id/password", async (c) => {
       return sendError(c, "ID user tidak valid", 400);
     }
 
-    await userService.resetPassword(c.env.DB, userId, password);
+    await userService.resetPassword(c.env.DB, actorId(c.get("jwtPayload")), userId, password);
     return sendSuccess(c, "Password berhasil di-reset");
   } catch (error) {
     console.error("ERROR PUT /users/password:", error);
@@ -253,11 +264,32 @@ api.delete("/users/:id", async (c) => {
       return sendError(c, "ID user tidak valid", 400);
     }
 
-    await userService.deleteUser(c.env.DB, userId);
-    return sendSuccess(c, "Akun berhasil dihapus");
+    await userService.setUserActive(c.env.DB, actorId(c.get("jwtPayload")), userId, false);
+    return sendSuccess(c, "Akun berhasil dinonaktifkan");
   } catch (error) {
+    if (error instanceof userService.AccountPolicyError) {
+      return sendError(c, error.message, error.code === "ACCOUNT_NOT_FOUND" ? 404 : 409);
+    }
     console.error("ERROR DELETE /users:", error);
-    return sendError(c, "Gagal menghapus akun", 500);
+    return sendError(c, "Gagal menonaktifkan akun", 500);
+  }
+});
+
+api.put("/users/:id/active", async (c) => {
+  try {
+    const userId = parsePositiveIntParam(c.req.param("id"));
+    const body = await c.req.json();
+    if (userId === null || typeof body.is_active !== "boolean") {
+      return sendError(c, "Status akun tidak valid", 400);
+    }
+    await userService.setUserActive(c.env.DB, actorId(c.get("jwtPayload")), userId, body.is_active);
+    return sendSuccess(c, body.is_active ? "Akun berhasil diaktifkan" : "Akun berhasil dinonaktifkan");
+  } catch (error) {
+    if (error instanceof userService.AccountPolicyError) {
+      return sendError(c, error.message, error.code === "ACCOUNT_NOT_FOUND" ? 404 : 409);
+    }
+    console.error("ERROR PUT /users/active:", error);
+    return sendError(c, "Gagal mengubah status akun", 500);
   }
 });
 

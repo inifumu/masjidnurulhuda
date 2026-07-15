@@ -1,9 +1,21 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../stores/authStore";
 
+const developmentRoutes = import.meta.env.DEV
+  ? [
+      {
+        path: "/_design-system",
+        name: "design-system-lab",
+        component: () => import("../views/dev/DesignSystemLab.vue"),
+        meta: { skipAuthBootstrap: true },
+      },
+    ]
+  : [];
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    ...developmentRoutes,
     // 🟢 ROUTE PUBLIK (Menggunakan PublicLayout)
     {
       path: "/",
@@ -65,12 +77,14 @@ const router = createRouter({
 
 // 🟢 ASYNC GUARD: Satpam yang sabar menunggu Hono menjawab
 router.beforeEach(async (to) => {
+  if (to.meta.skipAuthBootstrap) return;
+
   const authStore = useAuthStore();
 
   // Tunggu pengecekan sesi ke backend selesai
   await authStore.checkAuth();
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta.requiresAuth && authStore.shouldRedirectToLogin) {
     return "/admin/login";
   }
 

@@ -1,14 +1,24 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import type { AdminRole } from "../../shared/contracts/index";
 
-// 🟢 PERBAIKAN: Definisikan tipe secara strict!
-export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
+export type AuthRole = AdminRole;
+export type AuthStatus =
+  | "idle"
+  | "loading"
+  | "authenticated"
+  | "unauthenticated"
+  | "error";
 
 export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = ref(false);
-  // 🟢 PERBAIKAN: Gunakan AuthRole, bukan sekadar string biasa
   const user = ref<{ id: number; name: string; role: AuthRole } | null>(null);
   const isReady = ref(false);
+  const authStatus = ref<AuthStatus>("idle");
+  const shouldRedirectToLogin = computed(
+    () => authStatus.value === "unauthenticated",
+  );
+  let authRequestSequence = 0;
 
   const login = async (email: string, password: string) => {
     try {
@@ -23,6 +33,7 @@ export const useAuthStore = defineStore("auth", () => {
         isAuthenticated.value = true;
         user.value = result.data;
         isReady.value = true;
+        authStatus.value = "authenticated";
         return true;
       }
       return false;
@@ -40,46 +51,74 @@ export const useAuthStore = defineStore("auth", () => {
     } finally {
       isAuthenticated.value = false;
       user.value = null;
+      isReady.value = true;
+      authStatus.value = "unauthenticated";
     }
   };
 
-  const checkAuth = async () => {
-    if (isReady.value) return;
+  const checkAuth = async (force = false) => {
+    if (
+      !force &&
+      (authStatus.value === "authenticated" ||
+        authStatus.value === "unauthenticated")
+    ) {
+      return;
+    }
 
+    const request = ++authRequestSequence;
+    authStatus.value = "loading";
     try {
       const res = await fetch("/api/admin/auth/me", {
         credentials: "include",
       });
+      if (request !== authRequestSequence) return;
 
       if (res.status === 401) {
         isAuthenticated.value = false;
         user.value = null;
+        authStatus.value = "unauthenticated";
         return;
       }
 
-      if (res.ok) {
-        const result = await res.json();
-
-        if (result.status === "success") {
-          isAuthenticated.value = true;
-          user.value = result.data;
-        } else {
-          isAuthenticated.value = false;
-          user.value = null;
-        }
-      } else {
-        // Non-401 (mis. 5xx) diperlakukan sebagai error operasional.
-        // Auth state tidak diubah agar bug backend tidak tersamarkan sebagai logout.
+      if (!res.ok) {
+        authStatus.value = "error";
         console.error("[authStore.checkAuth] Operational error:", res.status);
+        return;
       }
-    } catch (e) {
-      // Network/runtime error diperlakukan sebagai error operasional.
-      // Auth state tidak diubah agar sesi terakhir tidak ter-reset ambigu.
-      console.error("[authStore.checkAuth] Network error:", e);
+
+      const result = await res.json();
+      if (result.status !== "success" || !result.data) {
+        authStatus.value = "error";
+        return;
+      }
+
+      isAuthenticated.value = true;
+      user.value = result.data;
+      authStatus.value = "authenticated";
+    } catch (error) {
+      if (request !== authRequestSequence) return;
+      authStatus.value = "error";
+      console.error("[authStore.checkAuth] Network error:", error);
     } finally {
-      isReady.value = true;
+      if (request === authRequestSequence) {
+        isReady.value =
+          authStatus.value === "authenticated" ||
+          authStatus.value === "unauthenticated";
+      }
     }
   };
 
-  return { isAuthenticated, user, isReady, login, logout, checkAuth };
+  const retryAuth = () => checkAuth(true);
+
+  return {
+    isAuthenticated,
+    user,
+    isReady,
+    authStatus,
+    shouldRedirectToLogin,
+    login,
+    logout,
+    checkAuth,
+    retryAuth,
+  };
 });

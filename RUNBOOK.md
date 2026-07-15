@@ -6,18 +6,23 @@ Dokumen ini dipakai untuk tindakan cepat saat deploy, insiden database, rollback
 
 **Nama database:** `masjidnurulhuda-db`
 
-**Status deploy awal:**
+**Migration aktif:**
 
-- D1 remote fresh, dibuat via `npx wrangler d1 create`.
-- Belum ada tabel sebelum pipeline pertama berjalan.
-- Migration production berada di folder `migrations/` dan dijalankan oleh GitHub Actions:
+- Migration production berada di folder `migrations/` dan dijalankan berurutan oleh GitHub Actions:
   - `0001_init_schema.sql`
   - `0002_seed_initial_data.sql`
   - `0003_proposal_workflow.sql`
   - `0004_add_audit_columns.sql`
   - `0005_add_indexes.sql`
-- `0006_media_library.sql`
-- `0007_reconcile_bendahara_role.sql` (sementara no-op bypass untuk bug wrapper migration D1 remote; bedah schema users dilakukan manual via `fix.sql` + `wrangler d1 execute` dan wajib dicatat)
+  - `0006_media_library.sql`
+  - `0007_reconcile_bendahara_role.sql` (no-op; rekonsiliasi live lama menggunakan `fix.sql` sesuai bagian 7)
+  - `0008_auth_token_version.sql`
+  - `0009_add_media_thumb_storage_key.sql`
+  - `0010_transaction_void_audit.sql` (rebuild `kas_masjid`, preservasi transaksi, metadata void, dan audit events)
+  - `0011_transaction_idempotency.sql` (registry unique per actor/operation/key dan stored response)
+  - `0012_idempotency_lifecycle.sql` (state processing/completed untuk claim-first)
+  - `0013_security_hardening.sql` (status akun, persistent login limiter, dan security audit events)
+  - `0014_reconcile_user_roles.sql` (`operational_role` additive untuk allowlist role final tanpa rebuild parent `users`)
 
 **Backup data remote:**
 
@@ -30,6 +35,28 @@ npx wrangler d1 export masjidnurulhuda-db --remote --output=backup-YYYY-MM-DD.sq
 ```bash
 npx wrangler d1 execute masjidnurulhuda-db --remote --file=backup-terakhir.sql
 ```
+
+### Preflight migration finansial
+
+Sebelum migration yang membangun ulang `kas_masjid`, termasuk `0010`:
+
+1. Jangan menjalankan migration remote tanpa persetujuan eksplisit dan maintenance window.
+2. Export backup remote bertimestamp ke lokasi aman di luar repository.
+3. Catat jumlah transaksi sebelum migration:
+
+```bash
+npx wrangler d1 execute masjidnurulhuda-db --remote --command="SELECT COUNT(*) AS transaction_count FROM kas_masjid;"
+```
+
+4. Terapkan migration melalui command canonical pada bagian 5.
+5. Bandingkan jumlah transaksi sesudah migration dan jalankan:
+
+```bash
+npx wrangler d1 execute masjidnurulhuda-db --remote --command="PRAGMA foreign_key_check;"
+```
+
+6. Hentikan rollout jika jumlah row berubah tanpa rencana atau foreign-key check menghasilkan row.
+7. Rollback aplikasi tidak membatalkan migration D1; restore database memerlukan analisis insiden dan persetujuan eksplisit.
 
 ## 2. Rollback Aplikasi
 
@@ -109,13 +136,29 @@ Cloudflare Pages Functions:
 
 Tujuan: verifikasi kesiapan deploy **sebelum push/deploy** (bukan hit domain production).
 
-Waktu eksekusi terakhir: **2026-05-08 09:47 WIB**  
-Environment: **local workspace (Windows 11, Node test runner + Vite build)**
+Waktu eksekusi terakhir: **2026-07-12 WIB**
+Environment: **local workspace (Windows 10, Node test runner + Vite/Wrangler)**
 
 Checklist hasil:
 
-- [x] `npm test` -> **pass 21/21**
-- [x] `npm run build` -> **success** (bundle frontend terbangun tanpa error)
+- [x] `npm run test` -> **pass termasuk route finance, claim-loser, dan concurrency P0.2**
+- [x] `npm run build` -> **success** (typecheck dan bundle frontend terbangun tanpa error)
+- [x] Migration `0010` upgrade lokal: backup dibuat; jumlah transaksi tetap 7/7; kolom void/tabel audit tersedia; FK check bersih.
+- [x] Fresh apply migration `0001`-`0010` pada state D1 terisolasi -> success; FK check bersih.
+- [x] P0.1 finance safety: seluruh transition audit atomic, DELETE 405, void RBAC/400/409/persistence, dan timeline legacy contract tervalidasi otomatis.
+- [x] P0.2 retry safety: direct/proposal/approve/reject/void mewajibkan Idempotency-Key; claim-first, replay/payload conflict, approve/approve, dan approve/reject tervalidasi otomatis.
+- [x] P0.2 browser smoke lokal: login fixture ketua, antrean approval, modal konfirmasi + Escape, dan layout desktop tervalidasi; fixture transaksi disposable dibersihkan (remaining `0`).
+- [x] P0.3 API contract otomatis: error finance/auth memakai `error.code` stabil (`VALIDATION_ERROR`, `IDEMPOTENCY_REQUIRED`, `IDEMPOTENCY_CONFLICT`, `TRANSACTION_STATE_CHANGED`, `UNAUTHORIZED`, `FORBIDDEN`) dan validation dapat membawa `error.fields`.
+- [x] P0.3 authenticated FinanceV2 browser smoke: viewport 360x800 dan desktop 1440x900 tidak overflow; direct/proposal field errors inline terhubung semantik dan fokus ke field invalid pertama; count fixture transaksi P0.3 tersisa `0`.
+- [x] P0.4 security closure: exact same-origin + security headers; atomic persistent D1 login limiter dengan `429/Retry-After`; account-management superadmin-only; disable/enable; revocation role/password/status; recovery guards; dan security/login audit tanpa data sensitif.
+- [x] Migration `0013` upgrade apply pada D1 lokal existing dan fresh apply `0001`–`0013` pada state Wrangler terisolasi berhasil; backfill `is_active`, dua tabel security, dan foreign-key check terverifikasi.
+- [x] P0.5 migration: `0014` menambah `operational_role`; `0015` memastikan bendahara fresh; `0016` menambah safe media lifecycle/reference/outbox. `npm run test:migrations` lulus fresh `0001`–`0016`, upgrade `0015→0016`, ledger 16, preservasi bendahara, backfill media `active`, dan FK bersih.
+- [x] P0.5 Wrangler local critical journey: login tiga role, submit proposal, negative approve pengurus, approve ketua, approve bendahara, approved list/summary, audit timeline, idempotency registry, dan FK check lulus pada D1 disposable.
+- [x] Audit P0: direct-create pengurus ditolak backend; duplicate response deterministik; timeline privat scoped owner; recovery-admin conditional; upload collision non-overwrite dan cleanup aman terhadap object existing.
+- [x] P0.5 Wrangler D1 matrix: concurrency `1×200 + 1×409`, reject dua tahap, role/ownership, period-summary admin/publik, cleanup fixture `0`, dan FK bersih melalui `npm run test:critical-flow:d1`.
+- [x] P0.5 auth/Finance/media code gates: auth recovery + out-of-order guard; Finance sequencing/idempotency/pending/error/mobile cards; media reference-aware conditional enqueue + outbox/retry/reconciliation/tombstone; independent review ditindaklanjuti.
+- [x] P0.5 authenticated Chromium E2E: `npm run test:e2e:browser` lulus pada 360×800 dan 1366×900 untuk role journey, auth/Finance recovery, conflict, focus/Escape, pending disabled, serta overflow. Temuan shell auth diperbaiki agar status error merender retry overlay.
+- [x] P0.5 final closure: 112/112 test, build, fresh+upgrade migration, local apply 0015–0016, Wrangler D1 critical flow/cleanup/FK, browser E2E, dan diff check lulus. Status canonical `Done`.
 - [x] Smoke media minimum via integration test:
   - `GET /api/admin/media` (list + query guard)
   - `GET /api/public/media/*` termasuk fallback legacy thumbnail
@@ -130,6 +173,7 @@ Catatan:
 
 - Smoke test pre-production difokuskan ke local candidate (test + build + integration) untuk mencegah false-positive dari domain yang belum aktif.
 - Post-deploy verification tetap wajib dilakukan di domain Pages aktif (`*.pages.dev`) setelah rilis.
+- Evidence lokal tidak membuktikan migration atau deployment remote sudah dilakukan.
 
 ## 7. Hotfix Manual via `fix.sql` (Role `bendahara`)
 
@@ -197,4 +241,4 @@ Sebelum push ke `main`, pastikan:
 - [ ] Pipeline GitHub Actions hijau: install, typecheck, migration apply, build, deploy.
 - [ ] Health check publik dan flow admin minimum lolos setelah deploy.
 
-Rate limiting login dan automated smoke test CI/CD dipindahkan ke fase Day-2 Operations setelah deploy awal.
+Post-deploy verification persistent limiter tetap wajib pada Pages aktif; implementasi limiter D1 lokal sudah menjadi baseline sejak P0.4.

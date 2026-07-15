@@ -7,6 +7,8 @@
  */
 import type { DashboardSummary } from "../../../services/admin/dashboardService";
 import {
+  buildDirectTransactionPayload,
+  buildProposalTransactionPayload,
   kasService,
   type KasFilters,
 } from "../../../services/admin/kasService";
@@ -17,16 +19,27 @@ import {
   filterTipe,
   formInput,
   formProposal,
+  hasLoadedData,
   hasLoadedMasterData,
   isLoading,
+  isLoadingData,
+  loadError,
   kasSummary,
   methods,
   openDropdown,
+  pendingMutationIds,
   sections,
   selectedMonth,
   selectedYear,
   transactions,
 } from "./useKasState";
+import { createIntentKeyStore, createLatestRequestGate } from "./requestState";
+
+const directIntentKeys = createIntentKeyStore();
+const proposalIntentKeys = createIntentKeyStore();
+const bundleGate = createLatestRequestGate();
+const transactionGate = createLatestRequestGate();
+const mutationKeys = new Map<string, string>();
 
 export const toggleDropdown = (name: string) => {
   openDropdown.value = openDropdown.value === name ? null : name;
@@ -66,13 +79,30 @@ const buildKasFilters = (): KasFilters => ({
 });
 
 export const loadTransactions = async () => {
-  transactions.value = await kasService.getTransactions({
-    month: selectedMonth.value,
-    year: selectedYear.value,
-    tipe: filterTipe.value !== "semua" ? filterTipe.value : undefined,
-    kategori_id:
-      filterKategori.value !== "semua" ? filterKategori.value : undefined,
-  });
+  const request = transactionGate.begin();
+  isLoadingData.value = true;
+  loadError.value = "";
+  try {
+    const result = await kasService.getTransactions({
+      month: selectedMonth.value,
+      year: selectedYear.value,
+      tipe: filterTipe.value !== "semua" ? filterTipe.value : undefined,
+      kategori_id:
+        filterKategori.value !== "semua" ? filterKategori.value : undefined,
+    });
+    if (transactionGate.isLatest(request)) {
+      transactions.value = result;
+      hasLoadedData.value = true;
+    }
+  } catch (error) {
+    if (transactionGate.isLatest(request)) {
+      loadError.value =
+        error instanceof Error ? error.message : "Gagal memuat transaksi.";
+    }
+    throw error;
+  } finally {
+    if (transactionGate.isLatest(request)) isLoadingData.value = false;
+  }
 };
 
 export const loadSummary = async () => {
@@ -82,24 +112,40 @@ export const loadSummary = async () => {
 };
 
 export const loadData = async () => {
-  isLoading.value = true;
+  const bundleRequest = bundleGate.begin();
+  const transactionRequest = transactionGate.begin();
+  isLoadingData.value = true;
+  loadError.value = "";
   try {
     await loadMasterData();
     const bundle = await kasService.getDashboardBundle(buildKasFilters());
-    transactions.value = bundle.transactions;
-    kasSummary.value = bundle.summary;
+    if (bundleGate.isLatest(bundleRequest)) {
+      kasSummary.value = bundle.summary;
+      hasLoadedData.value = true;
+      if (transactionGate.isLatest(transactionRequest)) {
+        transactions.value = bundle.transactions;
+      }
+    }
+  } catch (error) {
+    if (bundleGate.isLatest(bundleRequest)) {
+      loadError.value =
+        error instanceof Error ? error.message : "Gagal memuat data kas.";
+    }
+    throw error;
   } finally {
-    isLoading.value = false;
+    if (bundleGate.isLatest(bundleRequest)) isLoadingData.value = false;
   }
 };
 
 const resetFormInputAfterSubmit = () => {
+  directIntentKeys.clear();
   formInput.value.jumlah = "";
   formInput.value.keterangan = "";
   formInput.value.seksi_id = null;
 };
 
 const resetFormProposalAfterSubmit = () => {
+  proposalIntentKeys.clear();
   formProposal.value.jumlah = "";
   formProposal.value.keterangan = "";
   formProposal.value.seksi_id = null;
@@ -108,10 +154,14 @@ const resetFormProposalAfterSubmit = () => {
 export const handleDirectInput = async () => {
   isLoading.value = true;
   try {
-    await kasService.submitDirectTransactionFromForm(formInput.value);
+    const payload = buildDirectTransactionPayload(formInput.value);
+    await kasService.submitDirectTransaction(
+      payload,
+      directIntentKeys.forPayload(payload),
+    );
     resetFormInputAfterSubmit();
     activeTab.value = "laporan";
-    await loadData();
+    await loadData().catch(() => undefined);
   } finally {
     isLoading.value = false;
   }
@@ -120,10 +170,14 @@ export const handleDirectInput = async () => {
 export const handleProposal = async () => {
   isLoading.value = true;
   try {
-    await kasService.submitProposalFromForm(formProposal.value);
+    const payload = buildProposalTransactionPayload(formProposal.value);
+    await kasService.submitProposal(
+      payload,
+      proposalIntentKeys.forPayload(payload),
+    );
     resetFormProposalAfterSubmit();
     activeTab.value = "approval";
-    await loadData();
+    await loadData().catch(() => undefined);
   } finally {
     isLoading.value = false;
   }
@@ -132,14 +186,41 @@ export const handleProposal = async () => {
 export const handleAction = async (
   id: number,
   action: "approve" | "reject",
+  reason?: string,
 ) => {
-  await kasService.approveTransaction(id, action);
-  await loadData();
+  if (pendingMutationIds.value.has(id)) return false;
+  const intent = `${action}:${id}:${reason ?? ""}`;
+  const key = mutationKeys.get(intent) ?? crypto.randomUUID();
+  mutationKeys.set(intent, key);
+  pendingMutationIds.value = new Set(pendingMutationIds.value).add(id);
+  try {
+    await kasService.approveTransaction(id, action, reason, key);
+    mutationKeys.delete(intent);
+    await loadData().catch(() => undefined);
+    return true;
+  } finally {
+    const next = new Set(pendingMutationIds.value);
+    next.delete(id);
+    pendingMutationIds.value = next;
+  }
 };
 
-export const handleDelete = async (id: number) => {
-  await kasService.deleteTransaction(id);
-  await loadData();
+export const handleVoid = async (id: number, reason: string) => {
+  if (pendingMutationIds.value.has(id)) return false;
+  const intent = `void:${id}:${reason}`;
+  const key = mutationKeys.get(intent) ?? crypto.randomUUID();
+  mutationKeys.set(intent, key);
+  pendingMutationIds.value = new Set(pendingMutationIds.value).add(id);
+  try {
+    await kasService.voidTransaction(id, reason, key);
+    mutationKeys.delete(intent);
+    await loadData().catch(() => undefined);
+    return true;
+  } finally {
+    const next = new Set(pendingMutationIds.value);
+    next.delete(id);
+    pendingMutationIds.value = next;
+  }
 };
 
 export const resetKasSummary = () => {

@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 // 🟢 UPDATE: Import CheckCircle dan Zap dari lucide
-import { Trash2, Filter, ChevronDown, CheckCircle, Zap } from "lucide-vue-next";
+import { Filter, ChevronDown, CheckCircle, Zap } from "lucide-vue-next";
 import { useKas } from "../../../composables/admin/useKas";
-import { useAuthStore } from "../../../stores/authStore";
-import { toast } from "vue-sonner";
-import ConfirmModal from "../../ui/ConfirmModal.vue";
-import { canDelete } from "../../../utils/permissions";
+
 
 const {
   filteredLaporan,
@@ -14,7 +11,6 @@ const {
   filteredKeluar,
   formatRupiah,
   formatWaktuAudit,
-  handleDelete,
   selectedMonth,
   selectedYear,
   availableYears,
@@ -23,11 +19,7 @@ const {
   categories,
 } = useKas();
 
-const authStore = useAuthStore();
 
-const canDeleteTransaction = () => canDelete(authStore.user?.role);
-
-// --- STATE FILTER ---
 const months = [
   { value: 1, name: "Januari" },
   { value: 2, name: "Februari" },
@@ -50,41 +42,10 @@ const closeFilters = () => (openFilter.value = null);
 
 onMounted(() => document.addEventListener("click", closeFilters));
 onUnmounted(() => document.removeEventListener("click", closeFilters));
-
-// STATE & LOGIC UNTUK MODAL HAPUS
-const isDeleteModalOpen = ref(false);
-const selectedDeleteId = ref<number | null>(null);
-
-const openDeleteConfirm = (id: number) => {
-  selectedDeleteId.value = id;
-  isDeleteModalOpen.value = true;
-};
-
-const executeDelete = async () => {
-  if (!selectedDeleteId.value) return;
-
-  try {
-    isDeleteModalOpen.value = false;
-    await handleDelete(selectedDeleteId.value);
-    toast.success("Transaksi berhasil dihapus permanen!");
-  } catch (error: any) {
-    toast.error(error.message || "Gagal menghapus transaksi.");
-  }
-};
 </script>
 
 <template>
   <div class="space-y-6">
-    <ConfirmModal
-      :isOpen="isDeleteModalOpen"
-      @close="isDeleteModalOpen = false"
-      @confirm="executeDelete"
-      title="Hapus Transaksi?"
-      message="Data transaksi ini akan dihapus secara permanen dari buku kas dan tidak dapat dikembalikan. Lanjutkan?"
-      type="danger"
-      confirmText="Ya, Hapus Permanen"
-    />
-
     <div
       class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4"
     >
@@ -342,9 +303,7 @@ const executeDelete = async () => {
             <th class="py-3 px-4 text-right bg-rose-50/50 dark:bg-rose-900/10">
               Kredit (Keluar)
             </th>
-            <th v-if="canDeleteTransaction()" class="py-3 px-4 text-center">
-              Aksi
-            </th>
+
           </tr>
         </thead>
         <tbody
@@ -411,19 +370,10 @@ const executeDelete = async () => {
             >
               {{ trx.tipe === "pengeluaran" ? formatRupiah(trx.jumlah) : "-" }}
             </td>
-            <td v-if="canDeleteTransaction()" class="py-3 px-4 text-center">
-              <button
-                @click="openDeleteConfirm(trx.id)"
-                class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded transition-all opacity-50 group-hover:opacity-100"
-                title="Hapus"
-              >
-                <Trash2 :size="16" />
-              </button>
-            </td>
           </tr>
           <tr v-if="filteredLaporan.length === 0">
             <td
-              :colspan="canDeleteTransaction() ? 5 : 4"
+              colspan="4"
               class="py-12 text-center text-slate-400 text-sm italic"
             >
               Tidak ada data transaksi yang sesuai.

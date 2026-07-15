@@ -112,7 +112,7 @@ const createInMemoryEnv = () => {
   let autoId = 1;
   const rows = [];
   const objects = new Map();
-  const users = [{ id: 7, token_version: 0 }];
+  const users = [{ id: 7, token_version: 0, is_active: 1 }];
 
   const parseId = (value) => {
     const n = Number(value);
@@ -120,6 +120,9 @@ const createInMemoryEnv = () => {
   };
 
   const DB = {
+    async batch(statements) {
+      return Promise.all(statements.map((statement) => statement.run()));
+    },
     prepare(sql) {
       const normalized = sql.replace(/\s+/g, " ").trim();
 
@@ -127,9 +130,10 @@ const createInMemoryEnv = () => {
         bind(...values) {
           return {
             async first() {
+              if (normalized.includes("FROM media_references")) return { total: 0 };
               if (
                 normalized.includes(
-                  "SELECT id, token_version FROM users WHERE id = ?",
+                  "SELECT id, token_version, is_active FROM users WHERE id = ?",
                 )
               ) {
                 const userId = parseId(values[0]);
@@ -143,8 +147,8 @@ const createInMemoryEnv = () => {
               ) {
                 const category = values[0] ?? null;
                 const filtered = category
-                  ? rows.filter((r) => r.kategori_penggunaan === category)
-                  : rows;
+                  ? rows.filter((r) => r.status === "active" && r.kategori_penggunaan === category)
+                  : rows.filter((r) => r.status === "active");
                 return { total: filtered.length };
               }
 
@@ -173,6 +177,7 @@ const createInMemoryEnv = () => {
                 const [
                   file_url,
                   storage_key,
+                  thumb_storage_key,
                   kategori_penggunaan,
                   alt_text,
                   mime_type,
@@ -186,6 +191,7 @@ const createInMemoryEnv = () => {
                   id: autoId++,
                   file_url,
                   storage_key,
+                  thumb_storage_key,
                   kategori_penggunaan,
                   alt_text,
                   mime_type,
@@ -194,6 +200,7 @@ const createInMemoryEnv = () => {
                   height,
                   uploaded_by,
                   created_at: new Date().toISOString(),
+                  status: "active",
                 };
                 rows.push(inserted);
                 return inserted;
@@ -221,7 +228,7 @@ const createInMemoryEnv = () => {
               if (normalized.includes("FROM dokumentasi")) {
                 let filtered = [...rows];
 
-                if (normalized.includes("WHERE kategori_penggunaan = ?")) {
+                if (normalized.includes("kategori_penggunaan = ?")) {
                   const category = values[0];
                   const limit = Number(values[1]);
                   const offset = Number(values[2]);
@@ -242,6 +249,15 @@ const createInMemoryEnv = () => {
             },
 
             async run() {
+              if (normalized.includes("status = 'pending_delete'")) {
+                const id = parseId(values[0]);
+                const row = rows.find((r) => r.id === id && r.status === "active");
+                if (row) row.status = "pending_delete";
+                return { success: true, meta: { changes: row ? 1 : 0 } };
+              }
+              if (normalized.includes("INSERT INTO media_deletion_outbox")) {
+                return { success: true, meta: { changes: 1 } };
+              }
               if (normalized.startsWith("UPDATE dokumentasi SET")) {
                 const [alt_text, kategori_penggunaan, id] = values;
                 const parsedId = parseId(id);
@@ -279,11 +295,15 @@ const createInMemoryEnv = () => {
 
   const MEDIA_BUCKET = {
     async put(key, value, options = {}) {
-      objects.set(key, {
+      if (options.onlyIf?.etagDoesNotMatch === "*" && objects.has(key)) return null;
+      const stored = {
+        key,
         body: value,
         httpEtag: `etag-${key}`,
         httpMetadata: options.httpMetadata ?? {},
-      });
+      };
+      objects.set(key, stored);
+      return stored;
     },
     async get(key) {
       return objects.get(key) ?? null;
@@ -351,6 +371,10 @@ test("stage1 gate: media routes smoke/parity/rollback compatibility", async () =
   const uploadJson = await uploadRes.json();
   assert.equal(uploadJson.status, "success");
   assert.equal(uploadJson.data.storage_key, "media/2026/05/hero.webp");
+  assert.equal(
+    uploadJson.data.thumb_storage_key,
+    "media/2026/05/hero-thumb.webp",
+  );
 
   const listRes = await app.request(
     "http://localhost/api/admin/media?page=1&limit=12&kategori_penggunaan=galeri",
@@ -373,6 +397,10 @@ test("stage1 gate: media routes smoke/parity/rollback compatibility", async () =
 
   const createdItem = listJson.data.items[0];
   assert.equal(createdItem.storage_key, "media/2026/05/hero.webp");
+  assert.equal(
+    createdItem.thumb_storage_key,
+    "media/2026/05/hero-thumb.webp",
+  );
   assert.equal(createdItem.kategori_penggunaan, "galeri");
   assert.equal(createdItem.alt_text, "hero awal");
 
@@ -482,7 +510,7 @@ test("stage1 gate: media routes smoke/parity/rollback compatibility", async () =
     env,
     executionCtx,
   );
-  assert.equal(deleteRes.status, 200);
+  assert.equal(deleteRes.status, 202);
   assert.equal(deleteRes.headers.get("x-request-id"), "req-media-delete-1");
   const deleteJson = await deleteRes.json();
   assert.equal(deleteJson.status, "success");
@@ -498,7 +526,8 @@ test("stage1 gate: media routes smoke/parity/rollback compatibility", async () =
     env,
     executionCtx,
   );
-  assert.equal(publicAfterDeleteRes.status, 404);
+  // DELETE hanya enqueue; object tetap tersedia sampai processor outbox berjalan.
+  assert.equal(publicAfterDeleteRes.status, 200);
   assert.equal(
     publicAfterDeleteRes.headers.get("x-request-id"),
     "req-media-public-after-delete-1",

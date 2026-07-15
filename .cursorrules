@@ -5,14 +5,15 @@ ATURAN NAVIGASI, KONTEKS & OPTIMASI (TECH STACK: VUE + TAILWIND + HONO)
 Setiap awal sesi baru, WAJIB baca DUA file ini di root folder sebagai kompas utama:
 
 1. `SYSTEM_MAP.md` (Peta arsitektur dan lokasi fungsi).
-2. `optimalisasi_plan.md` (Daftar prioritas perbaikan dan technical debt).
+2. `.hermes.md` + `ROADMAP.md` (aturan dan prioritas aktif).
+3. Untuk UI/UX: `DESIGN.md` + `docs/UI_UX_REDESIGN_AUDIT.md`.
    Jangan pernah melakukan "blind scan".
 
 ## 2. CONTINUOUS OPTIMIZATION PROTOCOL (PERAN TECH LEAD)
 
-- Saat mengedit atau membuat fitur baru, cek apakah tugas tersebut berkaitan dengan list di `optimalisasi_plan.md`.
-- Jika Anda menyelesaikan sebuah masalah dari daftar optimasi, WAJIB coret/update status item tersebut di `optimalisasi_plan.md` pada sesi yang sama.
-- Jika Anda menemukan _code smell_, performa lambat (misal: re-render tidak perlu di Vue, N+1 query di Hono, atau class Tailwind yang redundan) saat mengerjakan tugas lain, catat temuan tersebut sebagai poin baru di `optimalisasi_plan.md`.
+- Saat mengedit atau membuat fitur baru, cek scope/status di `ROADMAP.md`.
+- Untuk UI, `DESIGN.md` adalah kontrak visual; jangan mengikuti legacy/V2 sebagai baseline.
+- Full redesign memakai Tailwind v4 + shadcn-vue/reka, emerald + restrained gold, mobile-first 360 dengan tablet/desktop lengkap. Jangan menambah V3, bridge visual, Headless UI usage baru, atau primitive duplikat.
 
 ## 3. TRACE-BY-FLOW & LAYER MAPPING
 
@@ -35,7 +36,7 @@ node_modules, .venv, venv, env, vendor, target, .gradle, bin, obj, pkg, .git, .v
 ## 6. HARD INSTRUCTION DOKUMENTASI & SINKRONISASI
 
 - **Header Doc:** Setiap file yang dibuat/diubah wajib punya header doc singkat di paling atas file (Tujuan, Caller, Dependensi, Main Functions, Side Effects).
-- **Sinkronisasi Otomatis:** Setiap perubahan logic WAJIB diikuti update Header Doc. Jika mengubah flow utama, WAJIB update `SYSTEM_MAP.md`. Jika memperbaiki isu performa, WAJIB update `optimalisasi_plan.md`.
+- **Sinkronisasi Otomatis:** Setiap perubahan logic WAJIB diikuti update Header Doc. Jika mengubah flow utama, update `SYSTEM_MAP.md`; jika mengubah scope/status, update `ROADMAP.md`; jika mengubah kontrak visual, update `DESIGN.md` terlebih dahulu.
 
 ## 7. STANDAR DATABASE & QUERY (SENIOR DBA LEVEL)
 

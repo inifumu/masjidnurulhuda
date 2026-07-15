@@ -3,13 +3,14 @@ import { verify } from "hono/jwt";
 import type { Context, Next } from "hono";
 import { getUserTokenVersionById } from "../db/queries/auth.ts";
 import { sendError } from "../utils/response.ts";
+import type { AdminRole } from "../../shared/contracts/index.ts";
 
 type AuthBindings = {
   DB: D1Database;
   JWT_SECRET?: string;
 };
 
-export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
+export type AuthRole = AdminRole;
 
 export type AuthJwtPayload = {
   sub?: number;
@@ -28,7 +29,7 @@ type AuthEnv = {
 
 export const requireAuth = async (c: Context<AuthEnv>, next: Next) => {
   const token = getCookie(c, "auth_token");
-  if (!token) return sendError(c, "Unauthorized", 401);
+  if (!token) return sendError(c, "Unauthorized", 401, undefined, "UNAUTHORIZED");
 
   try {
     const secret = c.env?.JWT_SECRET;
@@ -43,12 +44,12 @@ export const requireAuth = async (c: Context<AuthEnv>, next: Next) => {
           : null;
 
     if (!userId) {
-      return sendError(c, "Invalid token", 401);
+      return sendError(c, "Invalid token", 401, undefined, "UNAUTHORIZED");
     }
 
     const userVersion = await getUserTokenVersionById(c.env.DB, userId);
     if (!userVersion) {
-      return sendError(c, "Invalid token", 401);
+      return sendError(c, "Invalid token", 401, undefined, "UNAUTHORIZED");
     }
 
     const tokenVersion =
@@ -56,14 +57,14 @@ export const requireAuth = async (c: Context<AuthEnv>, next: Next) => {
         ? decoded.tv
         : 0;
 
-    if (tokenVersion !== userVersion.token_version) {
-      return sendError(c, "Sesi sudah tidak valid", 401);
+    if (userVersion.is_active !== 1 || tokenVersion !== userVersion.token_version) {
+      return sendError(c, "Sesi sudah tidak valid", 401, undefined, "UNAUTHORIZED");
     }
 
     c.set("jwtPayload", decoded);
     await next();
   } catch (err) {
-    return sendError(c, "Invalid token", 401);
+    return sendError(c, "Invalid token", 401, undefined, "UNAUTHORIZED");
   }
 };
 
@@ -76,6 +77,8 @@ export const requireRole = (allowedRoles: AuthRole[]) => {
         c,
         "Forbidden: Anda tidak memiliki hak akses untuk aksi ini.",
         403,
+        undefined,
+        "FORBIDDEN",
       );
     }
 

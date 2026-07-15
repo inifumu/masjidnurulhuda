@@ -1,9 +1,10 @@
 import { sign } from "hono/jwt";
-import { getUserByEmail } from "../db/queries/auth";
-import { hashPassword } from "../utils/crypto";
+import { getUserByEmail } from "../db/queries/auth.ts";
+import { hashPassword } from "../utils/crypto.ts";
+import type { AdminRole } from "../../shared/contracts/index.ts";
 
 // 🛡️ Buat Union Type yang ketat untuk Role
-export type AuthRole = "superadmin" | "ketua" | "bendahara" | "pengurus";
+export type AuthRole = AdminRole;
 
 // 🛡️ Tambahkan Interface DTO untuk hasil query Database
 export interface AuthUserRow {
@@ -13,6 +14,7 @@ export interface AuthUserRow {
   name: string;
   role: AuthRole;
   token_version?: number | null;
+  is_active?: number | null;
 }
 
 export const loginAdmin = async (
@@ -23,7 +25,7 @@ export const loginAdmin = async (
 ) => {
   // PERBAIKAN: Gunakan casting dengan interface AuthUserRow yang ketat
   const user = (await getUserByEmail(db, email)) as AuthUserRow | null;
-  if (!user) return null;
+  if (!user || user.is_active === 0) return null;
 
   // Cocokkan hash password input dengan yang ada di database
   const hashedInput = await hashPassword(password);

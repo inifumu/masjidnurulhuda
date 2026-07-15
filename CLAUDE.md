@@ -7,7 +7,8 @@
 ## Mandatory Context Check
 Sebelum analisis/edit/fitur baru:
 1. Baca `SYSTEM_MAP.md` jika ada.
-2. Baca `optimalisasi_plan.md` jika ada.
+2. Baca `.hermes.md` dan `ROADMAP.md` untuk prioritas aktif.
+3. Untuk UI/UX, baca `DESIGN.md` dan `docs/UI_UX_REDESIGN_AUDIT.md`.
 Jika tidak ada, lanjut dengan analisis minimal dan tandai `Not found`.
 
 ## Trace-by-Flow Workflow
@@ -42,11 +43,17 @@ Sebelum edit, tampilkan catatan singkat:
 - Hindari perubahan kosmetik massal.
 - Untuk perubahan kompleks, pecah logika ke composables/components/utils (Vue) atau handler/service/repository (Hono).
 
+## Full UI/UX Redesign Direction
+
+- Full redesign memakai `DESIGN.md`; legacy/V2 bukan visual baseline.
+- Pertahankan emerald brand dan restrained yellow-gold accent.
+- Gunakan Tailwind v4 + shadcn-vue/reka; jangan menambah Headless UI, V3, bridge visual, atau primitive duplikat.
+- Mulai dari 360 px dan validasi tablet+desktop; pertahankan seluruh behavior/RBAC/P0.5 gates.
+
 ## Documentation Sync
 Jika flow utama berubah:
 - Update `SYSTEM_MAP.md`.
-Jika optimasi selesai / temuan performa baru:
-- Update `optimalisasi_plan.md`.
+Jika scope/status improvement berubah, update `ROADMAP.md`. Jika kontrak visual berubah, update `DESIGN.md` sebelum implementasi menyimpang.
 
 ## DB & Query Standard
 Untuk perubahan DB-heavy:

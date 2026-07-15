@@ -26,39 +26,40 @@ Jangan menambah progress log kronologis panjang. Update hanya status, evidence u
 
 ## P0.0 Stabilization Baseline Working Tree
 
-**Status:** In Progress  
-**Dependency:** —  
+**Status:** Done
+**Dependency:** —
 **Tujuan:** mengubah snapshot UI V2 Claude yang belum tervalidasi menjadi baseline improvement yang dapat diaudit dan dikembangkan dengan aman.
 
-Ruang lingkup:
+Hasil:
 
-- simpan snapshot recovery pada branch `baseline/claude-v2-working-tree`;
-- kerjakan improvement pada branch `improve/project-foundation`;
-- inventaris route aktif, link mati, placeholder, bridge, dan file shadow;
-- klasifikasikan behavior sebagai implemented, implemented-unvalidated, atau planned;
-- verifikasi build/test dan pisahkan perubahan governance dari perubahan runtime;
-- audit drift schema/migration media, terutama `thumb_storage_key`.
+- snapshot recovery tersimpan pada branch `baseline/claude-v2-working-tree`, commit `b0137d1`;
+- improvement berjalan pada branch `improve/project-foundation`;
+- route aktif, link mati, placeholder, bridge, dan file shadow sudah diinventarisasi;
+- `/admin/artikel` serta aksi search/profile tanpa flow disembunyikan sampai implementasi nyata tersedia;
+- `PengaturanLegacyBridge` diklasifikasikan sebagai dependency aktif dan belum aman dihapus;
+- `KeuanganKasV2` diklasifikasikan sebagai shadow/dead candidate tanpa route aktif; cleanup ditunda sampai critical finance coverage dan parity memadai;
+- drift `thumb_storage_key` direkonsiliasi melalui migration additive `0009`, persistence query/service, dan regression test;
+- residu proposal `docs/chatgpt-proposal/` dihapus setelah bahan berguna diadopsi ke dokumen canonical;
+- kandidat ekspansi produk dipisahkan ke `docs/FEATURE_DEVELOPMENT_PLAN.md` agar tidak dianggap scope improvement aktif.
 
-Evidence awal:
+Evidence closure:
 
-- snapshot tersimpan pada commit `b0137d1`;
-- `npm run test` lulus 21/21 pada snapshot;
-- `npm run build` lulus pada snapshot;
-- route aktif menggunakan LoginV2, AdminLayoutV2, DashboardV2, FinanceV2, dan PengaturanV2;
-- `/admin/artikel` tersedia di navigasi tetapi belum memiliki route;
-- PengaturanV2 masih memakai legacy bridge; KeuanganKasV2 tidak memiliki route aktif.
+- migration `0009` berhasil diterapkan pada D1 lokal dan kolom `thumb_storage_key` terverifikasi;
+- Media Library kembali memuat daftar setelah restart server dan refresh, diverifikasi manual oleh pengguna;
+- `npm run test` lulus 22/22;
+- `npm run build` lulus termasuk `vue-tsc`;
+- test transaksi yang ada hanya mencakup helper validasi dan permission frontend, bukan integration flow/RBAC backend.
 
-Acceptance criteria:
+Keputusan gap:
 
-- dokumen aktif membedakan fakta current state dan target improvement;
-- tidak ada artefak identitas/runtime agent lokal dalam commit proyek;
-- gap route, schema, bridge, dan test memiliki keputusan eksplisit;
-- baseline build/test tetap hijau setelah governance migration.
+- critical integration coverage transaksi/proposal tidak disamarkan sebagai implemented;
+- full approval, reject, duplicate/concurrent mutation, backend role/data scoping, conflict, serta konsistensi list-summary menjadi scope wajib P0.5;
+- redesign besar dan modularisasi `FinanceV2` ditahan sampai coverage kritis tersebut tersedia.
 
 ## P0.1 Audit Trail dan Void/Reversal Transaksi
 
-**Status:** Not Started  
-**Dependency:** —  
+**Status:** Completed (2026-07-12)
+**Dependency:** —
 **Tujuan:** transaksi approved tidak dapat hilang tanpa jejak.
 
 Ruang lingkup:
@@ -69,6 +70,20 @@ Ruang lingkup:
 - kunci field finansial penting setelah approved;
 - tampilkan timeline pada detail transaksi.
 
+Evidence implementasi:
+
+- hard-delete transaksi ditutup; endpoint DELETE legacy mengembalikan 405;
+- approved dapat diubah menjadi void hanya oleh bendahara/superadmin dengan alasan 10-500 karakter;
+- conditional update dan insert audit void dijalankan dalam satu D1 batch;
+- record void tetap tampil sebagai histori tetapi tidak dihitung summary maupun total aktif;
+- migration `0010` lulus upgrade lokal dengan 7/7 row terjaga dan fresh apply 0001-0010 terisolasi;
+- event `created`, `submitted`, `approved_ketua`, `approved_bendahara`, `rejected`, dan `voided` ditulis atomic bersama mutasinya;
+- reject dan void mewajibkan alasan 10-500 karakter;
+- endpoint timeline tersedia; transaksi legacy tanpa event ditandai tanpa event rekayasa;
+- Finance UI menyediakan timeline, modal reason accessible, pending state, dan conflict refetch;
+- kontrak service mengunci field finansial setelah `approved` atau `void`;
+- route integration membuktikan RBAC, 400, 409, DELETE 405, dan persistence row/event.
+
 Acceptance criteria:
 
 - endpoint tidak dapat hard-delete transaksi approved;
@@ -78,8 +93,8 @@ Acceptance criteria:
 
 ## P0.2 Atomic Approval dan Idempotency
 
-**Status:** In Progress  
-**Dependency:** P0.1 dapat dikerjakan paralel dengan koordinasi schema  
+**Status:** Done (2026-07-13)
+**Dependency:** P0.1
 **Tujuan:** mencegah race condition dan transaksi ganda.
 
 Ruang lingkup:
@@ -96,10 +111,42 @@ Acceptance criteria:
 - duplicate submit tidak membuat data ganda;
 - stale state menghasilkan 409 dan UI pulih tanpa reload manual.
 
+Evidence implementasi:
+
+- direct create, proposal, approval ketua, approval bendahara, reject, dan void memakai registry idempotency claim-first dalam batch yang sama dengan conditional mutation dan audit event;
+- claim loser menghasilkan replay completed atau `409 Conflict` deterministik untuk processing, payload mismatch, stale status, maupun claim tanpa record;
+- frontend mempertahankan key per logical intent selama retry dan menonaktifkan aksi per-row selama mutasi;
+- concurrency regression membuktikan approve/approve dan approve/reject hanya menghasilkan satu final transition dan satu audit event;
+- migration additive `0011` dan `0012` berhasil apply lokal; jalur idempotent tidak memakai `last_insert_rowid()` lintas registry/audit;
+- canonical test dan production build lulus setelah implementasi.
+
+Evidence closure:
+
+- route integration membuktikan duplicate direct/proposal mereplay hasil dan hanya menyimpan satu transaksi/audit event; key sama dengan payload berbeda menghasilkan `409`;
+- authenticated browser smoke lokal dengan fixture role ketua membuktikan antrean dan aksi role-aware tampil, dialog dapat dibuka/ditutup via Escape, dan layout desktop tidak terpotong horizontal; fixture disposable dibersihkan dan count sisa `0`.
+
 ## P0.3 Shared Validation dan Typed API Contract
 
-**Status:** Not Started  
-**Dependency:** —
+**Status:** Done
+**Dependency:** P0.2
+**Rencana implementasi:** `.hermes/plans/2026-07-13_000000-p0.3-shared-validation-typed-contract.md`
+
+Evidence working tree terbaru:
+
+- shared dependency-neutral contracts sudah menjadi source type untuk role, category flow, transaction type/status/action, parser periode, DTO create, dan API error code/fields;
+- route finance mengembalikan contract exact untuk validation, idempotency required/conflict, stale state, serta auth/RBAC `401/403`;
+- dashboard/list memakai shared period parser dengan fallback query kosong tetap periode `Asia/Jakarta`;
+- deliberate enum drift probe terbukti gagal typecheck dan sudah dihapus kembali;
+- authenticated browser smoke FinanceV2 lulus pada viewport 360x800 dan desktop 1440x900: direct/proposal menampilkan field error inline, `aria-invalid`/`aria-describedby` terhubung, fokus berpindah ke field invalid pertama, dan document tidak overflow horizontal; tidak ada fixture transaksi P0.3 yang tersisa.
+
+Baseline audit:
+
+- role operasional masih didefinisikan di beberapa modul frontend/backend;
+- transaction type/status dan DTO request/list masih terpisah antara service frontend, route, dan domain service;
+- response error saat ini message-only dengan optional `errors`, belum memiliki stable `code` dan typed field map;
+- period/filter parsing diduplikasi di route transaksi dan dashboard;
+- active finance UI masih memiliki `catch(error: any)` dan boolean validation state yang belum dapat memetakan server field errors inline;
+- migrasi dilakukan vertical pada auth/finance critical path, bukan big-bang seluruh response call site.
 
 Ruang lingkup:
 
@@ -116,8 +163,21 @@ Acceptance criteria:
 
 ## P0.4 Security Hardening
 
-**Status:** Not Started  
-**Dependency:** P0.3 direkomendasikan
+**Status:** Done (2026-07-13)
+**Dependency:** P0.3 Done
+**Rencana implementasi:** `.hermes/plans/2026-07-13_000001-p0.4-security-hardening.md`
+
+Evidence closure:
+
+- seluruh method unsafe `/api/admin/*`, termasuk login, wajib exact same-origin; Origin kosong/malformed/cross-origin ditolak `403 FORBIDDEN`;
+- security headers global mencakup CSP/frame protection, nosniff, referrer policy, permissions policy, dan HSTS khusus HTTPS;
+- login limiter memakai atomic D1 UPSERT lintas isolate dengan key SHA-256 IP+email, kontrak `429 RATE_LIMITED`, dan `Retry-After`;
+- migration additive `0013` menambah `users.is_active`, `login_rate_limits`, dan `security_audit_events` tanpa mengubah migration lama;
+- account-management hanya untuk `superadmin`; disable/enable menggantikan hard delete akun; role/password/status membump `token_version`;
+- self-lockout dan last-active-superadmin guard menghasilkan `409 Conflict`;
+- create/update/password/disable/enable serta login success/failure/rate-limited memiliki audit event tanpa data sensitif;
+- fresh apply `0001`–`0013` pada state Wrangler terisolasi dan upgrade apply D1 lokal existing lulus; foreign-key check bersih;
+- negative security/account tests, canonical test, production build, dan `git diff --check` lulus pada closure.
 
 Ruang lingkup:
 
@@ -138,26 +198,50 @@ Acceptance criteria:
 
 ## P0.5 Integration dan E2E Critical Flow
 
-**Status:** Not Started  
-**Dependency:** P0.1–P0.4 bertahap
+**Status:** Done
+**Dependency:** P0.1–P0.4 Done; menjadi gate sebelum redesign besar atau modularisasi `FinanceV2`
+**Rencana implementasi:** `.hermes/plans/2026-07-13_000002-p0.5-critical-flow-integration-e2e.md`
+
+Baseline audit setelah P0.4:
+
+- route integration parsial sudah tersedia untuk create direct/proposal idempotent, void, media, auth/RBAC, account lifecycle, dan concurrency service;
+- gap utama tersisa adalah satu harness critical flow berurutan dari proposal pengurus sampai approved/list/summary, reject tiap tahap, ownership scoping lintas user, period boundary, dan login route persistence;
+- P0.5 mengonsolidasikan evidence tersebut menjadi gate end-to-end dengan state persistence bersama, bukan mengulang unit test yang sudah ada.
+
+Evidence berjalan:
+
+- auth route integration membuktikan login valid/invalid/rate-limited, disabled account, dan token-version mismatch;
+- Wrangler local D1 disposable membuktikan proposal `pengurus → ketua → bendahara → approved`, negative approve pengurus, list/summary periode, tiga audit event, registry idempotency completed, dan FK bersih;
+- probe fresh schema menemukan role constraint legacy; migration additive `0014` menambahkan `operational_role` dan lulus fresh/upgrade tanpa rebuild parent users;
+- claim-first create diperbaiki agar FK `transaction_id` baru diisi saat finalize setelah row transaksi dibuat.
+- audit lanjutan memperbaiki bypass direct-create pengurus, timeline privat lintas owner, collision upload R2, dan recovery-admin TOCTOU;
+- migration `0016` + `npm run test:migrations` lulus fresh `0001`–`0016`, upgrade `0015→0016`, preservasi bendahara, backfill lifecycle media `active`, ledger 16, dan FK check;
+- `npm run test:critical-flow:d1` lulus pada Wrangler D1 disposable: concurrent approval `1×200 + 1×409`, reject dua tahap, role matrix, ownership dua pengurus, boundary/list/admin-public summary consistency, cleanup seluruh fixture `0`, dan FK bersih;
+- auth bootstrap membedakan 401 dari network/5xx, menyediakan retry, dan tahan response out-of-order; Finance memiliki loading/error/retry, request sequencing, payload-bound idempotency, pending modal, best-effort refresh, dan mobile cards;
+- media deletion memakai lifecycle additive `active→pending_delete→deleted|delete_failed`, reference registry, conditional enqueue D1, durable outbox, retry/reconciliation, dan tombstone;
+- authenticated Chromium E2E lulus pada 360×800 dan 1366×900 untuk journey pengurus→ketua→bendahara, auth/Finance recovery, conflict, focus/Escape, pending disabled, dan horizontal overflow; browser menemukan dan memverifikasi fix shell auth agar status error merender retry overlay;
+- final closure gates lulus: `npm run test` 112/112, `npm run build`, `npm run test:migrations`, `npm run db:apply:local`, `npm run test:critical-flow:d1`, `npm run test:e2e:browser`, dan `git diff --check`.
 
 Skenario wajib:
 
 - login valid/invalid;
 - token version mismatch;
-- pengurus membuat proposal;
-- ketua approve;
-- bendahara approve;
-- reject pada tiap tahap;
-- duplicate/concurrent approval;
-- role/data scoping;
-- summary hanya menghitung data sesuai policy;
-- media upload failure cleanup.
+- pengurus membuat proposal dan server memaksa status `pending_ketua`;
+- ketua approve menjadi `pending_bendahara`;
+- bendahara approve menjadi `approved`, lalu transaksi muncul pada list dan summary periode yang benar;
+- reject pada tiap tahap dengan alasan wajib;
+- duplicate submit dan concurrent/stale approval hanya menghasilkan satu transisi, dengan conflict contract yang benar;
+- positive dan negative backend role matrix;
+- ownership/data scoping pengurus lintas user;
+- summary admin/publik hanya menghitung data sesuai policy dan period boundary;
+- media upload failure cleanup;
+- migration fresh apply dan upgrade apply untuk schema yang disentuh.
 
 Acceptance criteria:
 
 - pull request gagal saat critical flow rusak;
 - bug finansial memiliki regression test;
+- test membuktikan response status/error contract, perubahan state, dan hasil persistence;
 - migration test tersedia untuk fresh dan upgrade database.
 
 # P1 — Reliability dan Maintainability
@@ -341,20 +425,25 @@ Acceptance criteria:
 - role/status memiliki satu sumber dokumentasi utama;
 - histori tidak memenuhi dokumen instruksi aktif.
 
-# UI/UX Redesign Workstream
+# Full UI/UX Redesign Workstream
 
-Workstream ini berjalan setelah atau bersamaan dengan P0/P1 selama tidak menghambat security dan correctness.
+**Priority override:** full redesign dikerjakan setelah P0.5 `Done` dan sebelum mayoritas P1–P2. P1.3 legacy cleanup terserap pada closure redesign. Item reliability atau release safety hanya didahulukan jika menjadi blocker nyata.
 
-## Design principles
+Source visual canonical: `DESIGN.md`. Audit dependency, route, primitive, legacy/V2 overlap, migration sequence, dan anti-drift rules: `docs/UI_UX_REDESIGN_AUDIT.md`.
 
-- clean dan profesional;
-- mobile-first 360 px;
-- satu primary action per screen;
-- progressive disclosure;
-- role-aware navigation;
-- consistent design token;
-- accessible by default;
-- glassmorphism/bento hanya kontekstual.
+Redesign mengganti menyeluruh public site dan admin panel dengan visual language baru. Ini bukan penyempurnaan V2 atau reskin legacy. Behavior, API, RBAC, audit, idempotency, state machine, migration, dan P0.5 evidence tetap menjadi regression contract.
+
+## Design direction
+
+**Nurul Huda Civic Editorial:** warm modern minimalism + editorial public experience + institutional admin UI.
+
+- emerald sebagai identitas utama;
+- yellow-gold sebagai accent terbatas;
+- mobile-first 360 px dengan tablet dan desktop yang dirancang penuh;
+- public content-first, fotografis, dan nyaman dibaca;
+- admin task-oriented, presisi, dan accessible;
+- shadcn-vue/reka menjadi primitive canonical;
+- glassmorphism, glow, blur orb, gradient dekoratif, dan card-heavy layout bukan default.
 
 ## Information architecture admin target
 
@@ -364,8 +453,10 @@ Keuangan
   Transaksi
   Proposal
   Persetujuan
-Konten
+  Riwayat audit
+Publikasi
   Kabar
+  Kegiatan
   Galeri
   Media
 Organisasi
@@ -377,97 +468,109 @@ Sistem
   Audit Aktivitas
 ```
 
-Gunakan route nyata per workflow, bukan satu halaman tab yang terlalu besar, bila perubahan route dapat dilakukan aman.
+Gunakan route nyata per workflow ketika contract siap end-to-end. Jangan membuat placeholder route yang terlihat operasional.
 
-## Phase UI-0 — Audit
+## Phase R0 — Audit dan Governance
 
-**Status:** In Progress
+**Status:** Done
 
-- inventory halaman, role, task, dan komponen;
-- screenshot baseline;
-- terminology audit;
-- critical user journey;
-- mobile issue inventory.
+- dependency/framework adoption matrix;
+- inventory route aktif, primitive, legacy/V2 overlap;
+- design direction dan token contract;
+- responsive/state/accessibility contract;
+- migration sequence dan anti-drift rules;
+- output: `DESIGN.md` dan `docs/UI_UX_REDESIGN_AUDIT.md`.
 
-## Phase UI-1 — Design Foundation
+Residual baseline visual seperti screenshot inventory dilaksanakan saat memulai R1 agar menggunakan browser state aktual.
 
-**Status:** In Progress
-
-- token warna, typography, spacing, radius, shadow;
-- component states;
-- Button, FormField, CurrencyInput, Select, Dialog, Drawer, Badge, Skeleton, EmptyState, ErrorState, Timeline, DataList/Table;
-- accessibility contract.
-
-## Phase UI-2 — App Shell
+## Phase R1 — Design Foundation dan Component Lab
 
 **Status:** In Progress
 
-- responsive admin navigation;
-- role-aware menu;
-- header/breadcrumb;
-- mobile drawer or bottom navigation;
-- public navbar/footer.
+- implementasikan token `DESIGN.md` ke Tailwind v4/CSS variables;
+- konsolidasikan Inter Variable dan hapus font drift;
+- canonical Button, FormField, CurrencyInput, Select/Combobox, DatePicker, Dialog/AlertDialog, Drawer/Sheet, Badge/Status, PageHeader, Metric, DataTable/MobileDataCard, Timeline, dan data states;
+- migrasikan pola Headless UI ke reka; jangan menambah usage baru;
+- component lab + WCAG/keyboard/responsive verification.
 
-Current state: `AdminLayoutV2` dan `LoginV2` sudah aktif di working tree, tetapi shell masih memiliki link `/admin/artikel` tanpa route serta beberapa aksi placeholder. Redesign visual V2 bukan keputusan final dan perlu audit browser/mobile.
+Evidence awal:
 
-## Phase UI-3 — Financial Critical Screens
+- token runtime Civic Editorial dan Inter Variable canonical sudah diterapkan pada `src/assets/main.css`;
+- Button/Input canonical memakai touch target default 44 px dan semantic emerald/gold variants;
+- component lab development-only tersedia di `/_design-system` tanpa auth bootstrap atau production route;
+- automated browser verification lulus pada 360×800, 768×1024, dan 1366×900: tanpa horizontal overflow, button/input ≥44 px, tanpa Google Fonts, dan console bersih;
+- R1 tetap `In Progress` sampai primitive/state contract lengkap dan Headless UI migration selesai.
 
-**Status:** In Progress
-
-Urutan:
-
-1. Transaction list/detail;
-2. Proposal create/detail;
-3. Approval review/timeline;
-4. Dashboard;
-5. Audit history.
-
-Acceptance criteria:
-
-- usable pada 360 px;
-- table menjadi mobile cards;
-- approval memiliki review page, reason, dan conflict handling;
-- semua state UI tersedia;
-- tidak bergantung pada legacy bridge.
-
-Current state: `DashboardV2` sudah native dan aktif; `FinanceV2` aktif tetapi monolitik (756 baris); correctness dan regression coverage harus dijaga saat modularisasi.
-
-## Phase UI-4 — Content and Settings
-
-**Status:** In Progress
-
-- media library;
-- galeri;
-- kabar;
-- kritik/saran;
-- settings/account/access.
-
-Current state: `MediaLibrary.vue` sudah aktif, `GaleriDokumentasi.vue` masih placeholder, dan `PengaturanV2.vue` masih membungkus `PengaturanLegacyBridge.vue`.
-
-## Phase UI-5 — Quality Gate and Cleanup
+## Phase R2 — Public Publication Experience
 
 **Status:** Not Started
 
-- accessibility audit;
-- performance audit;
-- cross-browser;
-- E2E;
-- visual regression;
-- legacy cleanup;
-- component documentation.
+- public navbar/footer dan mobile navigation;
+- homepage editorial;
+- jadwal salat, transparansi kas, featured publication, kegiatan, galeri, contact;
+- article/documentation reading pattern;
+- loading/fallback/error/offline behavior.
+
+## Phase R3 — Admin Shell dan Authentication
+
+**Status:** Not Started
+
+- admin navigation berdasarkan IA dan role;
+- mobile drawer, tablet rail, desktop sidebar;
+- header/breadcrumb/user actions;
+- login, auth loading, operational error, retry, dan permission state;
+- replacement route canonical tanpa membuat V3.
+
+## Phase R4 — Financial Workflows
+
+**Status:** Not Started
+
+Urutan:
+
+1. transaction list/detail;
+2. proposal create/detail;
+3. approval review/timeline;
+4. dashboard;
+5. audit history.
+
+Acceptance criteria:
+
+- usable pada 360, tablet, dan desktop;
+- mobile memakai structured cards/list, bukan table scroll sebagai solusi utama;
+- approval memiliki review experience, reason, pending, conflict, dan timeline;
+- seluruh state contract tersedia;
+- `FinanceV2.vue` dipecah berdasarkan workflow tanpa menduplikasi business logic;
+- P0.5 browser dan real-D1 regression tetap lulus.
+
+## Phase R5 — Publication, Media, Organization, Settings
+
+**Status:** Not Started
+
+- media, galeri, kabar, kegiatan, dan kritik/saran;
+- kategori, seksi, pengurus;
+- akun/access dan security-sensitive review flow;
+- hapus `PengaturanLegacyBridge` hanya setelah parity.
+
+## Phase R6 — Convergence dan Quality Gate
+
+**Status:** Not Started
+
+- accessibility, keyboard, reduced-motion, responsive, performance, dan cross-browser audit;
+- visual regression dan role browser E2E;
+- hapus V2/legacy/bridge/dependency/style yang tidak dipakai;
+- rename canonical tanpa version suffix;
+- component documentation;
+- final gate dan closure P1.3 legacy cleanup.
 
 # Recommended Execution Order
 
-1. P0.0 Stabilization baseline.
-2. P0.1 Audit trail/void.
-3. P0.2 Atomic approval/idempotency.
-4. P0.3 Shared contracts.
-5. P0.4 Security hardening.
-6. P0.5 Critical tests.
-7. P1.1 Observability.
-8. P1.4 Release safety.
-9. UI-0 dan UI-1.
-10. UI-2 dan UI-3.
-11. P1.3 Legacy cleanup.
-12. P1.5 Media lifecycle.
-13. P2 public modules, accessibility, SEO, dan optimization.
+1. P0.0–P0.5 tetap `Done` sebagai safety baseline.
+2. R0 Audit/Governance `Done`.
+3. R1 Design Foundation dan Component Lab.
+4. R2 Public Publication Experience.
+5. R3 Admin Shell dan Authentication.
+6. R4 Financial Workflows.
+7. R5 Publication/Media/Organization/Settings.
+8. R6 Convergence, quality gate, dan P1.3 closure.
+9. Lanjutkan P1 reliability/maintainability residual.
+10. Lanjutkan P2 product, accessibility/SEO/privacy, dan performance.

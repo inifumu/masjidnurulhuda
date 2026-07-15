@@ -100,7 +100,7 @@ export const deleteItem = async (id: number) => {
   try {
     await pengaturanService.deleteByTab(activeTab.value, id);
     await loadData();
-    toast.success("Data berhasil dihapus!");
+    toast.success(activeTab.value === "akun" ? "Akun berhasil dinonaktifkan!" : "Data berhasil dihapus!");
   } catch (error: unknown) {
     toast.error(getErrorMessage(error));
   } finally {

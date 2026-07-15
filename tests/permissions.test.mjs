@@ -9,19 +9,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  canDelete,
+  canVoid,
   canApprove,
   canAccessKasInput,
   canViewProposalTab,
 } from "../src/utils/permissions.ts";
 
-test("matrix canDelete: superadmin/ketua/bendahara boleh, pengurus tidak", () => {
-  assert.equal(canDelete("superadmin"), true);
-  assert.equal(canDelete("ketua"), true);
-  assert.equal(canDelete("bendahara"), true);
-  assert.equal(canDelete("pengurus"), false);
-  assert.equal(canDelete("unknown"), false);
-  assert.equal(canDelete(undefined), false);
+test("matrix canVoid: hanya superadmin/bendahara boleh", () => {
+  assert.equal(canVoid("superadmin"), true);
+  assert.equal(canVoid("ketua"), false);
+  assert.equal(canVoid("bendahara"), true);
+  assert.equal(canVoid("pengurus"), false);
+  assert.equal(canVoid("unknown"), false);
+  assert.equal(canVoid(undefined), false);
 });
 
 test("matrix canApprove: superadmin/ketua/bendahara boleh, pengurus tidak", () => {

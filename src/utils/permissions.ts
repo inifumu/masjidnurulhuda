@@ -6,7 +6,9 @@
  * Side Effects: Tidak ada.
  */
 
-const DELETE_ALLOWED_ROLES = ["superadmin", "ketua", "bendahara"] as const;
+import type { AdminRole } from "../../shared/contracts";
+
+const VOID_ALLOWED_ROLES = ["superadmin", "bendahara"] as const satisfies readonly AdminRole[];
 const APPROVE_ALLOWED_ROLES = ["superadmin", "ketua", "bendahara"] as const;
 const KAS_INPUT_ALLOWED_ROLES = ["superadmin", "ketua", "bendahara"] as const;
 const PROPOSAL_TAB_ALLOWED_ROLES = [
@@ -14,20 +16,18 @@ const PROPOSAL_TAB_ALLOWED_ROLES = [
   "ketua",
   "bendahara",
   "pengurus",
-] as const;
-
-export type AdminRole = (typeof PROPOSAL_TAB_ALLOWED_ROLES)[number];
+] as const satisfies readonly AdminRole[];
 
 const hasRole = (
   role: string | null | undefined,
-  allowedRoles: readonly string[],
+  allowedRoles: readonly AdminRole[],
 ) => {
   if (!role) return false;
-  return allowedRoles.includes(role);
+  return allowedRoles.some((allowedRole) => allowedRole === role);
 };
 
-export const canDelete = (role: string | null | undefined) =>
-  hasRole(role, DELETE_ALLOWED_ROLES);
+export const canVoid = (role: string | null | undefined) =>
+  hasRole(role, VOID_ALLOWED_ROLES);
 
 export const canApprove = (role: string | null | undefined) =>
   hasRole(role, APPROVE_ALLOWED_ROLES);

@@ -5,6 +5,7 @@
  * Main Functions: `httpClient<T>()`, `ApiError`.
  * Side Effects: Mengirim request jaringan dengan `credentials: include` dan melempar error terstandar.
  */
+import { parseApiErrorBody, type ApiErrorCode, type FieldErrorMap } from "../../shared/contracts/index";
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
@@ -14,11 +15,15 @@ interface FetchOptions extends RequestInit {
 // Custom Error Class untuk menangkap status HTTP
 export class ApiError extends Error {
   status: number;
+  code: ApiErrorCode;
+  fields: FieldErrorMap;
   data: unknown;
 
-  constructor(status: number, message: string, data?: unknown) {
+  constructor(status: number, message: string, data?: unknown, code: ApiErrorCode = "INTERNAL_ERROR", fields: FieldErrorMap = {}) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.fields = fields;
     this.data = data;
   }
 }
@@ -62,9 +67,14 @@ export const httpClient = async <T = unknown>(
 
     // Jika HTTP status bukan 2xx (misal: 400 Bad Request, 401 Unauthorized)
     if (!response.ok) {
-      const errorMessage =
-        data?.message || response.statusText || "Terjadi kesalahan pada server";
-      throw new ApiError(response.status, errorMessage, data);
+      const errorBody = parseApiErrorBody(data);
+      throw new ApiError(
+        response.status,
+        errorBody.message || response.statusText,
+        data,
+        errorBody.error.code,
+        errorBody.error.fields,
+      );
     }
 
     return data as T;

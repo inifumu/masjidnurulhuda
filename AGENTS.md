@@ -12,7 +12,9 @@ Hermes Agent menggunakan `.hermes.md` sebagai project context utama. File ini ad
 3. Source code, migration, konfigurasi runtime, dan automated test sebagai fakta behavior operasional.
 4. `SYSTEM_MAP.md` sebagai peta yang harus diverifikasi terhadap source.
 5. `ROADMAP.md` sebagai backlog improvement aktif.
-6. `docs/archive/` hanya sebagai histori.
+6. `DESIGN.md` sebagai kontrak visual untuk perubahan UI/UX.
+7. `docs/UI_UX_REDESIGN_AUDIT.md` sebagai audit/adoption/migration redesign.
+8. `docs/archive/` hanya sebagai histori.
 
 `optimalisasi_plan.md` telah deprecated. Jangan gunakan sebagai roadmap atau gate aktif.
 
@@ -43,29 +45,28 @@ Jangan melakukan blind scan. Abaikan `node_modules`, `.git`, `dist`, `build`, `c
 - Jangan commit/push kecuali diminta atau telah disepakati sebagai bagian workflow.
 - Jangan menyatakan selesai tanpa menjalankan validasi relevan: typecheck/build, test, integration/security negative path, migration check, atau responsive/accessibility check sesuai scope.
 
-## Domain kritis dan known gaps
+## Domain kritis dan baseline
 
-Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau lifecycle media. Target berikut ada di `ROADMAP.md` dan belum boleh dianggap selesai tanpa evidence:
+Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau lifecycle media. Baseline P0.5 yang sudah memiliki evidence dan harus dipertahankan: audit/void transaksi, atomic idempotency, shared typed contracts, exact same-origin/security headers, persistent D1 login limiter, account lifecycle/revocation/recovery guards, safe media lifecycle, real-D1 critical flow, dan authenticated browser E2E 360+desktop.
 
-- audit trail serta void/reversal transaksi approved;
-- affected-row conflict handling dan idempotency;
-- shared typed validation/contracts;
-- CSRF/origin protection dan persistent login rate limit;
-- safe referenced-media deletion dan rekonsiliasi D1–R2;
-- critical-flow integration/E2E tests.
+## Full UI/UX redesign
 
-## UI migration
-
-- UI V2 pada working tree adalah bahan improvement, bukan desain final yang wajib dipertahankan.
-- Pertahankan behavior dan contract yang terbukti benar saat redesain.
-- `DashboardV2` aktif dan native; `FinanceV2` aktif tetapi monolitik; `PengaturanV2` masih memakai legacy bridge; `KeuanganKasV2` tidak memiliki route aktif.
-- Jangan cleanup/rename canonical sebelum parity, test, build, dan smoke flow lulus.
-- Desain harus clean, profesional, mobile-first 360 px, accessible, role-aware, dan memiliki loading/empty/error/submitting/conflict/permission state sesuai kebutuhan.
+- Arah final adalah `DESIGN.md`: Nurul Huda Civic Editorial, warm modern minimalism, editorial public experience, institutional admin UI, emerald identity, dan restrained yellow-gold accent.
+- Ini full product redesign, bukan cleanup/reskin V2. Legacy dan V2 hanya referensi behavior; jangan dijadikan baseline visual.
+- Gunakan Tailwind v4 + CSS variables + shadcn-vue/reka sebagai primitive canonical. Lucide, vue-sonner, VeeValidate+Zod, Pinia, dan Inter Variable tetap digunakan sesuai audit.
+- Jangan menambah penggunaan Headless UI baru; migrasikan usage existing ke reka sebelum dependency removal.
+- Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view.
+- Mobile 360 adalah baseline; tablet dan desktop wajib dirancang, bukan sekadar hasil stretch.
+- Semua screen wajib memiliki state dan keyboard/accessibility evidence sesuai flow.
+- `docs/UI_UX_REDESIGN_AUDIT.md` memuat inventory, adoption matrix, urutan migrasi, dan anti-drift rules.
+- Jangan cleanup/rename canonical sebelum caller audit, parity, test, build, dan browser flow lulus.
 
 ## Dokumentasi
 
 - Update `SYSTEM_MAP.md` jika route, flow, state machine, schema, atau ownership modul berubah.
 - Update `ROADMAP.md` jika status, dependency, scope, atau acceptance criteria berubah.
+- Update `RUNBOOK.md` jika migration, deployment, backup/restore, secret, atau incident procedure berubah.
+- Update `README.md` jika onboarding, command canonical, prerequisite, atau indeks dokumentasi aktif berubah.
 - Jangan menulis progress log kosmetik panjang di dokumen aktif.
 - Gunakan `docs/AI_AGENT_PLAYBOOK.md` untuk prosedur rinci.
 

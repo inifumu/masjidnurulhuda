@@ -35,3 +35,10 @@ export function parseFiniteAmount(value: unknown): number | null {
 
   return nominal;
 }
+
+export function parseVoidReason(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const reason = value.trim();
+  if (reason.length < 10 || reason.length > 500) return null;
+  return reason;
+}

@@ -6,19 +6,23 @@
   Side Effects: load data kas saat mount, listener klik global untuk close dropdown, mutasi data via API kas.
 -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import {
   FileText, ShieldCheck, Plus, ClipboardList, Wallet,
-  Trash2, Filter, CheckCircle, Zap,
+  Filter, CheckCircle, Zap,
   Clock, Ban, XCircle, ArrowUpRight, ArrowDownRight, Save,
 } from "lucide-vue-next";
 import { useKas } from "../../composables/admin/useKas";
 import { useAuthStore } from "../../stores/authStore";
-import { canAccessKasInput, canViewProposalTab, canDelete } from "../../utils/permissions";
+import { canAccessKasInput, canViewProposalTab, canVoid } from "../../utils/permissions";
 import { toast } from "vue-sonner";
 import ConfirmModal from "../../components/ui/ConfirmModal.vue";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import DatePicker from "../../components/ui/datepicker/DatePicker.vue";
+import TransactionAuditDialog from "../../components/admin/kas/TransactionAuditDialog.vue";
+import { kasService, type TransactionAuditTimeline } from "../../services/admin/kasService";
+import { ApiError } from "../../services/httpClient";
+import { getErrorMessage, type FieldErrorMap } from "../../../shared/contracts/index";
 
 const {
   activeTab,
@@ -35,7 +39,7 @@ const {
   filteredLaporan,
   filteredMasuk,
   filteredKeluar,
-  handleDelete,
+  handleVoid,
   selectedMonth,
   selectedYear,
   availableYears,
@@ -47,6 +51,10 @@ const {
   filteredCategoriesInput,
   sections,
   isLoading,
+  isLoadingData,
+  loadError,
+  hasLoadedData,
+  pendingMutationIds,
   handleDirectInput,
   formatInputRupiah,
   parseInputRupiah,
@@ -73,28 +81,63 @@ const resetFilters = () => {
   filterKategori.value = 'semua';
 };
 
-const isDeleteModalOpen = ref(false);
-const selectedDeleteId = ref<number | null>(null);
-const canDeleteTransaction = () => canDelete(authStore.user?.role);
-
-const openDeleteConfirm = (id: number) => {
-  selectedDeleteId.value = id;
-  isDeleteModalOpen.value = true;
+const isVoidModalOpen = ref(false);
+const selectedVoidId = ref<number | null>(null);
+const voidReason = ref("");
+const mutationPending = ref(false);
+const auditMode = ref<"void" | "reject" | "timeline">("void");
+const timeline = ref<TransactionAuditTimeline | null>(null);
+const timelineError = ref("");
+const auditTriggerSelector = ref("");
+const canVoidTransaction = () => canVoid(authStore.user?.role);
+const bestEffortReload = async () => {
+  try { await loadData(); } catch { /* state error ditangani composable */ }
 };
-const executeDelete = async () => {
-  if (!selectedDeleteId.value) return;
+
+const closeAuditDialog = () => {
+  isVoidModalOpen.value = false;
+  requestAnimationFrame(() => document.querySelector<HTMLElement>(auditTriggerSelector.value)?.focus());
+};
+
+const openVoidConfirm = (id: number) => {
+  auditTriggerSelector.value = `[data-audit-trigger="void-${id}"]`;
+  selectedVoidId.value = id;
+  voidReason.value = "";
+  auditMode.value = "void";
+  isVoidModalOpen.value = true;
+};
+const executeVoid = async () => {
+  const reason = voidReason.value.trim();
+  if (!selectedVoidId.value || reason.length < 10 || reason.length > 500) {
+    return toast.error("Alasan pembatalan wajib 10-500 karakter.");
+  }
   try {
-    isDeleteModalOpen.value = false;
-    await handleDelete(selectedDeleteId.value);
-    toast.success("Transaksi berhasil dihapus permanen!");
-  } catch (error: any) {
-    toast.error(error.message || "Gagal menghapus transaksi.");
+    mutationPending.value = true;
+    await handleVoid(selectedVoidId.value, reason);
+    isVoidModalOpen.value = false;
+    toast.success("Transaksi berhasil dibatalkan dan tetap tersimpan di histori.");
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error, "Gagal membatalkan transaksi."));
+    if (error instanceof ApiError && error.status === 409) await bestEffortReload();
+  } finally {
+    mutationPending.value = false;
   }
 };
 
+const openTimeline = async (id: number) => {
+  auditTriggerSelector.value = `[data-audit-trigger="timeline-${id}"]`;
+  selectedVoidId.value = id;
+  auditMode.value = "timeline";
+  timeline.value = null;
+  timelineError.value = "";
+  isVoidModalOpen.value = true;
+  try { timeline.value = await kasService.getTransactionTimeline(id); }
+  catch (error) { timelineError.value = error instanceof Error ? error.message : "Gagal memuat riwayat."; }
+};
+
 // --- STATE: APPROVAL ---
-const listKetua = computed(() => pendingTransactions.value.filter((t: any) => t.status === "pending_ketua"));
-const listBendahara = computed(() => pendingTransactions.value.filter((t: any) => t.status === "pending_bendahara"));
+const listKetua = computed(() => pendingTransactions.value.filter((t) => t.status === "pending_ketua"));
+const listBendahara = computed(() => pendingTransactions.value.filter((t) => t.status === "pending_bendahara"));
 const listRejected = computed(() => rejectedTransactions.value);
 
 const isBendahara = computed(() => authStore.user?.role === "bendahara");
@@ -106,12 +149,22 @@ const actionModalData = ref({ id: 0, action: "" as "approve" | "reject", current
 
 const openActionConfirm = (id: number, action: "approve" | "reject", currentStatus: string) => {
   actionModalData.value = { id, action, currentStatus };
+  if (action === "reject") {
+    auditTriggerSelector.value = `[data-audit-trigger="reject-${id}"]`;
+    voidReason.value = "";
+    auditMode.value = "reject";
+    isVoidModalOpen.value = true;
+    return;
+  }
   isActionModalOpen.value = true;
 };
 const executeAction = async () => {
   try {
+    mutationPending.value = true;
+    const reason = actionModalData.value.action === "reject" ? voidReason.value.trim() : undefined;
+    await handleAction(actionModalData.value.id, actionModalData.value.action, reason);
     isActionModalOpen.value = false;
-    await handleAction(actionModalData.value.id, actionModalData.value.action);
+    isVoidModalOpen.value = false;
     if (actionModalData.value.action === "approve") {
       if (actionModalData.value.currentStatus === "pending_bendahara") {
         toast.success("Dana berhasil dicairkan & masuk buku kas!");
@@ -121,72 +174,99 @@ const executeAction = async () => {
     } else {
       toast.success("Proposal berhasil ditolak!");
     }
-  } catch (error: any) {
-    toast.error(error.message || "Terjadi kesalahan saat memproses data.");
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error, "Terjadi kesalahan saat memproses data."));
+    if (error instanceof ApiError && error.status === 409) await bestEffortReload();
+  } finally {
+    mutationPending.value = false;
   }
 };
 
 // --- STATE: KAS INPUT ---
-const validationInput = ref({ kategori: false, jumlah: false, tanggal: false, keterangan: false });
+const validationInput = ref<FieldErrorMap>({});
 const isInputModalOpen = ref(false);
 const inputConfirmMsg = ref("");
 
 const submitInputForm = async () => {
-  validationInput.value = { kategori: false, jumlah: false, tanggal: false, keterangan: false };
+  validationInput.value = {};
   let hasError = false;
-  if (!formInput.value.kategori_id) { validationInput.value.kategori = true; hasError = true; }
-  if (!formInput.value.jumlah || parseInputRupiah(formInput.value.jumlah) <= 0) { validationInput.value.jumlah = true; hasError = true; }
-  if (!formInput.value.tanggal) { validationInput.value.tanggal = true; hasError = true; }
-  if (!formInput.value.keterangan || formInput.value.keterangan.trim() === "") { validationInput.value.keterangan = true; hasError = true; }
+  if (!formInput.value.kategori_id) { validationInput.value.kategori_id = "Kategori wajib dipilih."; hasError = true; }
+  if (!formInput.value.jumlah || parseInputRupiah(formInput.value.jumlah) <= 0) { validationInput.value.jumlah = "Nominal harus lebih dari 0."; hasError = true; }
+  if (!formInput.value.tanggal) { validationInput.value.tanggal = "Tanggal wajib dipilih."; hasError = true; }
+  if (!formInput.value.keterangan || formInput.value.keterangan.trim() === "") { validationInput.value.keterangan = "Keterangan wajib diisi."; hasError = true; }
   
-  if (hasError) return toast.error("Silakan lengkapi kolom yang ditandai merah.");
-  
-  const namaKategori = filteredCategoriesInput.value.find((c: any) => c.id === formInput.value.kategori_id)?.nama_kategori || "-";
+  if (hasError) {
+    await nextTick();
+    document.getElementById(`input-${Object.keys(validationInput.value)[0]}`)?.focus();
+    return toast.error("Silakan lengkapi kolom yang ditandai merah.");
+  }
+
+  const namaKategori = filteredCategoriesInput.value.find((c) => c.id === formInput.value.kategori_id)?.nama_kategori || "-";
   const nominalRp = formatRupiah(parseInputRupiah(formInput.value.jumlah));
   
   inputConfirmMsg.value = `Anda akan menyimpan transaksi ${formInput.value.tipe.toUpperCase()} sebesar ${nominalRp} untuk kategori ${namaKategori}. Apakah data sudah benar dan ingin disimpan?`;
   isInputModalOpen.value = true;
 };
 const executeInputSubmit = async () => {
-  isInputModalOpen.value = false;
   try {
+    mutationPending.value = true;
     await handleDirectInput();
+    isInputModalOpen.value = false;
     toast.success("Transaksi Kas Baru berhasil disimpan!");
-  } catch (error: any) {
-    toast.error(error.message || "Gagal menyimpan transaksi.");
+  } catch (error: unknown) {
+    if (error instanceof ApiError && Object.keys(error.fields).length) {
+      validationInput.value = error.fields;
+      await nextTick();
+      document.getElementById(`input-${Object.keys(error.fields)[0]}`)?.focus();
+    }
+    toast.error(getErrorMessage(error, "Gagal menyimpan transaksi."));
+  } finally {
+    mutationPending.value = false;
   }
 };
 
 // --- STATE: PROPOSAL ---
-const validationProp = ref({ kategori: false, seksi: false, jumlah: false, tanggal: false, keterangan: false });
+const validationProp = ref<FieldErrorMap>({});
 const isPropModalOpen = ref(false);
 const propConfirmMsg = ref("");
 
 const submitProposalForm = async () => {
-  validationProp.value = { kategori: false, seksi: false, jumlah: false, tanggal: false, keterangan: false };
+  validationProp.value = {};
   let hasError = false;
-  if (!formProposal.value.kategori_id) { validationProp.value.kategori = true; hasError = true; }
-  if (!formProposal.value.seksi_id) { validationProp.value.seksi = true; hasError = true; }
-  if (!formProposal.value.jumlah || parseInputRupiah(formProposal.value.jumlah) <= 0) { validationProp.value.jumlah = true; hasError = true; }
-  if (!formProposal.value.tanggal) { validationProp.value.tanggal = true; hasError = true; }
-  if (!formProposal.value.keterangan || formProposal.value.keterangan.trim() === "") { validationProp.value.keterangan = true; hasError = true; }
+  if (!formProposal.value.kategori_id) { validationProp.value.kategori_id = "Kategori wajib dipilih."; hasError = true; }
+  if (!formProposal.value.seksi_id) { validationProp.value.seksi_id = "Seksi wajib dipilih."; hasError = true; }
+  if (!formProposal.value.jumlah || parseInputRupiah(formProposal.value.jumlah) <= 0) { validationProp.value.jumlah = "Nominal harus lebih dari 0."; hasError = true; }
+  if (!formProposal.value.tanggal) { validationProp.value.tanggal = "Tanggal wajib dipilih."; hasError = true; }
+  if (!formProposal.value.keterangan || formProposal.value.keterangan.trim() === "") { validationProp.value.keterangan = "Keterangan wajib diisi."; hasError = true; }
   
-  if (hasError) return toast.error("Silakan lengkapi kolom yang ditandai merah.");
-  
-  const namaKategori = filteredCategoriesProposal.value.find((c: any) => c.id === formProposal.value.kategori_id)?.nama_kategori || "-";
-  const namaSeksi = sections.value.find((s: any) => s.id === formProposal.value.seksi_id)?.nama_seksi || "-";
+  if (hasError) {
+    await nextTick();
+    document.getElementById(`proposal-${Object.keys(validationProp.value)[0]}`)?.focus();
+    return toast.error("Silakan lengkapi kolom yang ditandai merah.");
+  }
+
+  const namaKategori = filteredCategoriesProposal.value.find((c) => c.id === formProposal.value.kategori_id)?.nama_kategori || "-";
+  const namaSeksi = sections.value.find((s) => s.id === formProposal.value.seksi_id)?.nama_seksi || "-";
   const nominalRp = formatRupiah(parseInputRupiah(formProposal.value.jumlah));
   
   propConfirmMsg.value = `Anda akan mengajukan proposal dana sebesar ${nominalRp} untuk keperluan ${namaKategori} (Seksi: ${namaSeksi}). Lanjutkan pengajuan?`;
   isPropModalOpen.value = true;
 };
 const executeProposalSubmit = async () => {
-  isPropModalOpen.value = false;
   try {
+    mutationPending.value = true;
     await handleProposal();
+    isPropModalOpen.value = false;
     toast.success("Proposal berhasil diajukan dan masuk ke antrean persetujuan!");
-  } catch (error: any) {
-    toast.error(error.message || "Gagal mengajukan proposal.");
+  } catch (error: unknown) {
+    if (error instanceof ApiError && Object.keys(error.fields).length) {
+      validationProp.value = error.fields;
+      await nextTick();
+      document.getElementById(`proposal-${Object.keys(error.fields)[0]}`)?.focus();
+    }
+    toast.error(getErrorMessage(error, "Gagal mengajukan proposal."));
+  } finally {
+    mutationPending.value = false;
   }
 };
 
@@ -196,7 +276,7 @@ const handleGlobalClick = () => {
 };
 
 onMounted(() => {
-  loadData();
+  void loadData().catch(() => undefined);
   document.addEventListener("click", handleGlobalClick);
 });
 onUnmounted(() => {
@@ -208,10 +288,15 @@ onUnmounted(() => {
   <div class="space-y-4 pb-20 max-w-[1400px] mx-auto">
     
     <!-- MODALS -->
-    <ConfirmModal :isOpen="isDeleteModalOpen" @close="isDeleteModalOpen = false" @confirm="executeDelete" title="Hapus Transaksi?" message="Data transaksi ini akan dihapus secara permanen dari buku kas dan tidak dapat dikembalikan. Lanjutkan?" type="danger" confirmText="Ya, Hapus Permanen" />
-    <ConfirmModal :isOpen="isActionModalOpen" @close="isActionModalOpen = false" @confirm="executeAction" :title="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Cairkan Dana?' : 'Setujui Proposal?') : 'Tolak Proposal?'" :message="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Dana akan dipotong dari kas dan dicatat per hari ini.' : 'Proposal akan diteruskan ke antrean Bendahara.') : 'Proposal ini akan dibatalkan dan masuk ke riwayat penolakan.'" :type="actionModalData.action === 'approve' ? 'success' : 'danger'" :confirmText="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Ya, Cairkan' : 'Ya, Setujui') : 'Ya, Tolak'" />
-    <ConfirmModal :isOpen="isInputModalOpen" @close="isInputModalOpen = false" @confirm="executeInputSubmit" title="Simpan Transaksi Kas?" :message="inputConfirmMsg" type="success" confirmText="Ya, Simpan" />
-    <ConfirmModal :isOpen="isPropModalOpen" @close="isPropModalOpen = false" @confirm="executeProposalSubmit" title="Ajukan Proposal?" :message="propConfirmMsg" type="success" confirmText="Ya, Ajukan" />
+    <TransactionAuditDialog
+      :open="isVoidModalOpen" :mode="auditMode" :reason="voidReason" :pending="mutationPending"
+      :timeline="timeline" :error="timelineError" @update:reason="voidReason = $event"
+      @close="closeAuditDialog" @confirm="auditMode === 'void' ? executeVoid() : executeAction()"
+      @retry="selectedVoidId && openTimeline(selectedVoidId)"
+    />
+    <ConfirmModal :isOpen="isActionModalOpen" :pending="mutationPending" @close="isActionModalOpen = false" @confirm="executeAction" :title="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Cairkan Dana?' : 'Setujui Proposal?') : 'Tolak Proposal?'" :message="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Dana akan dipotong dari kas dan dicatat per hari ini.' : 'Proposal akan diteruskan ke antrean Bendahara.') : 'Proposal ini akan dibatalkan dan masuk ke riwayat penolakan.'" :type="actionModalData.action === 'approve' ? 'success' : 'danger'" :confirmText="actionModalData.action === 'approve' ? (actionModalData.currentStatus === 'pending_bendahara' ? 'Ya, Cairkan' : 'Ya, Setujui') : 'Ya, Tolak'" />
+    <ConfirmModal :isOpen="isInputModalOpen" :pending="mutationPending" @close="isInputModalOpen = false" @confirm="executeInputSubmit" title="Simpan Transaksi Kas?" :message="inputConfirmMsg" type="success" confirmText="Ya, Simpan" />
+    <ConfirmModal :isOpen="isPropModalOpen" :pending="mutationPending" @close="isPropModalOpen = false" @confirm="executeProposalSubmit" title="Ajukan Proposal?" :message="propConfirmMsg" type="success" confirmText="Ya, Ajukan" />
 
     <!-- HEADER -->
     <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -273,7 +358,7 @@ onUnmounted(() => {
       
       <!-- Dense Segmented Control -->
       <div class="p-3 border-b border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/20">
-        <div class="flex h-9 items-center justify-start md:justify-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-slate-500 dark:text-slate-400 overflow-x-auto hide-scrollbar w-full md:w-auto">
+        <div class="flex min-h-11 items-center justify-start md:justify-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-slate-500 dark:text-slate-400 overflow-x-auto hide-scrollbar w-full md:w-auto">
           <button @click="activeTab = 'laporan'" :class="activeTab === 'laporan' ? 'bg-white text-brand-green shadow-sm dark:bg-[#09090b] dark:text-brand-green' : 'hover:bg-brand-accent/5 hover:text-slate-900 dark:hover:bg-brand-accent/10 dark:hover:text-slate-50'" class="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 min-w-[100px]">
             <FileText :size="14" class="mr-1.5" /> Laporan
           </button>
@@ -297,11 +382,19 @@ onUnmounted(() => {
 
       <!-- Content Area -->
       <div class="p-4 md:p-6 min-h-[400px]">
+        <div v-if="isLoadingData && !hasLoadedData" role="status" class="flex min-h-[260px] items-center justify-center text-sm text-slate-500">
+          Memuat data keuangan…
+        </div>
+        <div v-else-if="loadError && !hasLoadedData" role="alert" class="flex min-h-[260px] flex-col items-center justify-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-900 dark:bg-rose-950/30">
+          <p class="font-medium text-rose-700 dark:text-rose-300">Data keuangan belum dapat dimuat.</p>
+          <p class="max-w-md text-sm text-rose-600 dark:text-rose-400">{{ loadError }}</p>
+          <button type="button" class="min-h-11 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-white" @click="bestEffortReload">Coba lagi</button>
+        </div>
         
         <!-- ========================================= -->
         <!-- TAB 1: LAPORAN -->
         <!-- ========================================= -->
-        <div v-if="activeTab === 'laporan'" class="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div v-else-if="activeTab === 'laporan'" class="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
           
           <!-- Compact Toolbar Filters with Shadcn Select -->
           <div class="flex flex-col md:flex-row items-center gap-2">
@@ -368,8 +461,16 @@ onUnmounted(() => {
             </button>
           </div>
 
+          <!-- Mobile cards: laporan -->
+          <div class="space-y-3 md:hidden">
+            <article v-for="trx in filteredLaporan" :key="trx.id" class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#09090b]">
+              <div class="flex justify-between gap-3"><div class="min-w-0"><p class="break-words font-medium">{{ trx.keterangan }}</p><p class="mt-1 text-xs text-slate-500">{{ trx.tanggal }} · {{ trx.kategori }}<template v-if="trx.seksi"> · {{ trx.seksi }}</template></p></div><strong class="shrink-0 text-sm" :class="[trx.tipe === 'pemasukan' ? 'text-emerald-600' : 'text-rose-600', trx.status === 'void' && 'line-through opacity-50']">{{ trx.tipe === 'pemasukan' ? '+' : '-' }} {{ formatRupiah(trx.jumlah) }}</strong></div>
+              <div class="mt-3 flex justify-end gap-2 border-t pt-2 dark:border-slate-800"><button @click="openTimeline(trx.id)" :data-audit-trigger="`timeline-${trx.id}`" class="min-h-11 px-3 text-sm text-brand-green underline">Riwayat</button><button v-if="canVoidTransaction() && trx.status === 'approved'" @click="openVoidConfirm(trx.id)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`void-${trx.id}`" class="min-h-11 min-w-11 text-rose-600 disabled:opacity-50" :aria-label="`Batalkan transaksi ${trx.keterangan}`"><Ban :size="18" class="mx-auto" /></button><span v-else-if="trx.status === 'void'" class="self-center text-xs font-semibold text-rose-600">Dibatalkan</span></div>
+            </article>
+            <p v-if="!filteredLaporan.length" class="rounded-lg border p-6 text-center text-sm text-slate-500">Belum ada transaksi yang sesuai kriteria filter.</p>
+          </div>
           <!-- Compact & Responsive Table Laporan -->
-          <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm">
+          <div class="hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm md:block">
             <div class="w-full overflow-x-auto">
               <table class="w-full min-w-[700px] caption-bottom text-sm whitespace-nowrap md:whitespace-normal">
                 <thead class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
@@ -378,7 +479,7 @@ onUnmounted(() => {
                     <th class="h-10 px-4 text-left align-middle font-medium text-slate-500 min-w-[200px]">Keterangan</th>
                     <th class="h-10 px-4 text-right align-middle font-medium text-slate-500 w-[140px]">Debit</th>
                     <th class="h-10 px-4 text-right align-middle font-medium text-slate-500 w-[140px]">Kredit</th>
-                    <th v-if="canDeleteTransaction()" class="h-10 px-4 text-center align-middle font-medium text-slate-500 w-[60px]"></th>
+                    <th class="h-10 px-4 text-center align-middle font-medium text-slate-500 w-[120px]">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -402,20 +503,22 @@ onUnmounted(() => {
                         <span v-if="trx.seksi" class="text-xs text-slate-400 whitespace-nowrap">&bull; {{ trx.seksi }}</span>
                       </div>
                     </td>
-                    <td class="p-4 text-right align-top text-emerald-600 dark:text-emerald-400 font-medium">
+                    <td class="p-4 text-right align-top text-emerald-600 dark:text-emerald-400 font-medium" :class="trx.status === 'void' && 'line-through opacity-50'">
                       {{ trx.tipe === "pemasukan" ? formatRupiah(trx.jumlah) : "-" }}
                     </td>
-                    <td class="p-4 text-right align-top text-rose-600 dark:text-rose-400 font-medium">
+                    <td class="p-4 text-right align-top text-rose-600 dark:text-rose-400 font-medium" :class="trx.status === 'void' && 'line-through opacity-50'">
                       {{ trx.tipe === "pengeluaran" ? formatRupiah(trx.jumlah) : "-" }}
                     </td>
-                    <td v-if="canDeleteTransaction()" class="p-4 text-center align-top">
-                      <button @click="openDeleteConfirm(trx.id)" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 md:opacity-0 opacity-100 dark:hover:bg-slate-800" title="Hapus">
-                        <Trash2 :size="16" />
+                    <td class="p-4 text-center align-top">
+                      <button @click="openTimeline(trx.id)" :data-audit-trigger="`timeline-${trx.id}`" class="h-8 px-2 text-xs text-brand-green underline" :aria-label="`Lihat riwayat audit ${trx.keterangan}`">Riwayat</button>
+                      <button v-if="canVoidTransaction() && trx.status === 'approved'" @click="openVoidConfirm(trx.id)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`void-${trx.id}`" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 h-8 w-8 text-slate-400 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800" title="Batalkan transaksi" :aria-label="`Batalkan transaksi ${trx.keterangan}`">
+                        <Ban :size="16" />
                       </button>
+                      <span v-else-if="trx.status === 'void'" class="text-xs font-semibold text-rose-600">Dibatalkan</span>
                     </td>
                   </tr>
                   <tr v-if="filteredLaporan.length === 0">
-                    <td :colspan="canDeleteTransaction() ? 5 : 4" class="p-8 text-center text-slate-500">
+                    <td colspan="5" class="p-8 text-center text-slate-500">
                       Belum ada transaksi yang sesuai kriteria filter.
                     </td>
                   </tr>
@@ -425,7 +528,7 @@ onUnmounted(() => {
                     <td colspan="2" class="p-4 text-right">Total Transaksi Filtered:</td>
                     <td class="p-4 text-right text-emerald-600 dark:text-emerald-400">{{ formatRupiah(filteredMasuk) }}</td>
                     <td class="p-4 text-right text-rose-600 dark:text-rose-400">{{ formatRupiah(filteredKeluar) }}</td>
-                    <td v-if="canDeleteTransaction()"></td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -443,8 +546,8 @@ onUnmounted(() => {
             <h3 class="font-medium text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2 px-1">
               <Clock :size="14" class="text-amber-500" /> Tahap 1: Verifikasi Ketua
             </h3>
-            
-            <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm">
+            <div class="space-y-3 md:hidden"><article v-for="trx in listKetua" :key="trx.id" class="rounded-lg border bg-white p-4 dark:border-slate-800 dark:bg-[#09090b]"><div class="flex justify-between gap-3"><div><p class="break-words font-medium">{{ trx.keterangan }}</p><p class="mt-1 text-xs text-slate-500">{{ trx.tanggal }} · {{ trx.kategori }} · {{ trx.seksi || '-' }}</p></div><strong class="shrink-0 text-sm">{{ formatRupiah(trx.jumlah) }}</strong></div><div v-if="isKetua || isSuperadmin" class="mt-3 grid grid-cols-2 gap-2"><button @click="openActionConfirm(trx.id, 'approve', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" class="min-h-11 rounded-md bg-emerald-600 text-sm text-white disabled:opacity-50">Setujui</button><button @click="openActionConfirm(trx.id, 'reject', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`reject-${trx.id}`" class="min-h-11 rounded-md border border-rose-200 text-sm text-rose-600 disabled:opacity-50">Tolak</button></div></article><p v-if="!listKetua.length" class="rounded-lg border p-6 text-center text-sm text-slate-500">Antrean bersih.</p></div>
+            <div class="hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm md:block">
               <div class="w-full overflow-x-auto">
                 <table class="w-full min-w-[700px] caption-bottom text-sm whitespace-nowrap md:whitespace-normal">
                   <thead class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
@@ -472,8 +575,8 @@ onUnmounted(() => {
                       <td class="p-4 align-top font-medium text-right">{{ formatRupiah(trx.jumlah) }}</td>
                       <td v-if="isKetua || isSuperadmin" class="p-4 align-top">
                         <div class="flex justify-center gap-2">
-                          <button @click="openActionConfirm(trx.id, 'approve', trx.status)" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-emerald-600 dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Setujui"><CheckCircle :size="16" /></button>
-                          <button @click="openActionConfirm(trx.id, 'reject', trx.status)" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-rose-600 dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Tolak"><XCircle :size="16" /></button>
+                          <button @click="openActionConfirm(trx.id, 'approve', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Setujui"><CheckCircle :size="16" /></button>
+                          <button @click="openActionConfirm(trx.id, 'reject', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`reject-${trx.id}`" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Tolak"><XCircle :size="16" /></button>
                         </div>
                       </td>
                     </tr>
@@ -489,8 +592,8 @@ onUnmounted(() => {
             <h3 class="font-medium text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2 px-1">
               <Wallet :size="14" class="text-indigo-500" /> Tahap 2: Antrean Pencairan (Bendahara)
             </h3>
-            
-            <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm">
+            <div class="space-y-3 md:hidden"><article v-for="trx in listBendahara" :key="trx.id" class="rounded-lg border bg-white p-4 dark:border-slate-800 dark:bg-[#09090b]"><div class="flex justify-between gap-3"><div><p class="break-words font-medium">{{ trx.keterangan }}</p><p class="mt-1 text-xs text-slate-500">{{ trx.tanggal }} · {{ trx.kategori }} · {{ trx.seksi || '-' }}</p></div><strong class="shrink-0 text-sm">{{ formatRupiah(trx.jumlah) }}</strong></div><div v-if="isBendahara || isSuperadmin" class="mt-3 grid grid-cols-2 gap-2"><button @click="openActionConfirm(trx.id, 'approve', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" class="min-h-11 rounded-md bg-brand-accent text-sm text-white disabled:opacity-50">Cairkan</button><button @click="openActionConfirm(trx.id, 'reject', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`reject-${trx.id}`" class="min-h-11 rounded-md border border-rose-200 text-sm text-rose-600 disabled:opacity-50">Tolak</button></div></article><p v-if="!listBendahara.length" class="rounded-lg border p-6 text-center text-sm text-slate-500">Antrean bersih.</p></div>
+            <div class="hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] overflow-hidden shadow-sm md:block">
               <div class="w-full overflow-x-auto">
                 <table class="w-full min-w-[700px] caption-bottom text-sm whitespace-nowrap md:whitespace-normal">
                   <thead class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
@@ -518,8 +621,8 @@ onUnmounted(() => {
                       <td class="p-4 align-top font-medium text-right">{{ formatRupiah(trx.jumlah) }}</td>
                       <td v-if="isBendahara || isSuperadmin" class="p-4 align-top">
                         <div class="flex justify-center gap-2">
-                          <button @click="openActionConfirm(trx.id, 'approve', trx.status)" class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-brand-accent/90 h-8 px-3 bg-brand-accent text-white shadow-sm">Cairkan</button>
-                          <button @click="openActionConfirm(trx.id, 'reject', trx.status)" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-brand-accent/5 hover:text-slate-900 h-8 w-8 text-rose-600 dark:hover:bg-brand-accent/10 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Tolak"><XCircle :size="16" /></button>
+                          <button @click="openActionConfirm(trx.id, 'approve', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-brand-accent/90 h-8 px-3 bg-brand-accent text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-sm">Cairkan</button>
+                          <button @click="openActionConfirm(trx.id, 'reject', trx.status)" :disabled="pendingMutationIds.has(trx.id)" :aria-busy="pendingMutationIds.has(trx.id)" :data-audit-trigger="`reject-${trx.id}`" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-brand-accent/5 hover:text-slate-900 h-8 w-8 text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-brand-accent/10 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700" title="Tolak"><XCircle :size="16" /></button>
                         </div>
                       </td>
                     </tr>
@@ -535,7 +638,8 @@ onUnmounted(() => {
             <h3 class="font-medium text-sm text-slate-500 flex items-center gap-2 px-1">
               <Ban :size="14" /> Riwayat Penolakan
             </h3>
-            <div class="rounded-md border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div class="space-y-2 md:hidden"><article v-for="trx in listRejected" :key="trx.id" class="rounded-lg border bg-slate-50/30 p-4 dark:border-slate-800"><div class="flex justify-between gap-3"><div><p class="break-words text-slate-400 line-through">{{ trx.keterangan }}</p><p class="mt-1 text-xs text-slate-500">{{ trx.tanggal }}</p></div><span class="shrink-0 text-sm text-slate-500">{{ formatRupiah(trx.jumlah) }}</span></div></article></div>
+            <div class="hidden rounded-md border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm md:block">
               <div class="w-full overflow-x-auto">
                 <table class="w-full min-w-[500px] caption-bottom text-sm whitespace-nowrap">
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -579,8 +683,8 @@ onUnmounted(() => {
                 
                 <div class="space-y-1.5">
                   <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Kategori Transaksi</label>
-                  <Select :model-value="formInput.kategori_id?.toString()" @update:model-value="(val) => { formInput.kategori_id = Number(val); validationInput.kategori = false; }">
-                    <SelectTrigger class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :class="validationInput.kategori ? 'border-rose-500 ring-1 ring-rose-500' : ''">
+                  <Select :model-value="formInput.kategori_id?.toString()" @update:model-value="(val) => { formInput.kategori_id = Number(val); validationInput.kategori_id = ''; }">
+                    <SelectTrigger id="input-kategori_id" class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :aria-invalid="Boolean(validationInput.kategori_id)" aria-describedby="input-kategori_id-error" :class="validationInput.kategori_id ? 'border-rose-500 ring-1 ring-rose-500' : ''">
                       <SelectValue placeholder="Pilih Kategori..." />
                     </SelectTrigger>
                     <SelectContent class="z-[100]">
@@ -591,6 +695,7 @@ onUnmounted(() => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <p v-if="validationInput.kategori_id" id="input-kategori_id-error" class="text-xs text-rose-600">{{ validationInput.kategori_id }}</p>
                 </div>
 
                 <div class="space-y-1.5">
@@ -602,8 +707,9 @@ onUnmounted(() => {
                   <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Nominal Rupiah</label>
                   <div class="flex h-9 w-full items-center rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] shadow-sm transition-colors focus-within:ring-1 focus-within:ring-brand-green overflow-hidden" :class="validationInput.jumlah ? 'border-rose-500 ring-1 ring-rose-500' : ''">
                     <div class="px-3 h-full flex items-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-800 text-sm text-slate-500">Rp</div>
-                    <input :value="formInput.jumlah" type="text" inputmode="numeric" placeholder="0" @input="formInput.jumlah = formatInputRupiah(($event.target as HTMLInputElement).value); validationInput.jumlah = parseInputRupiah(formInput.jumlah) <= 0;" class="flex-1 h-full px-3 text-sm font-medium bg-transparent outline-none placeholder:text-slate-500" />
+                    <input id="input-jumlah" :value="formInput.jumlah" type="text" inputmode="numeric" placeholder="0" :aria-invalid="Boolean(validationInput.jumlah)" aria-describedby="input-jumlah-error" @input="formInput.jumlah = formatInputRupiah(($event.target as HTMLInputElement).value); validationInput.jumlah = parseInputRupiah(formInput.jumlah) <= 0 ? 'Nominal harus lebih dari 0.' : '';" class="flex-1 h-full px-3 text-sm font-medium bg-transparent outline-none placeholder:text-slate-500" />
                   </div>
+                  <p v-if="validationInput.jumlah" id="input-jumlah-error" class="text-xs text-rose-600">{{ validationInput.jumlah }}</p>
                 </div>
 
                 <div class="space-y-1.5">
@@ -626,7 +732,8 @@ onUnmounted(() => {
 
               <div class="space-y-1.5">
                 <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Keterangan Ringkas</label>
-                <textarea v-model="formInput.keterangan" rows="3" placeholder="Contoh: Beli keperluan ATK masjid..." @input="validationInput.keterangan = false" class="flex w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] px-3 py-2 text-sm shadow-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-green disabled:cursor-not-allowed disabled:opacity-50 resize-none" :class="validationInput.keterangan ? 'border-rose-500 ring-1 ring-rose-500' : ''"></textarea>
+                <textarea id="input-keterangan" v-model="formInput.keterangan" rows="3" :aria-invalid="Boolean(validationInput.keterangan)" aria-describedby="input-keterangan-error" placeholder="Contoh: Beli keperluan ATK masjid..." @input="validationInput.keterangan = ''" class="flex w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] px-3 py-2 text-sm shadow-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-green disabled:cursor-not-allowed disabled:opacity-50 resize-none" :class="validationInput.keterangan ? 'border-rose-500 ring-1 ring-rose-500' : ''"></textarea>
+                <p v-if="validationInput.keterangan" id="input-keterangan-error" class="text-xs text-rose-600">{{ validationInput.keterangan }}</p>
               </div>
             </div>
 
@@ -666,8 +773,8 @@ onUnmounted(() => {
                 
                 <div class="space-y-1.5">
                   <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Kategori Peruntukan</label>
-                  <Select :model-value="formProposal.kategori_id?.toString()" @update:model-value="(val) => { formProposal.kategori_id = Number(val); validationProp.kategori = false; }">
-                    <SelectTrigger class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :class="validationProp.kategori ? 'border-rose-500 ring-1 ring-rose-500' : ''">
+                  <Select :model-value="formProposal.kategori_id?.toString()" @update:model-value="(val) => { formProposal.kategori_id = Number(val); validationProp.kategori_id = ''; }">
+                    <SelectTrigger id="proposal-kategori_id" class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :aria-invalid="Boolean(validationProp.kategori_id)" aria-describedby="proposal-kategori_id-error" :class="validationProp.kategori_id ? 'border-rose-500 ring-1 ring-rose-500' : ''">
                       <SelectValue placeholder="Pilih Kategori..." />
                     </SelectTrigger>
                     <SelectContent class="z-[100]">
@@ -678,6 +785,7 @@ onUnmounted(() => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <p v-if="validationProp.kategori_id" id="proposal-kategori_id-error" class="text-xs text-rose-600">{{ validationProp.kategori_id }}</p>
                 </div>
 
                 <div class="space-y-1.5">
@@ -689,14 +797,15 @@ onUnmounted(() => {
                   <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Estimasi Nominal</label>
                   <div class="flex h-9 w-full items-center rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] shadow-sm transition-colors focus-within:ring-1 focus-within:ring-brand-green overflow-hidden" :class="validationProp.jumlah ? 'border-rose-500 ring-1 ring-rose-500' : ''">
                     <div class="px-3 h-full flex items-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-800 text-sm text-slate-500">Rp</div>
-                    <input :value="formProposal.jumlah" type="text" inputmode="numeric" placeholder="0" @input="formProposal.jumlah = formatInputRupiah(($event.target as HTMLInputElement).value); validationProp.jumlah = parseInputRupiah(formProposal.jumlah) <= 0;" class="flex-1 h-full px-3 text-sm font-medium bg-transparent outline-none placeholder:text-slate-500" />
+                    <input id="proposal-jumlah" :value="formProposal.jumlah" type="text" inputmode="numeric" placeholder="0" :aria-invalid="Boolean(validationProp.jumlah)" aria-describedby="proposal-jumlah-error" @input="formProposal.jumlah = formatInputRupiah(($event.target as HTMLInputElement).value); validationProp.jumlah = parseInputRupiah(formProposal.jumlah) <= 0 ? 'Nominal harus lebih dari 0.' : '';" class="flex-1 h-full px-3 text-sm font-medium bg-transparent outline-none placeholder:text-slate-500" />
                   </div>
+                  <p v-if="validationProp.jumlah" id="proposal-jumlah-error" class="text-xs text-rose-600">{{ validationProp.jumlah }}</p>
                 </div>
 
                 <div class="space-y-1.5">
                   <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Seksi Pengaju</label>
-                  <Select :model-value="formProposal.seksi_id?.toString()" @update:model-value="(val) => { formProposal.seksi_id = Number(val); validationProp.seksi = false; }">
-                    <SelectTrigger class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :class="validationProp.seksi ? 'border-rose-500 ring-1 ring-rose-500' : ''">
+                  <Select :model-value="formProposal.seksi_id?.toString()" @update:model-value="(val) => { formProposal.seksi_id = Number(val); validationProp.seksi_id = ''; }">
+                    <SelectTrigger id="proposal-seksi_id" class="w-full h-9 bg-white dark:bg-[#09090b] shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800" :aria-invalid="Boolean(validationProp.seksi_id)" aria-describedby="proposal-seksi_id-error" :class="validationProp.seksi_id ? 'border-rose-500 ring-1 ring-rose-500' : ''">
                       <SelectValue placeholder="Pilih Seksi..." />
                     </SelectTrigger>
                     <SelectContent class="z-[100]">
@@ -707,6 +816,7 @@ onUnmounted(() => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <p v-if="validationProp.seksi_id" id="proposal-seksi_id-error" class="text-xs text-rose-600">{{ validationProp.seksi_id }}</p>
                 </div>
 
                 <div class="space-y-1.5 md:col-span-2">
@@ -728,7 +838,8 @@ onUnmounted(() => {
 
               <div class="space-y-1.5">
                 <label class="text-sm font-medium leading-none text-slate-900 dark:text-slate-200">Rincian Keperluan</label>
-                <textarea v-model="formProposal.keterangan" rows="4" placeholder="Tuliskan secara lengkap rincian barang/jasa yang dibutuhkan..." @input="validationProp.keterangan = false" class="flex w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] px-3 py-2 text-sm shadow-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-green disabled:cursor-not-allowed disabled:opacity-50 resize-none" :class="validationProp.keterangan ? 'border-rose-500 ring-1 ring-rose-500' : ''"></textarea>
+                <textarea id="proposal-keterangan" v-model="formProposal.keterangan" rows="4" :aria-invalid="Boolean(validationProp.keterangan)" aria-describedby="proposal-keterangan-error" placeholder="Tuliskan secara lengkap rincian barang/jasa yang dibutuhkan..." @input="validationProp.keterangan = ''" class="flex w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#09090b] px-3 py-2 text-sm shadow-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-green disabled:cursor-not-allowed disabled:opacity-50 resize-none" :class="validationProp.keterangan ? 'border-rose-500 ring-1 ring-rose-500' : ''"></textarea>
+                <p v-if="validationProp.keterangan" id="proposal-keterangan-error" class="text-xs text-rose-600">{{ validationProp.keterangan }}</p>
               </div>
             </div>
 

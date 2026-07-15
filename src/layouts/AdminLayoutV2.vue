@@ -15,7 +15,6 @@ import { useTheme } from "../composables/admin/useTheme";
 import {
   LayoutDashboard,
   Wallet,
-  FileText,
   Settings,
   LogOut,
   Menu,
@@ -24,10 +23,8 @@ import {
   PanelLeftClose,
   Moon,
   Sun,
-  User,
   ChevronDown,
   X,
-  Search,
 } from "lucide-vue-next";
 
 import { Button } from "@/components/ui/button";
@@ -35,7 +32,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -64,7 +60,6 @@ const handleLogout = async () => {
 const navItems = [
   { name: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard, exact: true },
   { name: "Keuangan Kas", to: "/admin/finance", icon: Wallet },
-  { name: "Artikel & Info", to: "/admin/artikel", icon: FileText },
   { name: "Galeri & Dokumentasi", to: "/admin/galeri-dokumentasi", icon: Images },
   { name: "Media Library", to: "/admin/media", icon: FolderOpen },
   { name: "Pengaturan", to: "/admin/pengaturan", icon: Settings },
@@ -92,6 +87,15 @@ const pageTitle = computed(() => {
 
 <template>
   <div class="min-h-screen w-full bg-slate-50 dark:bg-[#09090b] text-slate-950 dark:text-slate-50 flex font-sans overflow-hidden">
+    <div v-if="authStore.authStatus === 'error'" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="alert">
+      <div class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl dark:border-slate-700 dark:bg-slate-950">
+        <h1 class="text-lg font-semibold">Sesi belum dapat diverifikasi</h1>
+        <p class="mt-2 text-sm text-slate-500">Koneksi ke server sedang bermasalah. Sesi Anda tidak dihapus dan halaman ini tidak akan mengarahkan ke login secara otomatis.</p>
+        <button type="button" class="mt-5 min-h-11 rounded-md bg-brand-green px-5 py-2 text-sm font-medium text-white" @click="authStore.retryAuth()">
+          Coba lagi
+        </button>
+      </div>
+    </div>
     <!-- Desktop Sidebar -->
     <aside
       :class="[
@@ -245,12 +249,6 @@ const pageTitle = computed(() => {
 
         <!-- Right: Actions & User -->
         <div class="flex items-center gap-1.5 md:gap-3">
-          
-          <!-- Search / Quick Action placeholder -->
-          <Button variant="ghost" size="icon" class="hidden sm:flex h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10">
-            <Search :size="16" :stroke-width="1.5" />
-          </Button>
-
           <!-- Theme Toggle -->
           <Button variant="ghost" size="icon" @click="toggleTheme" class="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 relative overflow-hidden">
             <Sun :size="16" :stroke-width="1.5" class="absolute transition-all duration-300" :class="isDark ? 'rotate-0 scale-100 text-amber-500' : '-rotate-90 scale-0'" />
@@ -283,16 +281,9 @@ const pageTitle = computed(() => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem class="cursor-pointer gap-2 py-2 focus:bg-brand-accent/5 focus:text-slate-900 dark:focus:bg-brand-accent/10 dark:focus:text-slate-100">
-                <User :size="14" /> <span class="text-xs font-medium">Profile & Akun</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem class="cursor-pointer gap-2 py-2 focus:bg-brand-accent/5 focus:text-slate-900 dark:focus:bg-brand-accent/10 dark:focus:text-slate-100">
-                <Settings :size="14" /> <span class="text-xs font-medium">Pengaturan Sistem</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem @click="handleLogout" class="cursor-pointer gap-2 py-2 text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/30 focus:text-red-600 dark:focus:text-red-400">
+              <button @click="handleLogout" class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
                 <LogOut :size="14" /> <span class="text-xs font-medium">Keluar</span>
-              </DropdownMenuItem>
+              </button>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
