@@ -91,6 +91,8 @@ Sebelum upgrade remote di masa depan: buat export backup bertimestamp di luar re
 
 Workflow `.github/workflows/deploy-testing.yml` hanya merespons branch `testing`; workflow `.github/workflows/deploy.yml` hanya merespons `main`. Keduanya menjalankan test/build/migration harness sebelum migration remote dan deploy. Jangan menukar config antar-environment atau menggunakan resource production untuk smoke testing.
 
+Closure R1 terakhir dipromosikan ke `testing` melalui commit `8c0d282`. Workflow `Deploy testing` run `29419702186` lulus untuk test, build, migration test, apply D1 testing, isolated workspace, dan Pages deploy. Smoke live `https://masjidnurulhuda-testing.pages.dev/` menghasilkan HTTP 200; `/api/public/kas/summary` sesuai query D1 `masjidnurulhuda-testing-db`, sedangkan `/_design-system` hanya mengembalikan SPA shell dan tidak mendaftarkan route lab production. Production tidak berubah.
+
 Alur normal: feature/improvement branch → PR ke `testing` → verifikasi live testing → PR `testing` ke `main` → quality gate ulang → production. GitHub Environment `production` direkomendasikan memakai required reviewer agar migration/deploy production tidak berjalan tanpa persetujuan eksplisit.
 
 ### Rollback aplikasi

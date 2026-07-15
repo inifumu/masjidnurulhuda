@@ -212,7 +212,7 @@ Kebijakan komponen:
 
 1. Primitive reusable berada di `src/components/ui` dan menggunakan reka/shadcn sebagai dasar.
 2. Komponen domain berada di folder fitur (`public`, `admin/finance`, `admin/content`, `admin/settings`).
-3. Headless UI tidak boleh dipakai untuk komponen baru. `ConfirmModal.vue` dan `TransactionAuditDialog.vue` dimigrasikan ke primitive reka Dialog/AlertDialog, lalu dependency `@headlessui/vue` dievaluasi untuk dihapus.
+3. Headless UI tidak boleh dipakai. `ConfirmModal.vue` dan `TransactionAuditDialog.vue` telah dimigrasikan ke primitive reka, dan dependency `@headlessui/vue` telah dihapus pada closure R1.
 4. Jangan membuat primitive kedua untuk fungsi yang sudah dimiliki canonical primitive.
 5. View menyusun screen; business logic tetap di composable/service.
 6. Desktop table dan mobile card berbagi DTO/content formatter, bukan dua business implementations.
@@ -238,7 +238,7 @@ Don't:
 - meniru legacy atau V2 sebagai baseline visual;
 - menambah V3, bridge baru, compatibility wrapper visual baru, atau business logic duplikat;
 - memakai glassmorphism, blur orb, gradient, atau card grid sebagai dekorasi default;
-- mencampur Headless UI dan reka untuk primitive baru;
+- memperkenalkan kembali Headless UI atau mencampurnya dengan reka;
 - hardcode warna/radius/shadow berulang di view;
 - memakai gold untuk warning, destructive, atau setiap CTA;
 - menyembunyikan aksi penting hanya pada hover;

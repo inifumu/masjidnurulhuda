@@ -254,7 +254,7 @@ masjidnurulhuda/
 - `src/components/admin/kas/KasApproval.vue` — antrean approval/status proposal bertahap (tahap ketua & tahap bendahara) + ConfirmModal approve/reject — UI guard RBAC untuk urutan approval berjenjang.
 - `src/components/admin/kas/KasInput.vue` — form kas langsung + validasi UI + ConfirmModal submit; pilihan seksi bersifat opsional dan disimpan bila dipilih; input nominal memakai format ribuan realtime + guard non-digit.
 - `src/components/admin/kas/KasProposal.vue` — form proposal + validasi UI + ConfirmModal submit; `seksi_id` wajib sebelum dikirim ke backend; input nominal memakai format ribuan realtime + guard non-digit.
-- `src/components/ui/ConfirmModal.vue` — modal konfirmasi reusable berbasis Headless UI untuk aksi destructive/success/warning.
+- `src/components/ui/ConfirmModal.vue` — modal konfirmasi reusable berbasis reka Dialog untuk aksi destructive/success/warning, termasuk pending Escape/outside guard.
 - `src/views/admin/PengaturanV2.vue` — entrypoint admin pengaturan aktif (Stage 4 swap); tetap memakai kontrak composable/service yang sama via `PengaturanLegacyBridge.vue` selama observability window.
 - `src/views/admin/Pengaturan.vue` — entrypoint admin pengaturan legacy (fallback rollback), mendelegasikan render ke `src/components/legacy/PengaturanLegacyBridge.vue`.
 - `src/composables/admin/usePengaturan.ts` — facade composable kompatibel untuk `Pengaturan.vue`, menggabungkan state/actions/modal/watchers agar migrasi bertahap tanpa rewrite total dengan kontrak service/backend tetap.

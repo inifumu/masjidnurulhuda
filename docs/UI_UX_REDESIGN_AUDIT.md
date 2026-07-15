@@ -28,7 +28,7 @@ Arah final: **Nurul Huda Civic Editorial** — mobile-first warm minimalist edit
 | VueUse | Pertahankan selektif | Utility browser/reactivity bila mengurangi custom code |
 | class-variance-authority + clsx + tailwind-merge | Pertahankan | Typed component variants dan class composition |
 | @fontsource-variable/inter | Pertahankan | Satu font self-hosted canonical |
-| @headlessui/vue | Deprecate | Tidak dipakai untuk komponen baru; migrasikan dua dialog existing ke reka lalu evaluasi removal |
+| @headlessui/vue | Removed | Dua dialog existing telah dimigrasikan ke reka pada R1; dependency dan seluruh caller sudah tidak ada |
 | browser-image-compression | Pertahankan | Media upload client preprocessing; bukan concern visual |
 
 Tidak ada kebutuhan library UI baru pada tahap foundation. Penambahan dependency hanya boleh dilakukan jika primitive existing terbukti tidak memenuhi accessibility/behavior yang dibutuhkan dan keputusan dicatat di dokumen ini.
@@ -55,7 +55,7 @@ Target: implementasikan token `DESIGN.md` ke `src/assets/main.css`, gunakan Inte
 
 - 85 file primitive/component UI tersedia di `src/components/ui`.
 - Reka dipakai luas melalui primitive shadcn.
-- Headless UI masih dipakai oleh `src/components/ui/ConfirmModal.vue` dan `src/components/admin/kas/TransactionAuditDialog.vue`.
+- Baseline awal memakai Headless UI pada `ConfirmModal.vue` dan `TransactionAuditDialog.vue`; closure R1 telah memigrasikan keduanya ke reka dan menghapus dependency.
 - Native/custom button, form field, modal, status, card, dan table markup masih dibuat langsung di banyak view.
 
 Dampak: ukuran control, pending state, focus, Escape, radius, warna, dan spacing berbeda per screen.
@@ -220,7 +220,7 @@ Screen belum selesai hanya karena happy path terlihat bagus. Wajib ada evidence 
 
 1. Jangan menulis warna, radius, shadow, atau transition baru di view jika token/variant canonical tersedia.
 2. Jangan membuat primitive kedua untuk pattern yang sama.
-3. Jangan menambah Headless UI usage baru.
+3. Jangan memperkenalkan kembali Headless UI; gunakan primitive reka canonical.
 4. Jangan membuat `V3` atau bridge visual baru.
 5. Jangan mengadopsi legacy/V2 sebagai visual baseline.
 6. Jangan menambah glassmorphism, glow, blur orb, gradient dekoratif, atau card wrapper tanpa alasan hierarchy tertulis.

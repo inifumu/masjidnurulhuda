@@ -500,7 +500,7 @@ Residual baseline visual seperti screenshot inventory dilaksanakan saat memulai 
 - implementasikan token `DESIGN.md` ke Tailwind v4/CSS variables;
 - konsolidasikan Inter Variable dan hapus font drift;
 - canonical Button, FormField, CurrencyInput, Select/Combobox, DatePicker, Dialog/AlertDialog, Drawer/Sheet, Badge/Status, PageHeader, Metric, DataTable/MobileDataCard, Timeline, dan data states;
-- migrasikan pola Headless UI ke reka; jangan menambah usage baru;
+- pola Headless UI telah dimigrasikan ke reka dan dependency dihapus;
 - component lab + WCAG/keyboard/responsive verification.
 
 Evidence awal:

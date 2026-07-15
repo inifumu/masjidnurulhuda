@@ -133,6 +133,9 @@ Jangan menggabungkan refactor besar dengan perubahan behavior besar tanpa alasan
 5. Pertahankan business flow dan policy backend.
 6. Uji keyboard, focus, loading, error, empty, disabled, dan mobile state.
 7. Jangan menambah wrapper versi baru hanya untuk visual eksperimen.
+8. Status redesign aktif: R1 foundation `Done`; R2 public publication experience `In Progress`.
+9. Untuk R2, pertahankan service/API publik aktual, ganti placeholder blur/fake UI dengan state jujur, dan jangan menerbitkan alamat, kontak, donasi, jadwal, atau konten contoh yang belum terverifikasi.
+10. Headless UI telah dihapus; gunakan primitive reka canonical dan jangan menambah dependency UI paralel.
 
 ## 6. Finance Safety Procedure
 
