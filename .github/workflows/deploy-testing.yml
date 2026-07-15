@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir -p .wrangler/testing-deploy
           cp wrangler.testing.toml .wrangler/testing-deploy/wrangler.toml
-          cp -R dist functions .wrangler/testing-deploy/
+          cp -R dist functions server shared .wrangler/testing-deploy/
       - name: Deploy testing Pages
         run: npx wrangler pages deploy dist --project-name masjidnurulhuda-testing --branch testing --commit-dirty=true --cwd .wrangler/testing-deploy
         env:

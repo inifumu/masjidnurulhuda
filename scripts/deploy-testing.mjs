@@ -13,8 +13,9 @@ try {
   await rm(workspace, { recursive: true, force: true });
   await mkdir(workspace, { recursive: true });
   await cp("wrangler.testing.toml", `${workspace}/wrangler.toml`);
-  await cp("dist", `${workspace}/dist`, { recursive: true });
-  await cp("functions", `${workspace}/functions`, { recursive: true });
+  for (const directory of ["dist", "functions", "server", "shared"]) {
+    await cp(directory, `${workspace}/${directory}`, { recursive: true });
+  }
   run([
     "../../node_modules/wrangler/bin/wrangler.js",
     "pages", "deploy", "dist",

@@ -8,7 +8,7 @@ test("deploy testing menukar config hanya di workspace sementara", async () => {
   const workflow = await read(".github/workflows/deploy-testing.yml");
   assert.match(workflow, /mkdir -p \.wrangler\/testing-deploy/);
   assert.match(workflow, /cp wrangler\.testing\.toml \.wrangler\/testing-deploy\/wrangler\.toml/);
-  assert.match(workflow, /cp -R dist functions \.wrangler\/testing-deploy\//);
+  assert.match(workflow, /cp -R dist functions server shared \.wrangler\/testing-deploy\//);
   assert.match(workflow, /wrangler pages deploy dist .*--cwd \.wrangler\/testing-deploy/);
   assert.doesNotMatch(workflow, /cp wrangler\.testing\.toml wrangler\.toml/);
 });
