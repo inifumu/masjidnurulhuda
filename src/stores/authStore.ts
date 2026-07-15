@@ -1,6 +1,10 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import type { AdminRole } from "../../shared/contracts/index";
+import { httpClient } from "../services/httpClient.ts";
+
+type AuthUser = { id: number; name: string; role: AuthRole };
+type AuthSuccess = { status: "success"; data: AuthUser };
 
 export type AuthRole = AdminRole;
 export type AuthStatus =
@@ -12,7 +16,7 @@ export type AuthStatus =
 
 export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = ref(false);
-  const user = ref<{ id: number; name: string; role: AuthRole } | null>(null);
+  const user = ref<AuthUser | null>(null);
   const isReady = ref(false);
   const authStatus = ref<AuthStatus>("idle");
   const shouldRedirectToLogin = computed(
@@ -21,25 +25,16 @@ export const useAuthStore = defineStore("auth", () => {
   let authRequestSequence = 0;
 
   const login = async (email: string, password: string) => {
-    try {
-      const res = await fetch("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-      const result = await res.json();
-      if (res.ok && result.status === "success") {
-        isAuthenticated.value = true;
-        user.value = result.data;
-        isReady.value = true;
-        authStatus.value = "authenticated";
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
+    const result = await httpClient<AuthSuccess>("/api/admin/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    if (result.status !== "success" || !result.data) throw new Error("Kontrak login tidak valid.");
+    isAuthenticated.value = true;
+    user.value = result.data;
+    isReady.value = true;
+    authStatus.value = "authenticated";
+    return true;
   };
 
   const logout = async () => {

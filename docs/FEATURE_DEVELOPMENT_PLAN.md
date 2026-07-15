@@ -14,6 +14,26 @@ Sumber kebenaran prioritas dan status pengerjaan tetap `ROADMAP.md`. Item dalam 
 
 ## Kandidat Feature Development
 
+### 0. Evaluasi Ulang Visual Homepage Publik yang Lebih Modern
+
+**Status:** Candidate / hanya bila kebutuhan muncul setelah redesign admin selesai
+**Tujuan:** mengevaluasi evolusi homepage publik dari baseline Civic Editorial R2 menuju presentasi yang terasa lebih modern tanpa mengorbankan kerapian, kejujuran data, accessibility, atau performa.
+
+Konteks keputusan:
+
+- implementasi R2 saat ini diterima sebagai baseline yang lebih rapi dan profesional;
+- preferensi visual pengguna cenderung lebih modern daripada editorial murni;
+- kandidat ini bukan pembukaan kembali R2 dan tidak mengubah status R2 `Done`;
+- evaluasi hanya dilakukan jika ada kebutuhan produk nyata, sumber foto/konten terverifikasi, dan kapasitas setelah workstream admin prioritas selesai.
+
+Discovery minimum:
+
+- definisikan arti “modern” melalui referensi dan prototype terukur, bukan glassmorphism/gradient/card-grid generik;
+- pertahankan emerald identity, restrained gold, hierarchy informasi, honest unavailable states, dan satu primary action;
+- nilai kebutuhan fotografi/visual asli, motion yang menghormati reduced-motion, dan peningkatan perceived quality pada 360/tablet/desktop;
+- bandingkan dampak accessibility, Core Web Vitals, maintainability, dan conversion/task clarity terhadap baseline R2;
+- jangan membuat V3, bridge visual, route paralel, atau mempublikasikan aset/data yang belum terverifikasi.
+
 ### 1. Artikel dan Informasi
 
 **Status:** Candidate / discovery belum dimulai

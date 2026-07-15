@@ -75,7 +75,7 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 ## Dokumentasi aktif
 
-Status redesign: R1 Design Foundation dan R2 Public Publication Experience `Done`; workstream berikutnya R3 Admin Shell dan Authentication. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI.
+Status redesign: R1 Design Foundation dan R2 Public Publication Experience `Done`; R3 Admin Shell dan Authentication `In Progress`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
 
 - `.hermes.md` — aturan proses, safety, dan quality gate utama
 - `AGENTS.md` — instruksi ringkas untuk coding agent lain
@@ -85,7 +85,6 @@ Status redesign: R1 Design Foundation dan R2 Public Publication Experience `Done
 - `RUNBOOK.md` — deployment, migration, backup, restore, dan incident response
 - `docs/AI_AGENT_PLAYBOOK.md` — prosedur kerja rinci
 - `docs/UI_UX_REDESIGN_AUDIT.md` — audit stack, route/primitive overlap, migration sequence, dan anti-drift rules
-- `docs/R2_SESSION_HANDOFF_PROMPT.md` — prompt handoff siap pakai untuk melanjutkan R2 pada sesi baru
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
 
 Dokumen dalam `docs/archive/` hanya histori. `optimalisasi_plan.md` deprecated dan bukan roadmap aktif.

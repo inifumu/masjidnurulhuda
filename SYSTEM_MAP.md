@@ -1,6 +1,6 @@
 # Project Summary
 
-- Kontrak visual aktif: `DESIGN.md` (Nurul Huda Civic Editorial) dan audit/migration workstream `docs/UI_UX_REDESIGN_AUDIT.md`. Route UI current masih campuran V2/legacy/custom dan merupakan behavior baseline sementara, bukan target visual final. Full redesign public+admin diprioritaskan sebelum mayoritas P1–P2 tanpa mengubah API/RBAC/domain contract P0.5.
+- Kontrak visual aktif: `DESIGN.md` (Nurul Huda Civic Editorial) dan audit/migration workstream `docs/UI_UX_REDESIGN_AUDIT.md`. R1 foundation dan R2 public experience `Done`; R3 Admin Shell dan Authentication `In Progress`. UI admin masih campuran V2/legacy/custom dan merupakan behavior baseline sementara, bukan target visual final. Full redesign admin diprioritaskan sebelum mayoritas P1–P2 tanpa mengubah API/RBAC/domain contract P0.5.
 - `[DEV only] GET /_design-system -> DesignSystemLab.vue -> complete R1 Civic Editorial foundation specimens`; mencakup form/select/combobox/date, responsive data/table/card, timeline, status/state, hierarchy, serta token/font. Route hanya diregistrasikan saat `import.meta.env.DEV`, melewati auth bootstrap, dan tidak masuk production route table.
 
 - Tujuan aplikasi: website publik Masjid Nurul Huda (informasi profil, transparansi kas, kabar, galeri, kritik/saran) + panel administrasi untuk autentikasi admin, ringkasan kas, manajemen transaksi kas (input/proposal/approval/laporan), dan master data pengaturan (kategori, seksi, akun).
@@ -14,7 +14,7 @@
 
 # Core Logic Flow (Function-Level Flowchart)
 
-- `[Vue] LoginV2.vue(handleLogin) -> authStore.login -> POST /api/admin/auth/login -> exact same-origin + security headers -> pre-check persistent D1 limiter (SHA-256 IP+email) -> authService.loginAdmin (active account only) -> failure: atomic increment, failure 1–5=401, keenam=429; success: hapus bucket -> security audit tanpa data sensitif -> JWT cookie httpOnly (tv+exp 24 jam)`
+- `[Vue] LoginV2.vue(handleLogin + VeeValidate/Zod) -> authStore.login -> httpClient -> POST /api/admin/auth/login -> exact same-origin + security headers -> pre-check persistent D1 limiter (SHA-256 IP+email) -> authService.loginAdmin (active account only) -> frontend membedakan 401 kredensial, 429 rate limit, dan operational/network error; success: hapus bucket -> security audit tanpa data sensitif -> JWT cookie httpOnly (tv+exp 24 jam)`
 - `[Vue] router.beforeEach -> [Vue] authStore.checkAuth/retryAuth (latest-response wins) -> [Hono] GET /api/admin/auth/me -> verify JWT cookie + validasi claim tv vs users.token_version -> response session (redirect login hanya pada 401 definitif; 5xx/network menjadi recoverable error tanpa reset sesi; AdminLayoutV2 menampilkan retry overlay)`
 - `[Vue] AdminLayoutV2(handleLogout) -> [Vue] authStore.logout() -> [Hono] POST /api/admin/auth/logout -> verify JWT cookie (best-effort) -> [Query] bumpUserTokenVersion(users) -> clear cookie -> token lama revoke server-side`
 - `[Vue] GET / (public route, auth bootstrap dilewati) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> Civic Editorial section navigation (hero/jadwal/kas/kabar/galeri/saran); mobile nav mengelola focus, Escape, focus restoration, dan scroll lock`
@@ -229,7 +229,7 @@ masjidnurulhuda/
 - `src/stores/authStore.ts` — `login`, `logout`, `checkAuth` — sumber state autentikasi global frontend; `checkAuth` menormalkan state logout hanya pada `401 /auth/me` dan mempertahankan state pada `5xx/network error` (operational error path).
 - `src/views/admin/LoginV2.vue` — `handleLogin` — UI login admin aktif (V2/shadcn) dan trigger autentikasi.
 - `src/views/admin/Login.vue` — `handleLogin` — UI login legacy (dipertahankan sementara untuk rollback window terkontrol).
-- `src/layouts/AdminLayoutV2.vue` — `handleLogout`, state sidebar desktop/mobile, `toggleTheme` — kerangka UI panel admin aktif untuk route `/admin/*` (dashboard, finance, pengaturan, media, galeri-dokumentasi).
+- `src/layouts/AdminLayoutV2.vue` — `visibleNavItems`, `handleLogout`, desktop sidebar + reka Sheet mobile — shell admin Civic Editorial aktif dengan navigation role-aware, 44 px controls, account menu, theme, auth recovery, Escape/focus management, dan tanpa menampilkan route placeholder galeri.
 - `src/layouts/AdminLayout.vue` — layout admin legacy yang dipertahankan sebagai fallback rollback window.
 - `src/views/admin/DashboardV2.vue` — entrypoint admin dashboard aktif (Stage 4 swap); memakai kontrak composable/service yang sama dan mempertahankan compatibility bridge untuk rollback window.
 - `src/views/admin/Dashboard.vue` — entrypoint admin dashboard legacy (fallback rollback), mendelegasikan render ke `src/components/legacy/DashboardLegacyBridge.vue`.

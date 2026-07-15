@@ -535,13 +535,27 @@ Evidence closure:
 
 ## Phase R3 — Admin Shell dan Authentication
 
-**Status:** Not Started
+**Status:** In Progress
 
 - admin navigation berdasarkan IA dan role;
 - mobile drawer, tablet rail, desktop sidebar;
 - header/breadcrumb/user actions;
 - login, auth loading, operational error, retry, dan permission state;
 - replacement route canonical tanpa membuat V3.
+
+Scope start:
+
+- audit route aktif `/admin/login` dan `/admin/*`, auth bootstrap/recovery, role visibility, serta overlap shell V2/legacy;
+- pertahankan seluruh contract backend auth, token-version revocation, exact same-origin, rate limiter, dan P0.5 browser regression;
+- gunakan primitive R1 canonical dan selesaikan shell/login pada 360, tablet, dan desktop sebelum R4.
+
+Evidence berjalan:
+
+- login memakai FormField/Input/Button canonical, split institutional layout, fokus awal, autocomplete, pending state, serta pesan terpisah untuk 401, 429, dan gangguan operasional;
+- auth login frontend melewati `httpClient` typed tanpa mengubah endpoint, cookie, limiter, atau token-version contract;
+- shell admin memakai border-first Civic Editorial, desktop sidebar, reka Sheet mobile, account dropdown, theme action, dan auth recovery state;
+- navigation hanya memuat route operasional dan menyembunyikan Pengaturan dari role di luar `superadmin|ketua`; backend tetap otoritas;
+- browser gate R3 lulus pada login 360×800, 768×1024, 1366×900 serta role-aware mobile Sheet, Escape, touch target, reduced motion, dan overflow; P0.5 authenticated E2E tetap lulus.
 
 ## Phase R4 — Financial Workflows
 

@@ -174,10 +174,14 @@ Shell dan homepage aktif telah diadopsi ke Civic Editorial. Data source nyata te
 
 ### R3 — Admin shell dan authentication
 
+**Status:** In Progress
+
 - shell/navigation/header/user actions;
 - role-aware IA;
 - login dan session recovery;
 - mobile drawer, tablet rail, desktop sidebar.
+
+Adoption berjalan: `LoginV2.vue` dan `AdminLayoutV2.vue` kini menjadi implementation R3 aktif tanpa route V3. Login membedakan credential/rate-limit/operational error dan memakai form primitive canonical. Shell memakai desktop sidebar + reka Sheet mobile, role-aware navigation terhadap route nyata, auth recovery, account/logout pending state, dan control 44 px. Dashboard/finance/content views tetap dimigrasikan pada phase masing-masing; shell tidak melakukan reskin business screen tersebut.
 
 ### R4 — Financial workflows
 

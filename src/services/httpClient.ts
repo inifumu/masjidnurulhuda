@@ -5,7 +5,7 @@
  * Main Functions: `httpClient<T>()`, `ApiError`.
  * Side Effects: Mengirim request jaringan dengan `credentials: include` dan melempar error terstandar.
  */
-import { parseApiErrorBody, type ApiErrorCode, type FieldErrorMap } from "../../shared/contracts/index";
+import { parseApiErrorBody, type ApiErrorCode, type FieldErrorMap } from "../../shared/contracts/index.ts";
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
