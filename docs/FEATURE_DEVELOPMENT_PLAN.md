@@ -34,6 +34,27 @@ Discovery minimum:
 - bandingkan dampak accessibility, Core Web Vitals, maintainability, dan conversion/task clarity terhadap baseline R2;
 - jangan membuat V3, bridge visual, route paralel, atau mempublikasikan aset/data yang belum terverifikasi.
 
+### 0.1 Superadmin Role Preview untuk QA
+
+**Status:** Candidate / discovery keamanan wajib sebelum implementasi
+**Tujuan:** memungkinkan superadmin memeriksa navigasi dan pengalaman UI sebagai role operasional lain tanpa harus berganti akun berulang kali.
+
+Batas keamanan wajib:
+
+- bedakan tegas **UI role preview** dari **server-authorized impersonation**;
+- UI preview hanya boleh memengaruhi visibility/presentation dan tidak membuktikan RBAC backend;
+- request mutasi dan data scope tetap memakai identitas serta role sesi asli kecuali contract impersonation backend yang terpisah telah disetujui dan diuji;
+- jika server-authorized impersonation dibutuhkan, wajib superadmin-only, memiliki audit start/stop/target role, banner permanen, expiry pendek, exit satu klik, revocation, exact same-origin, dan negative role tests;
+- jangan menyimpan role preview di JWT/cookie/localStorage secara ambigu atau membuka jalur privilege escalation;
+- mode aktif harus selalu terlihat dan tidak boleh menyerupai sesi role asli tanpa indikator.
+
+Discovery minimum:
+
+- putuskan apakah kebutuhan cukup dengan preview menu/read-only UI atau perlu data-scope/API impersonation nyata;
+- definisikan behavior refresh, multi-tab, logout, session expiry, dan perubahan role akun asli;
+- tentukan route/fitur yang aman dipreview dan yang wajib tetap menggunakan akun fixture terpisah;
+- tambahkan browser matrix seluruh role dan backend negative tests; jangan mengklaim RBAC teruji hanya dari perubahan menu.
+
 ### 1. Artikel dan Informasi
 
 **Status:** Candidate / discovery belum dimulai

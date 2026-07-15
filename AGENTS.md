@@ -59,6 +59,8 @@ Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau li
 - Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view.
 - Mobile 360 adalah baseline; tablet dan desktop wajib dirancang, bukan sekadar hasil stretch.
 - Semua screen wajib memiliki state dan keyboard/accessibility evidence sesuai flow.
+- Audit R3 lanjutan wajib mencakup density/spacing shell, parity header sidebar mobile-desktop, ukuran icon/control, dan feedback interaksi pressed/open/pending/active yang konsisten.
+- Role preview/impersonation adalah security-sensitive: preview frontend tidak boleh dianggap RBAC backend; impersonation nyata memerlukan contract server, audit, expiry, indikator permanen, exit, dan negative tests.
 - `docs/UI_UX_REDESIGN_AUDIT.md` memuat inventory, adoption matrix, urutan migrasi, dan anti-drift rules.
 - Jangan cleanup/rename canonical sebelum caller audit, parity, test, build, dan browser flow lulus.
 

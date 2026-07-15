@@ -183,6 +183,14 @@ Shell dan homepage aktif telah diadopsi ke Civic Editorial. Data source nyata te
 
 Adoption berjalan: `LoginV2.vue` dan `AdminLayoutV2.vue` kini menjadi implementation R3 aktif tanpa route V3. Login membedakan credential/rate-limit/operational error dan memakai form primitive canonical. Shell memakai desktop sidebar + reka Sheet mobile, role-aware navigation terhadap route nyata, auth recovery, account/logout pending state, dan control 44 px. Dashboard/finance/content views tetap dimigrasikan pada phase masing-masing; shell tidak melakukan reskin business screen tersebut.
 
+Corrective audit terbuka sebelum R3 dapat ditutup:
+
+- sidebar masih perlu density pass: gap header ke list mobile, compactness desktop, dan parity lockup logo/nama/subtitle mobile-desktop;
+- ukuran icon/close control dan alignment harus dibandingkan lintas header, Sheet, account menu, serta sidebar;
+- feedback interaksi belum seragam: setiap toggle/menu/profile/navigation perlu state open/pressed/active/pending yang terlihat, focus-visible, dan reduced-motion-safe;
+- lakukan inventory component-by-component, bukan perbaikan lokal acak, agar spacing, effect, dan motion memakai primitive/token yang sama;
+- role preview superadmin diperlakukan sebagai discovery security. Preview UI hanya menguji presentation; impersonation backend memerlukan audit/expiry/banner/exit/revocation dan test terpisah.
+
 ### R4 — Financial workflows
 
 - route/screen transaksi;

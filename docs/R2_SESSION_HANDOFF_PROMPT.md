@@ -1,6 +1,8 @@
-# Prompt Handoff — Lanjutkan R2 Public Publication Experience
+# Prompt Handoff — R2 Public Publication Experience (Superseded)
 
-Salin seluruh isi prompt di bawah ini ke sesi Hermes baru.
+> Arsip handoff historis. R2 sudah `Done`; jangan gunakan prompt ini untuk sesi baru. Gunakan `docs/R3_SESSION_HANDOFF_PROMPT.md` untuk melanjutkan workstream aktif.
+
+Isi di bawah dipertahankan hanya sebagai histori konteks R2.
 
 ---
 

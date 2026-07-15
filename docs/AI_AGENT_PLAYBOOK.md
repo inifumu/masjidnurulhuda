@@ -136,6 +136,8 @@ Jangan menggabungkan refactor besar dengan perubahan behavior besar tanpa alasan
 8. Status redesign aktif: R1 foundation dan R2 public publication experience `Done`; R3 admin shell dan authentication `In Progress`.
 9. Baseline publik R2 dipertahankan. Evaluasi homepage lebih modern hanya kandidat masa depan; R3 berfokus pada shell admin, login, auth loading/recovery, role-aware navigation, dan responsive accessibility tanpa mengubah contract backend auth.
 10. Headless UI telah dihapus; gunakan primitive reka canonical dan jangan menambah dependency UI paralel.
+11. Untuk shell, audit interaction feedback sebagai satu sistem: hover bukan satu-satunya feedback; open/pressed/active/pending/focus harus jelas, konsisten, dan reduced-motion-safe.
+12. Role preview frontend hanya untuk presentation QA. Jangan menyebutnya impersonation aman atau bukti RBAC; server-authorized impersonation wajib threat model, audit, expiry, indikator, exit, revocation, dan negative tests.
 
 ## 6. Finance Safety Procedure
 
