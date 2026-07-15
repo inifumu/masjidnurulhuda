@@ -35,6 +35,6 @@ test("component lab tersedia hanya sebagai route development", async () => {
   assert.match(router, /DesignSystemLab\.vue/);
   assert.match(router, /meta:\s*\{\s*skipAuthBootstrap:\s*true\s*\}/);
   assert.match(router, /to\.meta\.skipAuthBootstrap/);
-  assert.match(app, /import\.meta\.env\.DEV/);
-  assert.match(app, /\/_design-system/);
+  assert.match(app, /route\.matched\.some/);
+  assert.match(app, /record\.meta\.skipAuthBootstrap/);
 });

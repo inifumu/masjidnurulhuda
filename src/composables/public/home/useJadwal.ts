@@ -1,93 +1,103 @@
-import { ref, onMounted } from "vue";
-import { jadwalService } from "../../../services/public/home/jadwalService";
+import { onMounted, ref } from "vue";
+import { jadwalService, type JadwalApiData } from "../../../services/public/home/jadwalService";
 
-// Konstanta untuk kunci LocalStorage
 const CACHE_KEY = "jadwal_sholat_cache";
 
-export function useJadwal() {
-  const lokasiMasjid = ref("Mencari lokasi...");
-  const jadwal = ref([
-    { nama: "Subuh", waktu: "..." },
-    { nama: "Dzuhur", waktu: "..." },
-    { nama: "Ashar", waktu: "..." },
-    { nama: "Maghrib", waktu: "..." },
-    { nama: "Isya", waktu: "..." },
-  ]);
+type WaktuSalat = { nama: string; waktu: string };
+type JadwalCache = { date: string; lokasi: string; jadwal: WaktuSalat[] };
+export type JadwalSource = "live" | "cache" | "stale" | "unavailable";
 
-  const parseCachedData = (raw: string | null) => {
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn("Cache jadwal rusak, akan diabaikan.");
-      return null;
-    }
-  };
+const isWaktuSalat = (value: unknown): value is WaktuSalat => {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.nama === "string" && typeof item.waktu === "string";
+};
+
+const parseCachedData = (raw: string | null): JadwalCache | null => {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<JadwalCache>;
+    if (
+      typeof value.date !== "string" ||
+      typeof value.lokasi !== "string" ||
+      !Array.isArray(value.jadwal) ||
+      !value.jadwal.every(isWaktuSalat)
+    ) return null;
+    return value as JadwalCache;
+  } catch {
+    return null;
+  }
+};
+
+const formatJadwal = (data: JadwalApiData): WaktuSalat[] => [
+  { nama: "Subuh", waktu: data.jadwal.subuh },
+  { nama: "Dzuhur", waktu: data.jadwal.dzuhur },
+  { nama: "Ashar", waktu: data.jadwal.ashar },
+  { nama: "Maghrib", waktu: data.jadwal.maghrib },
+  { nama: "Isya", waktu: data.jadwal.isya },
+];
+
+const getTodayWib = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+export function useJadwal() {
+  const lokasiMasjid = ref("");
+  const jadwal = ref<WaktuSalat[]>([]);
+  const isLoading = ref(true);
+  const errorMessage = ref("");
+  const source = ref<JadwalSource>("unavailable");
 
   const loadJadwal = async () => {
-    // 1. Dapatkan tanggal hari ini (Format YYYY-MM-DD)
-    const date = new Date();
-    const todayStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-    // 2. Cek LocalStorage terlebih dahulu (CACHE LOKAL INSTAN)
-    const cachedDataStr = localStorage.getItem(CACHE_KEY);
-    const cachedData = parseCachedData(cachedDataStr);
-    if (cachedData) {
-      // Jika data cache adalah untuk hari ini, langsung pakai & berhenti di sini!
-      if (cachedData.date === todayStr) {
-        lokasiMasjid.value = cachedData.lokasi;
-        jadwal.value = cachedData.jadwal;
-        return;
-      }
+    isLoading.value = true;
+    errorMessage.value = "";
+    const today = getTodayWib();
+    let cached: JadwalCache | null = null;
+    try {
+      cached = parseCachedData(localStorage.getItem(CACHE_KEY));
+    } catch {
+      cached = null;
     }
 
-    // 3. Jika belum ada cache untuk hari ini, minta ke Backend (BFF)
+    if (cached?.date === today) {
+      lokasiMasjid.value = cached.lokasi;
+      jadwal.value = cached.jadwal;
+      source.value = "cache";
+      isLoading.value = false;
+      return;
+    }
+
     try {
       const result = await jadwalService.fetchJadwalToday("surakarta");
-
-      if (result.status === "success") {
-        lokasiMasjid.value = result.data.lokasi;
-        const dataWaktu = result.data.jadwal;
-
-        const formatJadwal = [
-          { nama: "Subuh", waktu: dataWaktu.subuh },
-          { nama: "Dzuhur", waktu: dataWaktu.dzuhur },
-          { nama: "Ashar", waktu: dataWaktu.ashar },
-          { nama: "Maghrib", waktu: dataWaktu.maghrib },
-          { nama: "Isya", waktu: dataWaktu.isya },
-        ];
-
-        jadwal.value = formatJadwal;
-
-        // 🟢 SIMPAN KE LOCALSTORAGE (OVERWRITE CACHE LAMA)
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({
-            date: todayStr,
-            lokasi: result.data.lokasi,
-            jadwal: formatJadwal,
-          }),
-        );
-      } else {
-        throw new Error("Respons API tidak sukses");
+      lokasiMasjid.value = result.data.lokasi;
+      jadwal.value = formatJadwal(result.data);
+      source.value = "live";
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ date: today, lokasi: lokasiMasjid.value, jadwal: jadwal.value }));
+      } catch {
+        // Cache bersifat best-effort; data live tetap valid bila storage ditolak browser.
       }
-    } catch (error) {
-      console.error("Gagal memuat jadwal dari server:", error);
-
-      // 🔴 FALLBACK: Jika internet mati atau server hancur, cek apakah ada sisa cache lama
-      const oldCache = parseCachedData(cachedDataStr);
-      if (oldCache) {
-        lokasiMasjid.value = `${oldCache.lokasi} (Mode Offline)`;
-        jadwal.value = oldCache.jadwal;
+    } catch {
+      if (cached) {
+        lokasiMasjid.value = cached.lokasi;
+        jadwal.value = cached.jadwal;
+        source.value = "stale";
+        errorMessage.value = "Penyedia jadwal sedang tidak dapat dijangkau. Waktu yang tampil berasal dari cache sebelumnya dan perlu dikonfirmasi kembali.";
       } else {
-        lokasiMasjid.value = "Gagal memuat jadwal";
+        lokasiMasjid.value = "";
+        jadwal.value = [];
+        source.value = "unavailable";
+        errorMessage.value = "Jadwal salat belum dapat dimuat dari penyedia saat ini.";
       }
+    } finally {
+      isLoading.value = false;
     }
   };
 
-  onMounted(() => {
-    loadJadwal();
-  });
-
-  return { lokasiMasjid, jadwal };
+  onMounted(loadJadwal);
+  return { lokasiMasjid, jadwal, isLoading, errorMessage, source, loadJadwal };
 }

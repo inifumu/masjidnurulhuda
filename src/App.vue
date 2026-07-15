@@ -2,10 +2,12 @@
 import { useAuthStore } from "./stores/authStore";
 import { Toaster } from "vue-sonner"; // 🟢 Import Toaster
 import { computed } from "vue";
+import { useRoute } from "vue-router";
 
 const authStore = useAuthStore();
-const isDevelopmentLab = computed(
-  () => import.meta.env.DEV && window.location.pathname === "/_design-system",
+const route = useRoute();
+const skipsAuthBootstrap = computed(
+  () => route.matched.some((record) => record.meta.skipAuthBootstrap),
 );
 // Baris authStore.checkAuth() sudah DIBUANG dari sini agar tidak dobel!
 </script>
@@ -14,7 +16,7 @@ const isDevelopmentLab = computed(
   <Toaster position="top-right" richColors />
 
   <div
-    v-if="!isDevelopmentLab && (authStore.authStatus === 'idle' || authStore.authStatus === 'loading')"
+    v-if="!skipsAuthBootstrap && (authStore.authStatus === 'idle' || authStore.authStatus === 'loading')"
     class="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] dark:bg-[#0e131f]"
   >
     <img

@@ -162,11 +162,15 @@ Progress awal terverifikasi:
 
 ### R2 — Public publication experience
 
+**Status:** Done
+
 - public shell/navbar/footer;
 - homepage editorial;
 - jadwal, transparansi, featured publication, galeri, dan contact hierarchy;
 - article/documentation patterns;
 - loading/fallback/error/offline states.
+
+Shell dan homepage aktif telah diadopsi ke Civic Editorial. Data source nyata tetap hanya jadwal salat dan ringkasan kas; section kabar, galeri, dan kritik/saran sengaja merender unavailable/empty state sampai contract publish-only, privacy, dan anti-spam tersedia. Route publik tidak lagi menunggu bootstrap sesi admin. Browser gate mencakup 360×800, 768×1024, dan 1366×900, keyboard/focus/Escape mobile nav, reduced motion, local Inter, error/retry, touch target, overflow, dan console.
 
 ### R3 — Admin shell dan authentication
 

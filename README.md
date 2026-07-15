@@ -75,7 +75,7 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 ## Dokumentasi aktif
 
-Status redesign: R1 Design Foundation `Done`; R2 Public Publication Experience `In Progress`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI.
+Status redesign: R1 Design Foundation dan R2 Public Publication Experience `Done`; workstream berikutnya R3 Admin Shell dan Authentication. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI.
 
 - `.hermes.md` — aturan proses, safety, dan quality gate utama
 - `AGENTS.md` — instruksi ringkas untuk coding agent lain

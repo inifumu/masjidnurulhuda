@@ -20,6 +20,7 @@ const router = createRouter({
     {
       path: "/",
       component: () => import("../layouts/PublicLayout.vue"),
+      meta: { skipAuthBootstrap: true },
       children: [
         {
           path: "",

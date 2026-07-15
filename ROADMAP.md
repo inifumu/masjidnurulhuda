@@ -516,13 +516,22 @@ Evidence awal:
 
 ## Phase R2 — Public Publication Experience
 
-**Status:** In Progress
+**Status:** Done
 
 - public navbar/footer dan mobile navigation;
 - homepage editorial;
 - jadwal salat, transparansi kas, featured publication, kegiatan, galeri, contact;
 - article/documentation reading pattern;
 - loading/fallback/error/offline behavior.
+
+Evidence closure:
+
+- shell publik dan homepage memakai komposisi Civic Editorial end-to-end tanpa V3, glassmorphism, gradient dekoratif, card grid generik, atau CTA operasional palsu;
+- jadwal mempertahankan proxy MyQuran dan cache harian, dengan loading, live/cache, stale cache, unavailable, dan retry eksplisit;
+- ringkasan kas mempertahankan endpoint approved-only D1 dengan loading, recoverable error, retry, success, serta penjelasan nilai nol;
+- kabar, galeri, dan kritik/saran memakai state jujur tanpa fake blur/locked UI atau data contoh;
+- route publik melewati auth bootstrap admin; mobile navigation memiliki accessible name, focus transfer/restoration, Escape, scroll lock, dan control minimal 44 px;
+- regression test, production build, dan browser gate 360×800, 768×1024, 1366×900 lulus sebelum promosi testing.
 
 ## Phase R3 — Admin Shell dan Authentication
 
