@@ -1,7 +1,7 @@
 # Project Summary
 
 - Kontrak visual aktif: `DESIGN.md` (Nurul Huda Civic Editorial) dan audit/migration workstream `docs/UI_UX_REDESIGN_AUDIT.md`. Route UI current masih campuran V2/legacy/custom dan merupakan behavior baseline sementara, bukan target visual final. Full redesign public+admin diprioritaskan sebelum mayoritas P1–P2 tanpa mengubah API/RBAC/domain contract P0.5.
-- `[DEV only] GET /_design-system -> DesignSystemLab.vue -> canonical Tailwind v4 tokens + shadcn/reka Button/Input + FormField/CurrencyInput + PageHeader/Metric/StatusIndicator/data-state specimens`; route hanya diregistrasikan saat `import.meta.env.DEV`, melewati auth bootstrap, dan tidak masuk production route table.
+- `[DEV only] GET /_design-system -> DesignSystemLab.vue -> complete R1 Civic Editorial foundation specimens`; mencakup form/select/combobox/date, responsive data/table/card, timeline, status/state, hierarchy, serta token/font. Route hanya diregistrasikan saat `import.meta.env.DEV`, melewati auth bootstrap, dan tidak masuk production route table.
 
 - Tujuan aplikasi: website publik Masjid Nurul Huda (informasi profil, transparansi kas, kabar, galeri, kritik/saran) + panel administrasi untuk autentikasi admin, ringkasan kas, manajemen transaksi kas (input/proposal/approval/laporan), dan master data pengaturan (kategori, seksi, akun).
 - Tech stack utama:

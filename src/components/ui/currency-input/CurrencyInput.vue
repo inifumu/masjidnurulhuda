@@ -9,6 +9,7 @@ const props = defineProps<{
   modelValue?: string | number;
   invalid?: boolean;
   describedby?: string;
+  labelledby?: string;
   class?: string;
 }>();
 const emit = defineEmits<{
@@ -45,6 +46,7 @@ const updateValue = (event: Event) => {
       autocomplete="off"
       :aria-invalid="invalid || undefined"
       :aria-describedby="describedby"
+      :aria-labelledby="labelledby"
       class="font-tabular min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60 md:text-sm"
       @input="updateValue"
     />

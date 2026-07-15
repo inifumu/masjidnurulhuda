@@ -1,0 +1,1 @@
+<template><section aria-label="Filter data" class="flex flex-col gap-3 border-y bg-card px-4 py-4 sm:flex-row sm:flex-wrap sm:items-end"><div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><slot name="filters" /></div><div v-if="$slots.actions" class="flex flex-wrap gap-2"><slot name="actions" /></div></section></template>

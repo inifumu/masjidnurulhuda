@@ -154,10 +154,11 @@ Progress awal terverifikasi:
 
 - runtime token dan font drift dikonsolidasikan di `src/assets/main.css`;
 - Button/Input default memiliki 44 px touch target;
-- primitive hierarchy/form/status/state canonical bertambah: PageHeader, Metric, FormField, CurrencyInput, StatusIndicator, EmptyState, ErrorState, PermissionState, dan ConflictState;
+- seluruh primitive foundation R1 tersedia, termasuk hierarchy, form controls, Select/Combobox/DatePicker, dialog reka, responsive data display, timeline, loading, status, dan data states;
+- semua caller `@headlessui/vue` telah dimigrasikan ke reka dan dependency dihapus;
 - component lab development-only tersedia di `/_design-system`;
 - browser gate 360×800, 768×1024, dan 1366×900 lulus untuk overflow, touch target, local font, dan console;
-- visual audit awal menilai arah sudah jauh dari V2/glassmorphism; state specimen kemudian disederhanakan dari pastel card grid menjadi institutional status rows dan gold CTA diturunkan agar tidak bersaing dengan emerald primary.
+- visual audit menilai component lab menjaga Civic Editorial tanpa glass/default card grid; R1 browser, keyboard, reduced-motion, dan authenticated finance regression gates lulus. R1 `Done`; R2 public publication experience aktif berikutnya.
 
 ### R2 — Public publication experience
 

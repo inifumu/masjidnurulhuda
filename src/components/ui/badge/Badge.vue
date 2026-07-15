@@ -1,0 +1,2 @@
+<script setup lang="ts">withDefaults(defineProps<{ tone?: "default"|"success"|"warning"|"info"|"destructive" }>(),{tone:"default"}); const tones={default:"bg-muted text-foreground",success:"bg-success-soft text-success",warning:"bg-warning-soft text-warning",info:"bg-info-soft text-info",destructive:"bg-destructive/10 text-destructive"};</script>
+<template><span role="status" class="inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-semibold" :class="tones[tone]"><slot /></span></template>

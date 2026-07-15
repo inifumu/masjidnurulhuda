@@ -495,7 +495,7 @@ Residual baseline visual seperti screenshot inventory dilaksanakan saat memulai 
 
 ## Phase R1 — Design Foundation dan Component Lab
 
-**Status:** In Progress
+**Status:** Done
 
 - implementasikan token `DESIGN.md` ke Tailwind v4/CSS variables;
 - konsolidasikan Inter Variable dan hapus font drift;
@@ -507,16 +507,16 @@ Evidence awal:
 
 - token runtime Civic Editorial dan Inter Variable canonical sudah diterapkan pada `src/assets/main.css`;
 - Button/Input canonical memakai touch target default 44 px dan semantic emerald/gold variants;
-- PageHeader, Metric, StatusIndicator, EmptyState, ErrorState+retry, PermissionState, ConflictState+refresh, FormField, dan CurrencyInput tersedia sebagai primitive canonical dan dipakai component lab;
+- seluruh foundation contract tersedia: Button/IconButton, Input/Textarea, FormField/CurrencyInput, Select/Combobox/DatePicker, Dialog/AlertDialog, Sheet, Badge/StatusIndicator, PageHeader/SectionHeader, Metric, FilterBar, DataTable/MobileDataCard, Timeline, Skeleton, dan data states;
+- ConfirmModal dan TransactionAuditDialog telah dimigrasikan dari Headless UI ke reka; `@headlessui/vue` dihapus setelah caller scan bersih;
 - component lab development-only tersedia di `/_design-system` tanpa auth bootstrap atau production route;
 - automated browser verification lulus pada 360×800, 768×1024, dan 1366×900: tanpa horizontal overflow, button/input ≥44 px, tanpa Google Fonts, dan console bersih;
-- R1 tetap `In Progress` sampai primitive/state contract lengkap dan Headless UI migration selesai.
-
-Next slice: Select/Combobox/DatePicker contract, lalu migrasi ConfirmModal dan TransactionAuditDialog dari Headless UI ke reka sebelum DataTable/MobileDataCard dan Timeline.
+- authenticated finance E2E tetap lulus pada 360×800 dan 1366×900 termasuk pending Escape guard, conflict, recovery, role journey, dan overflow;
+- R1 ditutup setelah full unit/build/browser gate serta independent review; R2 menjadi workstream aktif berikutnya.
 
 ## Phase R2 — Public Publication Experience
 
-**Status:** Not Started
+**Status:** In Progress
 
 - public navbar/footer dan mobile navigation;
 - homepage editorial;

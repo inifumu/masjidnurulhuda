@@ -1,0 +1,2 @@
+<script setup lang="ts">defineProps<{ title: string; eyebrow?: string }>();</script>
+<template><article class="border-b bg-card px-4 py-4 first:border-t md:hidden"><p v-if="eyebrow" class="text-xs text-muted-foreground">{{ eyebrow }}</p><div class="mt-1 flex items-start justify-between gap-3"><h3 class="font-semibold">{{ title }}</h3><slot name="value" /></div><div class="mt-2 text-sm text-muted-foreground"><slot /></div><div v-if="$slots.actions" class="mt-3 flex flex-wrap gap-2"><slot name="actions" /></div></article></template>

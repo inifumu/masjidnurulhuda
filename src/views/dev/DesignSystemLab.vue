@@ -16,14 +16,32 @@ import { StatusIndicator } from "@/components/ui/status";
 import { ConflictState, EmptyState, ErrorState, PermissionState } from "@/components/ui/data-state";
 import { FormField } from "@/components/ui/form-field";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DatePicker from "@/components/ui/datepicker/DatePicker.vue";
+import { Combobox } from "@/components/ui/combobox";
+import { DataTable } from "@/components/ui/data-table";
+import { MobileDataCard } from "@/components/ui/mobile-data-card";
+import { Timeline } from "@/components/ui/timeline";
 
 const query = ref("");
 const amount = ref("");
+const category = ref("");
+const activityDate = ref<string | null>(null);
+const section = ref("");
+const sectionOptions = [
+  { value: "dakwah", label: "Seksi Dakwah" },
+  { value: "sosial", label: "Seksi Sosial" },
+  { value: "sarana", label: "Seksi Sarana" },
+];
 const activeDensity = ref<"comfortable" | "compact">("comfortable");
 
 const transactions = [
   { date: "15 Jul", title: "Infaq Jumat", category: "Infaq & Donasi", amount: "+ Rp 2.400.000", tone: "success" },
   { date: "13 Jul", title: "Perawatan pendingin", category: "Utilitas", amount: "− Rp 1.250.000", tone: "danger" },
+];
+const timelineItems = [
+  { id: 1, title: "Proposal diajukan", description: "Seksi Dakwah mengirim proposal kegiatan." },
+  { id: 2, title: "Disetujui Ketua", description: "Proposal diteruskan ke Bendahara." },
 ];
 </script>
 
@@ -79,6 +97,20 @@ const transactions = [
               <FormField label="Nominal transaksi" description="Masukkan nilai penuh tanpa desimal." :error="amount && Number(amount.replaceAll('.', '')) <= 0 ? 'Nominal harus lebih dari 0.' : undefined" required>
                 <template #control="control"><CurrencyInput v-bind="control" v-model="amount" placeholder="0" /></template>
               </FormField>
+              <FormField label="Kategori kegiatan" description="Gunakan Select untuk daftar pilihan terbatas.">
+                <template #control="control">
+                  <Select v-model="category">
+                    <SelectTrigger v-bind="control"><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                    <SelectContent><SelectGroup><SelectItem value="kajian">Kajian</SelectItem><SelectItem value="sosial">Kegiatan sosial</SelectItem><SelectItem value="operasional">Operasional</SelectItem></SelectGroup></SelectContent>
+                  </Select>
+                </template>
+              </FormField>
+              <FormField label="Tanggal kegiatan" description="Tanggal bisnis mengikuti Asia/Jakarta.">
+                <template #control="control"><DatePicker v-bind="control" v-model="activityDate" /></template>
+              </FormField>
+              <FormField label="Seksi pengurus" description="Gunakan Combobox ketika pilihan perlu dicari.">
+                <template #control="control"><Combobox v-bind="control" v-model="section" :options="sectionOptions" placeholder="Pilih seksi" /></template>
+              </FormField>
             </div>
           </div>
         </section>
@@ -90,14 +122,11 @@ const transactions = [
             <Metric label="Pemasukan" value="Rp 8.400.000" tone="success" />
             <Metric label="Pengeluaran" value="Rp 5.125.000" tone="destructive" />
           </div>
-          <div class="mt-4 overflow-hidden rounded-md border bg-card">
-            <div class="hidden grid-cols-[7rem_1fr_12rem] border-b bg-muted/50 px-4 py-3 text-xs font-semibold text-muted-foreground md:grid"><span>Tanggal</span><span>Transaksi</span><span class="text-right">Nominal</span></div>
-            <article v-for="item in transactions" :key="item.title" class="grid gap-2 border-b px-4 py-4 last:border-0 md:grid-cols-[7rem_1fr_12rem] md:items-center">
-              <time class="text-xs text-muted-foreground md:text-sm">{{ item.date }}</time>
-              <div><p class="font-semibold">{{ item.title }}</p><p class="text-sm text-muted-foreground">{{ item.category }}</p></div>
-              <strong class="font-tabular text-sm md:text-right" :class="item.tone === 'success' ? 'text-success' : 'text-destructive'">{{ item.amount }}</strong>
-            </article>
+          <div class="mt-4">
+            <DataTable caption="Transaksi terbaru"><template #header><tr><th class="px-4 py-3">Tanggal</th><th class="px-4 py-3">Transaksi</th><th class="px-4 py-3 text-right">Nominal</th></tr></template><tr v-for="item in transactions" :key="item.title"><td class="px-4 py-4">{{ item.date }}</td><td class="px-4 py-4"><strong>{{ item.title }}</strong><p class="text-muted-foreground">{{ item.category }}</p></td><td class="font-tabular px-4 py-4 text-right font-semibold" :class="item.tone === 'success' ? 'text-success' : 'text-destructive'">{{ item.amount }}</td></tr></DataTable>
+            <MobileDataCard v-for="item in transactions" :key="`mobile-${item.title}`" :title="item.title" :eyebrow="item.date"><template #value><strong class="font-tabular" :class="item.tone === 'success' ? 'text-success' : 'text-destructive'">{{ item.amount }}</strong></template>{{ item.category }}</MobileDataCard>
           </div>
+          <div class="mt-8"><h3 class="mb-4 font-semibold">Riwayat persetujuan</h3><Timeline :items="timelineItems"><template #meta="{ item }"><span class="text-xs text-muted-foreground">Tahap {{ item.id }}</span></template></Timeline></div>
         </section>
 
         <section aria-labelledby="states-title">

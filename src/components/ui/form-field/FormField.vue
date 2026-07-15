@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const generatedId = useId();
 const controlId = computed(() => props.id ?? `field-${generatedId}`);
+const labelId = computed(() => `${controlId.value}-label`);
 const descriptionId = computed(() => `${controlId.value}-description`);
 const errorId = computed(() => `${controlId.value}-error`);
 const ariaDescribedby = computed(() => {
@@ -23,7 +24,7 @@ const ariaDescribedby = computed(() => {
 
 <template>
   <div class="space-y-2">
-    <label :for="controlId" class="text-sm font-semibold text-foreground">
+    <label :id="labelId" :for="controlId" class="text-sm font-semibold text-foreground">
       {{ label }}
       <span v-if="required" class="text-destructive" aria-hidden="true">*</span>
       <span v-if="required" class="sr-only">(wajib)</span>
@@ -32,6 +33,7 @@ const ariaDescribedby = computed(() => {
     <slot
       name="control"
       :id="controlId"
+      :labelledby="labelId"
       :describedby="ariaDescribedby"
       :invalid="Boolean(error)"
       :required="required"

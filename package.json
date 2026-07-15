@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
-    "@headlessui/vue": "^1.7.23",
     "@hono/vite-dev-server": "^0.25.1",
     "@vee-validate/zod": "^4.15.1",
     "@vueuse/core": "^14.3.0",
@@ -48,6 +47,7 @@
     "@types/node": "^24.12.2",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vue/tsconfig": "^0.9.1",
+    "playwright": "^1.61.1",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",
     "vite": "^8.0.4",

@@ -9,6 +9,8 @@ test("FormField menghubungkan label, description, error, dan control secara sema
   assert.match(component, /:for="controlId"/);
   assert.match(component, /:id="descriptionId"/);
   assert.match(component, /:id="errorId"/);
+  assert.match(component, /:id="labelId"/);
+  assert.match(component, /:labelledby="labelId"/);
   assert.match(component, /role="alert"/);
   assert.match(component, /name="control"/);
   assert.match(component, /ariaDescribedby/);
@@ -21,6 +23,7 @@ test("CurrencyInput memakai formatter Rupiah canonical dan contract input aksesi
   assert.match(component, /inputmode="numeric"/);
   assert.match(component, /aria-invalid/);
   assert.match(component, /aria-describedby/);
+  assert.match(component, /aria-labelledby/);
   assert.match(component, /update:modelValue/);
   assert.match(component, /input\.value = formatted/);
   assert.match(component, /font-tabular/);

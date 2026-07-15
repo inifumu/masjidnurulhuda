@@ -1,0 +1,2 @@
+<script setup lang="ts">defineProps<{ caption: string }>();</script>
+<template><div class="hidden overflow-hidden rounded-md border bg-card md:block"><table class="w-full text-left text-sm"><caption class="sr-only">{{ caption }}</caption><thead class="border-b bg-muted/50 text-xs font-semibold text-muted-foreground"><slot name="header" /></thead><tbody class="divide-y"><slot /></tbody></table></div></template>
