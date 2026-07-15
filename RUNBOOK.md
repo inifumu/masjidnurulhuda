@@ -75,7 +75,20 @@ Password minimal 16 karakter dan wajib memiliki huruf kecil, huruf besar, angka,
 
 Sebelum upgrade remote di masa depan: buat export backup bertimestamp di luar repository, catat jumlah users/kas, terapkan migration melalui change window yang disetujui, lalu validasi akun default aktif = 0, preservasi akun terotasi, jumlah/status kas, index penting, `transaction_audit_events`, `PRAGMA foreign_key_check`, dan `PRAGMA foreign_keys`. Jangan memulihkan database secara buta bila legacy row tidak kompatibel; hentikan rollout dan analisis fixture/backup terlebih dahulu.
 
-## 2. Rollback Aplikasi
+## 2. Environment deployment dan rollback aplikasi
+
+### Environment deployment permanen
+
+| Git branch | GitHub Environment | Pages | D1 | R2 | Config |
+|---|---|---|---|---|---|
+| `testing` | `testing` | `masjidnurulhuda-testing` | `masjidnurulhuda-testing-db` | `masjidnurulhuda-testing-media` | `wrangler.testing.toml` |
+| `main` | `production` | `masjidnurulhuda` | `masjidnurulhuda-db` | `masjidnurulhuda-media` | `wrangler.toml` |
+
+Workflow `.github/workflows/deploy-testing.yml` hanya merespons branch `testing`; workflow `.github/workflows/deploy.yml` hanya merespons `main`. Keduanya menjalankan test/build/migration harness sebelum migration remote dan deploy. Jangan menukar config antar-environment atau menggunakan resource production untuk smoke testing.
+
+Alur normal: feature/improvement branch → PR ke `testing` → verifikasi live testing → PR `testing` ke `main` → quality gate ulang → production. GitHub Environment `production` direkomendasikan memakai required reviewer agar migration/deploy production tidak berjalan tanpa persetujuan eksplisit.
+
+### Rollback aplikasi
 
 Jika setelah deploy web tidak bisa dibuka atau API gagal berat:
 

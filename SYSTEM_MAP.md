@@ -9,6 +9,7 @@
   - Backend: Hono.js (`server/index.ts`) berjalan via Vite dev server adapter Cloudflare.
   - Database: Cloudflare D1 (SQLite) melalui binding `DB` di `wrangler.toml`.
   - Auth: JWT (`hono/jwt`) disimpan di cookie `httpOnly`.
+- Deployment dipisahkan permanen: branch `testing` memakai Pages/D1/R2 testing melalui `wrangler.testing.toml`; branch `main` memakai resource production melalui `wrangler.toml`. Binding aplikasi tetap `DB` dan `MEDIA_BUCKET` sehingga source code tidak bercabang berdasarkan environment.
 - Pola arsitektur singkat: UI Vue (view/component) -> composable/store/service frontend -> `httpClient` terpusat (request bridge + normalisasi error non-2xx) -> Cloudflare Pages Functions wrapper `functions/api/[[path]].ts` -> endpoint `/api/*` Hono (route + middleware auth) -> service/query SQL -> tabel D1.
 
 # Core Logic Flow (Function-Level Flowchart)

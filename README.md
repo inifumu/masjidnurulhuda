@@ -40,6 +40,13 @@ npm run db:apply:local
 
 Migration remote dan deployment hanya boleh dilakukan dengan persetujuan eksplisit serta mengikuti `RUNBOOK.md`. Backup wajib dibuat sebelum migration yang membangun ulang tabel atau menyentuh data finansial.
 
+Branch deployment permanen:
+
+- `testing` → Pages `masjidnurulhuda-testing`, D1 `masjidnurulhuda-testing-db`, R2 `masjidnurulhuda-testing-media` melalui `wrangler.testing.toml`;
+- `main` → resource production existing melalui `wrangler.toml`.
+
+Push/PR ke `testing` tidak memakai D1 atau R2 production. Merge ke `main` menjalankan quality gate ulang sebelum migration dan deploy production.
+
 Fresh database tidak menyediakan credential privileged universal. Setelah migration lokal, provision superadmin dari environment lokal sesuai prosedur `RUNBOOK.md`; jangan menyimpan nilainya di source atau shell history bersama.
 
 ## Dokumentasi aktif
