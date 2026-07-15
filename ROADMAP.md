@@ -507,9 +507,12 @@ Evidence awal:
 
 - token runtime Civic Editorial dan Inter Variable canonical sudah diterapkan pada `src/assets/main.css`;
 - Button/Input canonical memakai touch target default 44 px dan semantic emerald/gold variants;
+- PageHeader, Metric, StatusIndicator, EmptyState, ErrorState+retry, PermissionState, ConflictState+refresh, FormField, dan CurrencyInput tersedia sebagai primitive canonical dan dipakai component lab;
 - component lab development-only tersedia di `/_design-system` tanpa auth bootstrap atau production route;
 - automated browser verification lulus pada 360×800, 768×1024, dan 1366×900: tanpa horizontal overflow, button/input ≥44 px, tanpa Google Fonts, dan console bersih;
 - R1 tetap `In Progress` sampai primitive/state contract lengkap dan Headless UI migration selesai.
+
+Next slice: Select/Combobox/DatePicker contract, lalu migrasi ConfirmModal dan TransactionAuditDialog dari Headless UI ke reka sebelum DataTable/MobileDataCard dan Timeline.
 
 ## Phase R2 — Public Publication Experience
 

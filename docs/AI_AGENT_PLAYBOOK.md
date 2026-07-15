@@ -316,6 +316,26 @@ Jangan menyimpan setiap iterasi padding, radius, atau micro-animation di roadmap
 
 ## 13. Hermes Agent Usage
 
+### Bootstrap superadmin
+
+- Fresh migration sengaja tidak menghasilkan credential privileged yang usable.
+- Bootstrap local memakai `npm run admin:provision:local`; live testing memakai `npm run admin:provision:testing` yang hard-bound ke resource testing.
+- Password dibaca dari environment lokal/interaktif, tidak ditulis ke source, chat handoff, screenshot, log, memory, atau skill.
+- Command default tidak overwrite akun existing; `--replace-existing` hanya untuk recovery eksplisit.
+- Jangan menambah provisioning remote production otomatis. Production memerlukan backup, change window, dan persetujuan eksplisit sesuai RUNBOOK.
+
+### 13.1 Commit dan environment testing
+
+Jika perubahan membentuk slice koheren, seluruh test/build/browser gate relevan lulus, diff bersih dari secret/artifact lokal, dan tidak ada blocker atau bug terbuka, agent langsung:
+
+1. commit dengan pesan yang mencerminkan scope;
+2. push branch kerja;
+3. push commit yang sama ke branch `testing`;
+4. tunggu workflow testing selesai;
+5. smoke-check URL testing dan kontrak data/resource isolation yang relevan.
+
+Tidak perlu meminta konfirmasi ulang untuk promosi testing. Jangan menerapkan aturan ini ke `main` atau resource production; merge, migration, deploy, secret, dan operasi destruktif production tetap membutuhkan permintaan eksplisit.
+
 ### Memory
 
 Simpan hanya preferensi atau keputusan stabil yang memang perlu lintas sesi. Jangan menyimpan:

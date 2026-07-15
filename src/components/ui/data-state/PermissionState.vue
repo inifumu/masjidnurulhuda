@@ -1,0 +1,2 @@
+<script setup lang="ts">import { ShieldAlert } from "lucide-vue-next"; defineProps<{ title?: string; description?: string }>();</script>
+<template><section role="status" class="border-y bg-card px-4 py-8 text-center"><ShieldAlert class="mx-auto size-6 text-warning" aria-hidden="true" /><h3 class="mt-3 font-semibold">{{ title ?? "Akses terbatas" }}</h3><p class="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{{ description ?? "Peran Anda tidak memiliki izin untuk melihat bagian ini." }}</p></section></template>

@@ -58,20 +58,25 @@ npx wrangler d1 execute masjidnurulhuda-db --remote --command="PRAGMA foreign_ke
 6. Hentikan rollout jika jumlah row berubah tanpa rencana atau foreign-key check menghasilkan row.
 7. Rollback aplikasi tidak membatalkan migration D1; restore database memerlukan analisis insiden dan persetujuan eksplisit.
 
-## 1.1 Provisioning dan recovery superadmin lokal
+## 1.1 Bootstrap dan recovery superadmin
 
 Migration `0017` menonaktifkan akun yang masih memakai known default hash dan membump `token_version`. Password yang telah dirotasi tidak berubah. Fresh migration tidak menyediakan credential privileged universal.
 
-Jalankan hanya terhadap D1 lokal setelah migration selesai. Masukkan secret melalui environment lokal dan jangan menyimpannya di source, `.env` tracked, dokumentasi, atau output log:
+Untuk bootstrap pertama D1 lokal, jalankan setelah migration selesai. Masukkan secret melalui environment lokal dan jangan menyimpannya di source, `.env` tracked, dokumentasi, atau output log:
 
 ```bash
-PROVISION_ADMIN_EMAIL='operator@example.invalid' \
-PROVISION_ADMIN_NAME='Recovery Admin' \
-PROVISION_ADMIN_PASSWORD='<password-kuat-lokal>' \
+export PROVISION_ADMIN_EMAIL='operator@example.invalid'
+export PROVISION_ADMIN_NAME='Recovery Admin'
+read -s -p 'Password superadmin: ' PROVISION_ADMIN_PASSWORD
+export PROVISION_ADMIN_PASSWORD
+printf '\n'
 npm run admin:provision:local
+unset PROVISION_ADMIN_EMAIL PROVISION_ADMIN_NAME PROVISION_ADMIN_PASSWORD
 ```
 
-Password minimal 16 karakter dan wajib memiliki huruf kecil, huruf besar, angka, dan simbol; password default/lemah ditolak. Command default idempotent (`INSERT OR IGNORE`) dan tidak mengubah akun existing. Untuk recovery akun existing secara eksplisit, tambahkan `-- --replace-existing`; operasi ini mengaktifkan akun, menetapkan role `superadmin`, merotasi hash, dan merevoke sesi lama. Gunakan `-- --persist-to <path>` bila D1 lokal memakai persistence directory khusus. SQL credential-equivalent diberikan ke Wrangler melalui file sementara acak bermode `0600` di `.wrangler/provision-admin/`, tidak melalui process arguments, dan selalu dihapus pada blok cleanup. Untuk membuat akun live testing, gunakan environment variables yang sama lalu jalankan `npm run admin:provision:testing`; command ini hard-bound ke `masjidnurulhuda-testing-db` + `wrangler.testing.toml` dan tidak menyediakan mode remote production.
+Password minimal 16 karakter dan wajib memiliki huruf kecil, huruf besar, angka, dan simbol; password default/lemah ditolak. Command default idempotent (`INSERT OR IGNORE`) dan tidak mengubah akun existing. Untuk recovery akun existing secara eksplisit, tambahkan `-- --replace-existing`; operasi ini mengaktifkan akun, menetapkan role `superadmin`, merotasi hash, dan merevoke sesi lama. Gunakan `-- --persist-to <path>` bila D1 lokal memakai persistence directory khusus. SQL credential-equivalent diberikan ke Wrangler melalui file sementara acak bermode `0600` di `.wrangler/provision-admin/`, tidak melalui process arguments, dan selalu dihapus pada blok cleanup.
+
+Untuk bootstrap/recovery live testing, gunakan input environment yang sama dan jalankan `npm run admin:provision:testing` (tambahkan `-- --replace-existing` hanya untuk recovery eksplisit). Command ini hard-bound ke `masjidnurulhuda-testing-db` + `wrangler.testing.toml`, tidak dapat digabung dengan `--persist-to`, dan tidak menyediakan mode remote production. Provisioning/recovery production tidak diotomasi oleh script ini; lakukan hanya melalui prosedur insiden/change window terpisah dengan backup dan persetujuan eksplisit.
 
 Sebelum upgrade remote di masa depan: buat export backup bertimestamp di luar repository, catat jumlah users/kas, terapkan migration melalui change window yang disetujui, lalu validasi akun default aktif = 0, preservasi akun terotasi, jumlah/status kas, index penting, `transaction_audit_events`, `PRAGMA foreign_key_check`, dan `PRAGMA foreign_keys`. Jangan memulihkan database secara buta bila legacy row tidak kompatibel; hentikan rollout dan analisis fixture/backup terlebih dahulu.
 

@@ -154,6 +154,7 @@ Progress awal terverifikasi:
 
 - runtime token dan font drift dikonsolidasikan di `src/assets/main.css`;
 - Button/Input default memiliki 44 px touch target;
+- primitive hierarchy/form/status/state canonical bertambah: PageHeader, Metric, FormField, CurrencyInput, StatusIndicator, EmptyState, ErrorState, PermissionState, dan ConflictState;
 - component lab development-only tersedia di `/_design-system`;
 - browser gate 360×800, 768×1024, dan 1366×900 lulus untuk overflow, touch target, local font, dan console;
 - visual audit awal menilai arah sudah jauh dari V2/glassmorphism; state specimen kemudian disederhanakan dari pastel card grid menjadi institutional status rows dan gold CTA diturunkan agar tidak bersaing dengan emerald primary.

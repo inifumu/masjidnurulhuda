@@ -14,10 +14,34 @@ Website publik dan panel administrasi Masjid Nurul Huda untuk informasi masjid, 
 ```bash
 npm install
 npm run db:apply:local
-# set PROVISION_ADMIN_EMAIL, PROVISION_ADMIN_NAME, dan PROVISION_ADMIN_PASSWORD
-npm run admin:provision:local
 npm run dev
 ```
+
+### Setup superadmin pertama
+
+Fresh database tidak memiliki credential privileged universal. Setelah migration selesai, buat superadmin pertama dari Git Bash tanpa menulis password ke source atau file tracked:
+
+```bash
+export PROVISION_ADMIN_EMAIL='superadmin@example.com'
+export PROVISION_ADMIN_NAME='Superadmin'
+read -s -p 'Password superadmin: ' PROVISION_ADMIN_PASSWORD
+export PROVISION_ADMIN_PASSWORD
+printf '\n'
+
+npm run admin:provision:local
+
+unset PROVISION_ADMIN_EMAIL PROVISION_ADMIN_NAME PROVISION_ADMIN_PASSWORD
+```
+
+Password minimal 16 karakter dan harus memuat huruf kecil, huruf besar, angka, serta simbol. Command bersifat idempotent dan tidak menimpa akun existing. Jika akun existing memang harus dipulihkan, ulangi dengan `npm run admin:provision:local -- --replace-existing`.
+
+Untuk workspace live testing, gunakan input environment yang sama lalu jalankan:
+
+```bash
+npm run admin:provision:testing
+```
+
+Command testing hard-bound ke `masjidnurulhuda-testing-db`; tidak ada command provisioning remote production. Provisioning atau recovery production wajib mengikuti change window dan persetujuan eksplisit di `RUNBOOK.md`.
 
 Validasi canonical:
 
@@ -47,7 +71,7 @@ Branch deployment permanen:
 
 Push/PR ke `testing` tidak memakai D1 atau R2 production. Merge ke `main` menjalankan quality gate ulang sebelum migration dan deploy production.
 
-Fresh database tidak menyediakan credential privileged universal. Setelah migration lokal, provision superadmin dari environment lokal sesuai prosedur `RUNBOOK.md`; jangan menyimpan nilainya di source atau shell history bersama.
+Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBOOK.md`.
 
 ## Dokumentasi aktif
 

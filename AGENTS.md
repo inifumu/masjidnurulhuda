@@ -42,7 +42,7 @@ Jangan melakukan blind scan. Abaikan `node_modules`, `.git`, `dist`, `build`, `c
 - Backend adalah otoritas RBAC dan state transition; guard UI hanya untuk UX.
 - Jangan mengubah migration lama yang mungkin sudah diterapkan; gunakan migration baru.
 - Jangan melakukan deployment, migration remote, penghapusan data, atau operasi produksi destruktif tanpa permintaan eksplisit.
-- Jangan commit/push kecuali diminta atau telah disepakati sebagai bagian workflow.
+- Commit koheren dan push ke branch kerja + `testing` boleh dilakukan langsung setelah seluruh gate relevan lulus dan tidak ada blocker/bug. Tetap minta izin eksplisit untuk merge/push `main`, migration/deploy production, secret production, atau operasi remote destruktif.
 - Jangan menyatakan selesai tanpa menjalankan validasi relevan: typecheck/build, test, integration/security negative path, migration check, atau responsive/accessibility check sesuai scope.
 
 ## Domain kritis dan baseline

@@ -1,7 +1,7 @@
 # Project Summary
 
 - Kontrak visual aktif: `DESIGN.md` (Nurul Huda Civic Editorial) dan audit/migration workstream `docs/UI_UX_REDESIGN_AUDIT.md`. Route UI current masih campuran V2/legacy/custom dan merupakan behavior baseline sementara, bukan target visual final. Full redesign public+admin diprioritaskan sebelum mayoritas P1–P2 tanpa mengubah API/RBAC/domain contract P0.5.
-- `[DEV only] GET /_design-system -> DesignSystemLab.vue -> canonical Tailwind v4 tokens + shadcn/reka Button/Input specimens`; route hanya diregistrasikan saat `import.meta.env.DEV`, melewati auth bootstrap, dan tidak masuk production route table.
+- `[DEV only] GET /_design-system -> DesignSystemLab.vue -> canonical Tailwind v4 tokens + shadcn/reka Button/Input + FormField/CurrencyInput + PageHeader/Metric/StatusIndicator/data-state specimens`; route hanya diregistrasikan saat `import.meta.env.DEV`, melewati auth bootstrap, dan tidak masuk production route table.
 
 - Tujuan aplikasi: website publik Masjid Nurul Huda (informasi profil, transparansi kas, kabar, galeri, kritik/saran) + panel administrasi untuk autentikasi admin, ringkasan kas, manajemen transaksi kas (input/proposal/approval/laporan), dan master data pengaturan (kategori, seksi, akun).
 - Tech stack utama:
@@ -299,6 +299,7 @@ masjidnurulhuda/
 - `migrations/0002_seed_initial_data.sql` — migration historis immutable yang memuat seed awal; credential default historis direkonsiliasi oleh migration 0017.
 - `migrations/0017_disable_known_default_credentials.sql` — menonaktifkan akun yang masih memakai known default hash dan merevoke sesi tanpa memengaruhi password yang telah dirotasi.
 - `scripts/provision-admin.mjs` — provisioning/recovery superadmin D1 lokal dari environment lokal; password kuat wajib, default tidak overwrite akun existing kecuali `--replace-existing`.
+- `npm run admin:provision:testing` — mode remote testing hard-bound ke D1/config testing; bootstrap production sengaja tidak tersedia melalui command ini.
 - `.github/workflows/deploy.yml` — pipeline GitHub Actions awal untuk typecheck, apply migration D1 remote, dan deploy Cloudflare.
 - `RUNBOOK.md` — runbook insiden awal untuk backup/restore D1, rollback Pages, dan health check publik.
 - `vite.config.ts` — plugin Vue/Tailwind/Hono dev server — pengikat frontend-backend saat development.
