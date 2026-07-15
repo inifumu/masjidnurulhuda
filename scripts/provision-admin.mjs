@@ -44,9 +44,11 @@ const main = async () => {
     password: process.env.PROVISION_ADMIN_PASSWORD,
   });
   const replaceExisting = process.argv.includes("--replace-existing");
+  const remoteTesting = process.argv.includes("--remote-testing");
   const persistIndex = process.argv.indexOf("--persist-to");
   const persistTo = persistIndex >= 0 ? process.argv[persistIndex + 1] : undefined;
   if (persistIndex >= 0 && !persistTo) throw new Error("--persist-to membutuhkan path.");
+  if (remoteTesting && persistTo) throw new Error("--remote-testing tidak dapat digabung dengan --persist-to.");
   const passwordHash = await hashPassword(input.password);
   const sql = buildProvisioningSql({ ...input, passwordHash, replaceExisting });
   const temporaryDirectory = ".wrangler/provision-admin";
@@ -54,15 +56,21 @@ const main = async () => {
   await mkdir(temporaryDirectory, { recursive: true });
   try {
     await writeFile(temporarySqlPath, sql, { mode: 0o600, flag: "wx" });
-    const args = ["node_modules/wrangler/bin/wrangler.js", "d1", "execute", "masjidnurulhuda-db", "--local", "--file", temporarySqlPath];
-    if (persistTo) args.push("--persist-to", persistTo);
+    const databaseName = remoteTesting ? "masjidnurulhuda-testing-db" : "masjidnurulhuda-db";
+    const args = ["node_modules/wrangler/bin/wrangler.js", "d1", "execute", databaseName, "--file", temporarySqlPath];
+    if (remoteTesting) args.push("--remote", "--config", "wrangler.testing.toml");
+    else {
+      args.push("--local");
+      if (persistTo) args.push("--persist-to", persistTo);
+    }
     const result = spawnSync(process.execPath, args, { stdio: ["ignore", "inherit", "inherit"] });
     if (result.status !== 0) process.exitCode = result.status ?? 1;
   } finally {
     await rm(temporarySqlPath, { force: true });
   }
   if (process.exitCode) return;
-  console.log(replaceExisting ? "Admin lokal berhasil dipulihkan." : "Provisioning lokal selesai (akun existing tidak diubah)." );
+  const target = remoteTesting ? "testing remote" : "lokal";
+  console.log(replaceExisting ? `Admin ${target} berhasil dipulihkan.` : `Provisioning ${target} selesai (akun existing tidak diubah).`);
 };
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

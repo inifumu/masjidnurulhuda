@@ -44,3 +44,11 @@ test("credential-equivalent tidak diteruskan melalui process arguments", async (
   assert.match(source, /writeFile\(temporarySqlPath, sql, \{ mode: 0o600/);
   assert.match(source, /rm\(temporarySqlPath, \{ force: true \}\)/);
 });
+
+test("mode remote hanya dapat menargetkan resource testing yang hard-bound", async () => {
+  const source = await readFile(new URL("../scripts/provision-admin.mjs", import.meta.url), "utf8");
+  assert.match(source, /remoteTesting = process\.argv\.includes\("--remote-testing"\)/);
+  assert.match(source, /remoteTesting \? "masjidnurulhuda-testing-db" : "masjidnurulhuda-db"/);
+  assert.match(source, /args\.push\("--remote", "--config", "wrangler\.testing\.toml"\)/);
+  assert.doesNotMatch(source, /--remote-production/);
+});

@@ -11,6 +11,7 @@
     "test:critical-flow:d1": "node tests/scripts/p05-wrangler-critical-flow.mjs",
     "test:e2e:browser": "node tests/scripts/p05-browser-e2e.mjs",
     "admin:provision:local": "node scripts/provision-admin.mjs",
+    "admin:provision:testing": "node scripts/provision-admin.mjs --remote-testing",
     "deploy:testing": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda-testing --branch testing --commit-dirty=true",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda",
