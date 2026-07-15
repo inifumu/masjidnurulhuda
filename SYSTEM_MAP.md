@@ -229,7 +229,8 @@ masjidnurulhuda/
 - `src/stores/authStore.ts` — `login`, `logout`, `checkAuth` — sumber state autentikasi global frontend; `checkAuth` menormalkan state logout hanya pada `401 /auth/me` dan mempertahankan state pada `5xx/network error` (operational error path).
 - `src/views/admin/LoginV2.vue` — `handleLogin` — UI login admin aktif (V2/shadcn) dan trigger autentikasi.
 - `src/views/admin/Login.vue` — `handleLogin` — UI login legacy (dipertahankan sementara untuk rollback window terkontrol).
-- `src/layouts/AdminLayoutV2.vue` — `visibleNavItems`, `handleLogout`, desktop sidebar + reka Sheet mobile — shell admin Civic Editorial aktif dengan navigation role-aware, 44 px controls, account menu, theme, auth recovery, Escape/focus management, dan tanpa menampilkan route placeholder galeri.
+- `src/layouts/AdminLayoutV2.vue` — `handleLogout`, route breadcrumb, theme, dan auth recovery — orchestrator shell admin aktif berbasis shadcn-vue Sidebar; navigation composition berada di `AdminSidebar.vue`.
+- `src/components/admin/shell/AdminSidebar.vue` — grouped role-aware navigation, shadcn Collapsible submenu, desktop icon collapse, mobile off-canvas, dan account footer. Desktop shell memakai density 32 px; mobile controls 44 px; account row 48 px. Frontend visibility tetap hanya UX, bukan otoritas RBAC.
 - Belum ada role preview/impersonation superadmin pada source aktif. Kandidat berada di discovery: frontend preview tidak boleh mengubah backend authorization/data scope; server-authorized impersonation memerlukan contract dan audit terpisah.
 - `src/layouts/AdminLayout.vue` — layout admin legacy yang dipertahankan sebagai fallback rollback window.
 - `src/views/admin/DashboardV2.vue` — entrypoint admin dashboard aktif (Stage 4 swap); memakai kontrak composable/service yang sama dan mempertahankan compatibility bridge untuk rollback window.

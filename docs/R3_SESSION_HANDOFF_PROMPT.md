@@ -1,10 +1,10 @@
-# Prompt Handoff — Lanjutkan Corrective Refinement R3
+# Prompt Handoff — Lanjutkan Closure Corrective R3 Shadcn Sidebar
 
 Salin seluruh isi prompt di bawah ini ke sesi Hermes baru.
 
 ---
 
-Lanjutkan R3 Admin Shell dan Authentication Masjid Nurul Huda dari working tree saat ini.
+Lanjutkan closure R3 Admin Shell dan Authentication Masjid Nurul Huda dari working tree saat ini.
 
 Repository:
 - Branch: `improve/project-foundation`
@@ -13,6 +13,8 @@ Repository:
 - Zona waktu bisnis: `Asia/Jakarta`.
 - Jangan reset, stash, checkout, clean, atau membuang perubahan existing.
 - Jangan menyentuh `main` atau resource production.
+- Artefak `.hermes/**` dan file `x.name)` adalah probe lokal; jangan di-stage atau di-commit.
+- Jangan gunakan `git add -A`; stage hanya path source/test/docs yang dimaksud.
 
 Dokumen canonical yang wajib dibaca:
 - `.hermes.md`
@@ -25,6 +27,7 @@ Dokumen canonical yang wajib dibaca:
 - `docs/UI_UX_REDESIGN_AUDIT.md`
 - `docs/AI_AGENT_PLAYBOOK.md`
 - `docs/FEATURE_DEVELOPMENT_PLAN.md`
+- `docs/R3_SESSION_HANDOFF_PROMPT.md`
 
 Status milestone:
 - P0.5: `Done`.
@@ -35,15 +38,103 @@ Status milestone:
 - Migration latest: `0017`.
 - Fresh database tidak memiliki privileged universal credential.
 
-Baseline R3 yang sudah dipromosikan:
-- Commit: `04fca5d feat(ui): establish R3 admin shell and authentication`.
-- Commit yang sama sudah ada pada `origin/improve/project-foundation` dan `origin/testing`.
-- GitHub Actions testing run `29424832933`: success.
-- Verify: 144 test, build, migration test lulus.
-- Deploy: apply D1 testing, isolated workspace, Pages deploy lulus.
-- Live `/admin/login`: HTTP 200, native required/aria-required, fokus email, Inter self-hosted, control ≥44 px, overflow 0, console bersih.
-- P0.5 authenticated E2E tetap lulus untuk role journey, auth recovery, conflict, pending Escape, dan overflow.
-- Production tidak berubah.
+Status source R3 saat handoff ini:
+- Shell admin telah dirombak ke primitive shadcn-vue Sidebar canonical.
+- Navigation composition ada di `src/components/admin/shell/AdminSidebar.vue`.
+- `src/layouts/AdminLayoutV2.vue` sekarang hanya mengorkestrasi auth recovery, header/breadcrumb, trigger, theme, dan content inset.
+- Desktop geometry contract:
+  - shell controls 32 px;
+  - icon rail 48 px;
+  - header 64 px;
+  - sidebar expanded 240 px.
+- Mobile geometry contract:
+  - shell controls 44 px;
+  - account row 48 px;
+  - header 64 px;
+  - off-canvas sidebar.
+- Logo resmi `/logo.png` dipakai pada header sidebar.
+- Collapse motion brand/account sekarang shrink/fade sinkron dengan sidebar width.
+- Group icon saat sidebar collapsed melakukan expand + reveal submenu group tersebut.
+- Role preview/impersonation belum diimplementasikan.
+
+Route/source penting:
+- `/admin/login` → `src/views/admin/LoginV2.vue` → `authStore.login` → `httpClient` → `/api/admin/auth/login`.
+- `/admin/*` → router auth bootstrap → `src/layouts/AdminLayoutV2.vue` → `src/components/admin/shell/AdminSidebar.vue` → route view aktif.
+- Backend tetap otoritas RBAC; frontend visibility hanya UX.
+
+Leaf navigation nyata saat ini:
+- Ringkasan → `/admin/dashboard`
+- Keuangan → `/admin/finance`
+- Media & publikasi → `/admin/media`, `/admin/galeri-dokumentasi`
+- Pengaturan → `/admin/pengaturan`
+
+Catatan penting:
+- Jangan menambah submenu palsu untuk workflow yang belum punya route nyata.
+- `FinanceV2` dan `PengaturanV2` masih mengandung tab/workspace internal; pemecahan child-route belum dikerjakan di slice ini.
+
+Gate lokal terbaru yang SUDAH lulus pada working tree source/test/docs:
+- `npm run test` → 145/145 pass.
+- `npm run build` → pass.
+- `npm run test:e2e:browser` → pass.
+- Custom R3 browser gate (`tests/scripts/r3-admin-browser.mjs`) → pass untuk 4 role × 3 viewport.
+- `git diff --check` → pass.
+
+Perbaikan penting yang sudah selesai:
+- nested Escape mobile: Escape langsung menutup Sheet bila tidak ada transient layer lain; saat dropdown akun terbuka, Escape pertama hanya menutup dropdown, Escape/close berikutnya menutup Sheet.
+- popup akun mobile tampil ke atas dan tetap di dalam viewport.
+- popup akun menggunakan radius `rounded-md` konsisten.
+- breadcrumb spacing optik terukur simetris 16 px / 16 px dari glyph ke separator dan separator ke breadcrumb.
+- account collapsed centerline sudah terukur benar secara optik.
+- animasi collapsible submenu sudah ada (`collapsible-up/down`) dan menghormati reduced motion.
+- drift generator dibersihkan: tidak ada `@lucide/vue`, tidak ada Google Geist, dependency/lockfile sudah kembali baseline.
+- `SidebarTrigger` mengekspose `aria-expanded` dan `aria-controls`.
+- nested `<main>` sudah diperbaiki (hanya satu landmark `main` dari `SidebarInset`).
+- browser gate sekarang mengassert focus kembali ke `data-account-trigger` setelah Escape menutup popup akun.
+
+Independent review terakhir:
+- Review lama sempat FAIL karena nested `<main>` dan staging hygiene.
+- Nested `<main>` sudah diperbaiki.
+- Staging hygiene belum dilakukan (working tree masih berisi banyak untracked probe lokal).
+- Review independen baru perlu diminta lagi setelah re-check diff final, karena source berubah setelah verdict FAIL lama.
+
+Yang harus dilakukan pertama kali di sesi baru:
+1. Re-check `git status --short --branch`.
+2. Sebelum audit final, commit, atau push, perbaiki dulu temuan visual tambahan berikut pada shell R3:
+   - ikon tiga titik pada profile mobile display harus sejajar dengan ikon `X` close drawer dan ikon arrow/chevron submenu di area atas drawer;
+   - ganti ikon sidebar trigger untuk mobile display ke ikon hamburger/menu yang lebih tepat;
+   - audit ulang konsistensi ukuran ikon: ikon tema saat ini terasa lebih besar daripada ikon lain (sekitar 20 px vs 16 px). Samakan style tile ikon tema dengan ikon shell lain;
+   - samakan ukuran SVG ikon shell lain agar mengikuti ukuran ikon tema, yaitu 20 px, bila hasil visualnya paling konsisten;
+   - lakukan perbaikan ini lebih dulu, lalu baru ulang audit geometry/interaction shell secara menyeluruh.
+3. Pastikan hanya file source/test/docs yang benar-benar ingin di-commit akan di-stage.
+4. Konfirmasi tidak ada diff content pada file yang hanya kena line-ending metadata (`src/components/ui/button/index.ts`, `src/components/ui/input/Input.vue`, `src/components/ui/sheet/SheetContent.vue`). Jika benar tidak ada content diff, jangan stage.
+5. Minta fresh independent pre-commit review karena verdict lama sudah stale setelah perbaikan.
+6. Jika PASS, commit slice koheren corrective R3.
+7. Push branch kerja dan push commit yang sama ke branch `testing`.
+8. Tunggu GitHub Actions testing selesai.
+9. Smoke live testing (`masjidnurulhuda-testing.pages.dev`) dengan HTTP + custom R3 browser gate pada deployment live.
+
+Candidate tracked files yang kemungkinan memang perlu di-stage (verifikasi ulang sebelum commit):
+- `README.md`
+- `SYSTEM_MAP.md`
+- `ROADMAP.md`
+- `RUNBOOK.md`
+- `docs/AI_AGENT_PLAYBOOK.md`
+- `docs/UI_UX_REDESIGN_AUDIT.md`
+- `docs/R3_SESSION_HANDOFF_PROMPT.md`
+- `src/assets/main.css`
+- `src/layouts/AdminLayoutV2.vue`
+- `src/components/admin/shell/AdminSidebar.vue`
+- `src/components/ui/collapsible/*`
+- `src/components/ui/separator/*`
+- `src/components/ui/sidebar/*`
+- `src/components/ui/tooltip/*`
+- `tests/r3-admin-shell.test.mjs`
+- `tests/scripts/r3-admin-browser.mjs`
+
+Candidate yang TIDAK boleh masuk commit:
+- `.hermes/**`
+- `x.name)`
+- file dengan perubahan metadata-only/line ending tanpa content diff
 
 Testing environment terisolasi:
 - Pages: `masjidnurulhuda-testing`
@@ -56,68 +147,15 @@ Testing environment terisolasi:
 Bootstrap superadmin:
 - Local: `npm run admin:provision:local`
 - Live testing: `npm run admin:provision:testing`
-- Command testing hard-bound ke D1/config testing.
 - Jangan menulis/mencetak password atau hash.
 - Tidak ada command provisioning remote production.
 
-Kebijakan commit/push:
-- Setelah slice koheren dan seluruh test/build/browser/accessibility/security review lulus: commit langsung, push branch kerja, push commit sama ke `testing`, tunggu Actions, lalu smoke live testing.
-- Jangan merge/push `main`.
-- Jangan migration/deploy production.
-
-Trace R3 aktual:
-- `/admin/login` → `src/views/admin/LoginV2.vue` → `authStore.login` → `httpClient` → `/api/admin/auth/login` → limiter/auth service/D1.
-- `/admin/*` → router auth bootstrap → `src/layouts/AdminLayoutV2.vue` → role-aware navigation → route view aktif.
-- Backend tetap otoritas RBAC; frontend visibility hanya UX.
-
-File utama:
-- `src/layouts/AdminLayoutV2.vue`
-- `src/views/admin/LoginV2.vue`
-- `src/stores/authStore.ts`
-- `src/router/index.ts`
-- `src/components/ui/sheet/*`
-- `src/components/ui/button/*`
-- `src/components/ui/dropdown-menu/*`
-- `tests/r3-admin-shell.test.mjs`
-- `tests/scripts/r3-admin-browser.mjs`
-- `tests/scripts/p05-browser-e2e.mjs`
-
-Feedback pengguna yang wajib ditindaklanjuti sebelum closure R3:
-1. Sidebar perlu lebih compact.
-2. Mobile Sheet memiliki jarak header ke list menu terlalu besar/tidak konsisten.
-3. Header sidebar mobile dan desktop tidak parity; lockup logo, “Masjid Nurul Huda”, dan “Ruang kerja pengurus” harus memakai hierarchy/alignment konsisten.
-4. Audit ulang ukuran icon close/menu/profile/theme; close mobile sebelumnya terasa mini walau technical target 44 px sudah lulus.
-5. Interaction impact tidak konsisten: theme toggle terasa, profile/account trigger dan beberapa menu tidak memberi feedback open/pressed/active yang cukup.
-6. Audit component-by-component untuk spacing, icon scale, active/open/pressed/pending/focus state, transition, dan reduced-motion. Jangan memperbaiki secara acak per elemen.
-
-Discovery fitur superadmin role preview:
-- Tujuan: superadmin dapat memeriksa menu dan UX sebagai role lain tanpa gonta-ganti akun.
-- Pertama putuskan bersama evidence apakah cukup **UI-only role preview** atau memerlukan **server-authorized impersonation**.
-- UI-only preview hanya mengubah presentation/navigation visibility; request dan backend data scope tetap memakai role asli. Jangan klaim ini menguji RBAC backend.
-- Server-authorized impersonation adalah security-sensitive dan baru boleh diimplementasikan jika contract disetujui: superadmin-only, exact same-origin, audit start/stop/target, banner permanen, expiry pendek, one-click exit, revocation, multi-tab/refresh behavior, dan negative tests.
-- Jangan menyimpan role preview secara ambigu dalam JWT/cookie/localStorage dan jangan membuat bypass backend.
-- Mode preview/impersonation harus selalu terlihat dan mudah dihentikan.
-
-Tugas pertama sesi baru:
-1. Re-check `git status`, branch, HEAD, dan remote tracking. Working tree sesi ini berisi perubahan dokumentasi/handoff yang belum tentu sudah di-commit; jangan membuangnya.
-2. Baca source dan ambil screenshot baseline shell pada 360×800, 768×1024, dan 1366×900 dengan fixture role minimal pengurus + superadmin.
-3. Buat inventory terukur: sidebar width, header height, gap header→nav, padding nav, icon size, control size, active/open/pressed/focus feedback, mobile/desktop parity.
-4. Tulis trace + impact map. Perubahan role preview minimal berisiko tinggi jika menyentuh server/JWT/data scope.
-5. Refine shell melalui primitive/token canonical; jangan membuat V3, bridge, local primitive duplikat, glassmorphism, atau hardcoded effect baru.
-6. Tambahkan browser matrix seluruh role (`superadmin`, `ketua`, `bendahara`, `pengurus`) dan interaction gates untuk Sheet/account/theme/navigation.
-7. Bila mengerjakan role preview, mulai dengan threat model dan failing tests. Jangan mengubah backend authorization secara implisit.
-8. Jalankan `npm run test`, `npm run build`, `npm run test:e2e:browser`, custom R3 browser gate, dan `git diff --check`.
-9. Independent pre-commit review wajib; perbaiki blocker.
-10. Bila seluruh gate lulus, commit/push branch kerja + `testing`, tunggu Actions, dan smoke live testing terisolasi.
-
 Definition of Done corrective R3:
-- density sidebar compact dan konsisten;
-- header/nav parity mobile-desktop;
-- icon/control sizing serta interaction feedback konsisten;
-- Sheet/account/theme/navigation keyboard, focus, Escape, open/pressed/active/pending state lulus;
-- reduced-motion dan overflow lulus pada 360/tablet/desktop;
+- shell shadcn-vue Sidebar canonical stabil desktop/mobile;
+- geometry konsisten per display mode;
+- header/nav/account/menu/submenu/popup motion konsisten;
+- mobile Sheet/account/theme/navigation keyboard, focus, Escape, popup collision, open/pressed/active state lulus;
 - role visibility seluruh role teruji;
-- bila role preview dibuat, batas UI preview vs backend RBAC jujur dan security contract lulus;
 - P0.5 auth/finance regression tetap lulus;
 - docs canonical sinkron;
 - testing live sehat dan terisolasi;

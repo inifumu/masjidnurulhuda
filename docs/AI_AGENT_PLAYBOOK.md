@@ -138,6 +138,8 @@ Jangan menggabungkan refactor besar dengan perubahan behavior besar tanpa alasan
 10. Headless UI telah dihapus; gunakan primitive reka canonical dan jangan menambah dependency UI paralel.
 11. Untuk shell, audit interaction feedback sebagai satu sistem: hover bukan satu-satunya feedback; open/pressed/active/pending/focus harus jelas, konsisten, dan reduced-motion-safe.
 12. Role preview frontend hanya untuk presentation QA. Jangan menyebutnya impersonation aman atau bukti RBAC; server-authorized impersonation wajib threat model, audit, expiry, indikator, exit, revocation, dan negative tests.
+13. Bila user menyetujui rombak shell admin total, gunakan primitive shadcn-vue Sidebar canonical dan berhenti mempertahankan geometri legacy. Tetapkan satu contract geometry desktop (contoh: 32 px shell controls, 48 px icon rail, 64 px header) dan satu contract mobile (contoh: 44 px controls, account row 48 px), lalu audit computed browser boxes agar trigger, separator, breadcrumb, submenu, profile footer, dan motion collapse konsisten sebagai satu sistem.
+14. Untuk nested transient UI mobile (Sheet sidebar + dropdown akun), uji dua hal terpisah: Escape langsung menutup Sheet bila tidak ada layer di atasnya, dan Escape menutup dropdown terlebih dahulu tanpa ikut menutup Sheet. Jika wiring primitive tidak cukup, tambahkan fail-safe pada sumber state sidebar, bukan pada caller yang mudah terlewat.
 
 ## 6. Finance Safety Procedure
 

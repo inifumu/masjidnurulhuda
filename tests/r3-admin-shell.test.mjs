@@ -5,19 +5,22 @@ import { readFile } from "node:fs/promises";
 const read = (path) => readFile(path, "utf8");
 
 test("R3 admin shell memakai primitive canonical, density compact, dan nav role-aware", async () => {
-  const shell = await read("src/layouts/AdminLayoutV2.vue");
-  assert.match(shell, /Sheet v-model:open="isMobileSheetOpen"/);
-  assert.match(shell, /visibleNavItems/);
-  assert.match(shell, /roles: \["superadmin", "ketua"\]/);
-  assert.match(shell, /aria-label="Navigasi admin"/);
-  assert.match(shell, /isDesktopSidebarOpen \? 'w-60' : 'w-16'/);
-  assert.match(shell, /aria-expanded="isDesktopSidebarOpen"/);
-  assert.match(shell, /aria-expanded="isMobileSheetOpen"/);
-  assert.match(shell, /data-shell-brand/);
-  assert.match(shell, /data-shell-navigation/);
-  assert.match(shell, /data-account-trigger/);
-  assert.match(shell, /data-theme-trigger/);
-  assert.doesNotMatch(shell, /backdrop-blur|#09090b|Galeri & Dokumentasi|w-8 h-8|px-3 py-5/);
+  const [layout, sidebar] = await Promise.all([
+    read("src/layouts/AdminLayoutV2.vue"),
+    read("src/components/admin/shell/AdminSidebar.vue"),
+  ]);
+  const shell = `${layout}\n${sidebar}`;
+  assert.match(layout, /SidebarProvider/);
+  assert.match(sidebar, /collapsible="icon"/);
+  assert.match(sidebar, /SidebarMenuSub/);
+  assert.match(sidebar, /Collapsible/);
+  assert.match(sidebar, /visibleNavigationGroups/);
+  assert.match(sidebar, /roles: \["superadmin", "ketua"\]/);
+  assert.match(layout, /SidebarTrigger/);
+  assert.match(sidebar, /SidebarFooter/);
+  assert.match(sidebar, /data-account-trigger/);
+  assert.match(layout, /data-theme-trigger/);
+  assert.doesNotMatch(shell, /Sheet v-model:open="isMobileSheetOpen"|isDesktopSidebarOpen|isMobileSheetOpen|backdrop-blur|#09090b|w-8 h-8/);
 });
 
 test("R3 role preview belum mengubah sesi atau otorisasi backend secara implisit", async () => {

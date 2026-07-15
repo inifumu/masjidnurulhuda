@@ -556,8 +556,9 @@ Evidence berjalan:
 - shell admin memakai border-first Civic Editorial, desktop sidebar, reka Sheet mobile, account dropdown, theme action, dan auth recovery state;
 - navigation hanya memuat route operasional dan menyembunyikan Pengaturan dari role di luar `superadmin|ketua`; backend tetap otoritas;
 - browser gate R3 lulus pada login 360×800, 768×1024, 1366×900 serta role-aware mobile Sheet, Escape, touch target, reduced motion, dan overflow; P0.5 authenticated E2E tetap lulus.
-- corrective shell memadatkan sidebar desktop menjadi 240 px dan rail 64 px, menyamakan lockup mobile/desktop, serta merapatkan padding header→nav tanpa mengurangi target control 44 px;
-- browser matrix mencakup `superadmin`, `ketua`, `bendahara`, dan `pengurus` pada 360×800, 768×1024, dan 1366×900, termasuk Sheet, account, theme, navigation, focus restoration, reduced motion, dan overflow;
+- corrective shell dirombak ke primitive shadcn-vue Sidebar canonical: expanded 240 px, icon rail 48 px, grouped Collapsible submenu, account footer, mobile off-canvas, logo resmi, dan header/breadcrumb compact;
+- geometry konsisten per display: seluruh shell control desktop 32 px, mobile 44 px, account row 48 px, header 64 px; collapse logo/avatar dan submenu memiliki motion sinkron serta reduced-motion fallback;
+- browser matrix mencakup `superadmin`, `ketua`, `bendahara`, dan `pengurus` pada 360×800, 768×1024, dan 1366×900, termasuk mobile Sheet, icon-collapse reveal submenu, nested Escape, popup collision, account/theme/navigation, focus restoration, reduced motion, dan overflow;
 - role preview tetap belum diimplementasikan: kebutuhan QA presentation dibuktikan melalui fixture role browser sehingga tidak ada perubahan JWT, backend authorization, atau data scope pada slice corrective ini.
 
 Corrective refinement sebelum closure R3:
