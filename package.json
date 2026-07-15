@@ -10,6 +10,7 @@
     "test:migrations": "node tests/scripts/p0-migrations.mjs",
     "test:critical-flow:d1": "node tests/scripts/p05-wrangler-critical-flow.mjs",
     "test:e2e:browser": "node tests/scripts/p05-browser-e2e.mjs",
+    "admin:provision:local": "node scripts/provision-admin.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda",
     "db:create": "wrangler d1 migrations create masjidnurulhuda-db",

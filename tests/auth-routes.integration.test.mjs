@@ -18,7 +18,7 @@ const createEnv = async ({ active = 1, tokenVersion = 0 } = {}) => {
     token_version: tokenVersion,
     is_active: active,
   };
-  const state = { user, limiter: new Map(), audits: [] };
+  const state = { user, limiter: new Map(), audits: [], passwordQueries: 0 };
   const DB = {
     prepare(sql) {
       const normalized = sql.replace(/\s+/g, " ").trim();
@@ -27,17 +27,22 @@ const createEnv = async ({ active = 1, tokenVersion = 0 } = {}) => {
         values: [],
         bind(...values) { this.values = values; return this; },
         async first() {
+          if (normalized.startsWith("SELECT blocked_until FROM login_rate_limits")) {
+            const row = state.limiter.get(this.values[0]);
+            return row ? { blocked_until: row.blockedUntil } : null;
+          }
           if (normalized.includes("INSERT INTO login_rate_limits")) {
             const key = this.values[0];
-            const current = state.limiter.get(key) ?? 0;
+            const current = state.limiter.get(key)?.count ?? 0;
             const count = current + 1;
-            state.limiter.set(key, count);
+            state.limiter.set(key, { count, blockedUntil: count > 5 ? Date.now() + 900_000 : null });
             return {
               failure_count: count,
               blocked_until: count > 5 ? Date.now() + 900_000 : null,
             };
           }
           if (normalized.includes("COALESCE(operational_role, role) AS role") && normalized.includes("FROM users WHERE email = ?")) {
+            state.passwordQueries += 1;
             return this.values[0] === user.email ? user : null;
           }
           if (normalized.includes("SELECT id, token_version, is_active FROM users")) {
@@ -48,6 +53,10 @@ const createEnv = async ({ active = 1, tokenVersion = 0 } = {}) => {
           return null;
         },
         async run() {
+          if (normalized.startsWith("DELETE FROM login_rate_limits")) {
+            const existed = state.limiter.delete(this.values[0]);
+            return { success: true, meta: { changes: existed ? 1 : 0 } };
+          }
           if (normalized.includes("INSERT INTO security_audit_events")) {
             state.audits.push({ target_user_id: this.values[0], action: this.values[1], metadata: this.values[2] });
           }
@@ -79,6 +88,22 @@ test("login valid menghasilkan cookie dan audit sukses tanpa data sensitif", asy
   assert.doesNotMatch(JSON.stringify(env.state.audits), /admin@example|password-benar|203\.0\.113/);
 });
 
+test("login sukses berulang tidak mengonsumsi quota", async () => {
+  const env = await createEnv();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    assert.equal((await login(env)).status, 200);
+  }
+  assert.equal(env.state.limiter.size, 0);
+});
+
+test("login sukses membersihkan bucket setelah failure", async () => {
+  const env = await createEnv();
+  assert.equal((await login(env, "password-salah")).status, 401);
+  assert.equal(env.state.limiter.size, 1);
+  assert.equal((await login(env)).status, 200);
+  assert.equal(env.state.limiter.size, 0);
+});
+
 test("login invalid menghasilkan 401 dan audit gagal", async () => {
   const env = await createEnv();
   const response = await login(env, "password-salah");
@@ -95,6 +120,14 @@ test("request keenam menghasilkan 429 RATE_LIMITED dan Retry-After", async () =>
   assert.equal((await response.json()).error.code, "RATE_LIMITED");
   assert.ok(Number(response.headers.get("retry-after")) > 0);
   assert.equal(env.state.audits.at(-1).action, "login_rate_limited");
+});
+
+test("request yang sudah blocked tidak melakukan verifikasi password", async () => {
+  const env = await createEnv();
+  for (let attempt = 0; attempt < 6; attempt += 1) await login(env, "password-salah");
+  const queriesBefore = env.state.passwordQueries;
+  assert.equal((await login(env)).status, 429);
+  assert.equal(env.state.passwordQueries, queriesBefore);
 });
 
 test("akun disabled tidak dapat login dan sesi token-version lama ditolak", async () => {

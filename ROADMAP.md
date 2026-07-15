@@ -427,6 +427,16 @@ Acceptance criteria:
 
 # Full UI/UX Redesign Workstream
 
+## Corrective Security Closure sebelum R1
+
+**Status:** Done (2026-07-15)
+
+- login limiter hanya mencatat autentikasi gagal; failure 1–5 mengembalikan 401, failure keenam 429, blocked pre-check melewati password verification, dan login sukses menghapus bucket IP+email;
+- migration additive `0017` menonaktifkan known default credential tanpa mengubah akun yang password-nya telah dirotasi;
+- fresh install tidak bergantung pada credential privileged universal dan memakai provisioning/recovery admin lokal yang eksplisit, kuat, idempotent, serta non-overwrite secara default;
+- fresh/upgrade Wrangler-local harness memverifikasi preservasi row/status kas legacy, akun terotasi, index, transaction audit table, FK aktif, dan foreign-key check bersih;
+- corrective closure menjadi gate sebelum melanjutkan R1 Design Foundation.
+
 **Priority override:** full redesign dikerjakan setelah P0.5 `Done` dan sebelum mayoritas P1–P2. P1.3 legacy cleanup terserap pada closure redesign. Item reliability atau release safety hanya didahulukan jika menjadi blocker nyata.
 
 Source visual canonical: `DESIGN.md`. Audit dependency, route, primitive, legacy/V2 overlap, migration sequence, dan anti-drift rules: `docs/UI_UX_REDESIGN_AUDIT.md`.

@@ -126,18 +126,10 @@ CREATE INDEX IF NOT EXISTS idx_dokumentasi_uploaded_by_created
   ON dokumentasi (uploaded_by, created_at DESC);
 
 -- ==========================================
--- BAGIAN 6: SEEDING DATA AWAL
+-- BAGIAN 6: SEEDING DATA AWAL NON-CREDENTIAL
 -- ==========================================
 
--- Seed Admin Utama
-INSERT INTO users (name, email, password_hash, role, token_version) VALUES
-('Admin Utama', 'admin@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'superadmin', 0);
-
--- Seed akun workflow proposal bertahap (idempotensi reset lokal tetap aman karena fresh schema)
-INSERT INTO users (name, email, password_hash, role, token_version) VALUES
-('Ketua Masjid', 'ketua@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'ketua', 0),
-('Bendahara Masjid', 'bendahara@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'bendahara', 0),
-('Seksi Dakwah', 'dakwah@masjidnurulhuda.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'pengurus', 0);
+-- Akun privileged tidak di-seed. Gunakan command provisioning lokal di RUNBOOK.
 
 -- Seed Divisi/Seksi Inti
 INSERT INTO seksi_pengurus (nama_seksi) VALUES

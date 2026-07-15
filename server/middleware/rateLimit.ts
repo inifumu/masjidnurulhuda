@@ -1,4 +1,4 @@
-const MAX_ATTEMPTS = 5;
+const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
 type LoginRateLimitRow = {
@@ -6,9 +6,9 @@ type LoginRateLimitRow = {
   blocked_until: number | null;
 };
 
-export type LoginRateLimitResult =
-  | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
+export type LoginBlockResult =
+  | { blocked: false }
+  | { blocked: true; retryAfterSeconds: number };
 
 const hashLoginKey = async (ip: string, email: string): Promise<string> => {
   const normalized = `${ip.trim()}\n${email.trim().toLowerCase()}`;
@@ -21,12 +21,38 @@ const hashLoginKey = async (ip: string, email: string): Promise<string> => {
   ).join("");
 };
 
-export const consumeLoginAttempt = async (
+const blockResult = (
+  blockedUntil: number | null | undefined,
+  now: number,
+): LoginBlockResult => {
+  if (blockedUntil === null || blockedUntil === undefined || blockedUntil <= now) {
+    return { blocked: false };
+  }
+  return {
+    blocked: true,
+    retryAfterSeconds: Math.max(1, Math.ceil((blockedUntil - now) / 1000)),
+  };
+};
+
+export const checkLoginBlocked = async (
   db: D1Database,
   ip: string,
   email: string,
   now = Date.now(),
-): Promise<LoginRateLimitResult> => {
+): Promise<LoginBlockResult> => {
+  const keyHash = await hashLoginKey(ip, email);
+  const row = await db.prepare(
+    "SELECT blocked_until FROM login_rate_limits WHERE key_hash = ?",
+  ).bind(keyHash).first<{ blocked_until: number | null }>();
+  return blockResult(row?.blocked_until, now);
+};
+
+export const recordLoginFailure = async (
+  db: D1Database,
+  ip: string,
+  email: string,
+  now = Date.now(),
+): Promise<LoginBlockResult> => {
   const keyHash = await hashLoginKey(ip, email);
   const row = await db.prepare(`
     INSERT INTO login_rate_limits (
@@ -57,19 +83,23 @@ export const consumeLoginAttempt = async (
     WINDOW_MS,
     WINDOW_MS,
     WINDOW_MS,
-    MAX_ATTEMPTS,
+    MAX_FAILURES,
     WINDOW_MS,
   ).first<LoginRateLimitRow>();
 
-  if (!row) throw new Error("Login rate limit tidak dapat diperbarui");
-  if (row.failure_count <= MAX_ATTEMPTS || row.blocked_until === null) {
-    return { allowed: true };
-  }
+  if (!row) throw new Error("Login failure tidak dapat dicatat");
+  return blockResult(row.blocked_until, now);
+};
 
-  return {
-    allowed: false,
-    retryAfterSeconds: Math.max(1, Math.ceil((row.blocked_until - now) / 1000)),
-  };
+export const resetLoginFailures = async (
+  db: D1Database,
+  ip: string,
+  email: string,
+): Promise<void> => {
+  const keyHash = await hashLoginKey(ip, email);
+  await db.prepare("DELETE FROM login_rate_limits WHERE key_hash = ?")
+    .bind(keyHash)
+    .run();
 };
 
 export const getClientIp = (headers: Headers): string =>

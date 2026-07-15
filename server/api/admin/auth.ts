@@ -10,8 +10,10 @@ import {
 import { sendSuccess, sendError } from "../../utils/response.ts";
 // 🟢 Import 3 Fungsi Helper Rate Limiter
 import {
-  consumeLoginAttempt,
+  checkLoginBlocked,
   getClientIp,
+  recordLoginFailure,
+  resetLoginFailures,
 } from "../../middleware/rateLimit.ts";
 
 const api = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>();
@@ -28,13 +30,9 @@ api.post("/login", async (c) => {
       return sendError(c, "Email dan password wajib diisi", 400);
     }
 
-    // 1️⃣ CEK RATE LIMIT: Sekarang email dijamin ada isinya
-    const rateLimit = await consumeLoginAttempt(
-      c.env.DB,
-      getClientIp(c.req.raw.headers),
-      email,
-    );
-    if (!rateLimit.allowed) {
+    const clientIp = getClientIp(c.req.raw.headers);
+    const rateLimit = await checkLoginBlocked(c.env.DB, clientIp, email);
+    if (rateLimit.blocked) {
       await recordSecurityEvent(c.env.DB, "login_rate_limited");
       c.header("Retry-After", String(rateLimit.retryAfterSeconds));
       return sendError(
@@ -59,10 +57,23 @@ api.post("/login", async (c) => {
     );
 
     if (!result) {
+      const failure = await recordLoginFailure(c.env.DB, clientIp, email);
+      if (failure.blocked) {
+        await recordSecurityEvent(c.env.DB, "login_rate_limited");
+        c.header("Retry-After", String(failure.retryAfterSeconds));
+        return sendError(
+          c,
+          "Terlalu banyak percobaan login. Silakan coba lagi nanti.",
+          429,
+          undefined,
+          "RATE_LIMITED",
+        );
+      }
       await recordSecurityEvent(c.env.DB, "login_failed");
       return sendError(c, "Kredensial tidak valid!", 401, undefined, "UNAUTHORIZED");
     }
 
+    await resetLoginFailures(c.env.DB, clientIp, email);
     await recordSecurityEvent(c.env.DB, "login_succeeded", result.user.id);
 
     setCookie(c, "auth_token", result.token, {

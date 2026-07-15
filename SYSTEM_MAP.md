@@ -13,7 +13,7 @@
 
 # Core Logic Flow (Function-Level Flowchart)
 
-- `[Vue] LoginV2.vue(handleLogin) -> authStore.login -> POST /api/admin/auth/login -> exact same-origin + security headers -> atomic D1 login limiter (SHA-256 IP+email, 5 request/15 menit, 429 + Retry-After) -> authService.loginAdmin (active account only) -> users/hash verify -> security audit success/failure/rate-limited tanpa data sensitif -> JWT cookie httpOnly (tv+exp 24 jam)`
+- `[Vue] LoginV2.vue(handleLogin) -> authStore.login -> POST /api/admin/auth/login -> exact same-origin + security headers -> pre-check persistent D1 limiter (SHA-256 IP+email) -> authService.loginAdmin (active account only) -> failure: atomic increment, failure 1–5=401, keenam=429; success: hapus bucket -> security audit tanpa data sensitif -> JWT cookie httpOnly (tv+exp 24 jam)`
 - `[Vue] router.beforeEach -> [Vue] authStore.checkAuth/retryAuth (latest-response wins) -> [Hono] GET /api/admin/auth/me -> verify JWT cookie + validasi claim tv vs users.token_version -> response session (redirect login hanya pada 401 definitif; 5xx/network menjadi recoverable error tanpa reset sesi; AdminLayoutV2 menampilkan retry overlay)`
 - `[Vue] AdminLayoutV2(handleLogout) -> [Vue] authStore.logout() -> [Hono] POST /api/admin/auth/logout -> verify JWT cookie (best-effort) -> [Query] bumpUserTokenVersion(users) -> clear cookie -> token lama revoke server-side`
 - `[Vue] GET / (public route) -> [Vue] PublicLayout.vue -> [Vue] Home.vue -> section-based smooth-scroll landing (hero/jadwal/kas/kabar/galeri/saran)`
@@ -276,7 +276,7 @@ masjidnurulhuda/
 - `server/api/public/jadwal.ts` — `GET /today` — proxy API jadwal sholat (timeout + retry + cache headers) agar integrasi eksternal lebih stabil.
 - `server/utils/response.ts` — `sendSuccess`, `sendError` — factory response helper backend untuk standarisasi output JSON lintas endpoint.
 - `server/middleware/auth.ts` — `requireAuth`, `requireRole` — middleware reusable untuk autentikasi JWT + validasi token version (`tv` vs `users.token_version`) dan otorisasi role lintas route admin.
-- `server/middleware/rateLimit.ts` — `consumeLoginAttempt` — atomic persistent D1 limiter dengan hashed key, deterministic window, `Retry-After`, dan tanpa reset bucket saat login sukses.
+- `server/middleware/rateLimit.ts` — `checkLoginBlocked`, `recordLoginFailure`, `resetLoginFailures` — persistent D1 limiter failure-only dengan hashed key, blocked pre-check, atomic failure increment, deterministic window, `Retry-After`, dan reset bucket saat login sukses.
 - `server/api/admin/auth.ts` — `POST /login`, `POST /logout`, `GET /me` — autentikasi cookie JWT; login memvalidasi email/password + rate limit, logout menginvalidasi sesi server-side via increment `users.token_version`, dan endpoint `me` memverifikasi kecocokan `tv` token terhadap `users.token_version`.
 - `server/services/auth.ts` — `loginAdmin`, `AuthUserRow`, `AuthRole` — validasi kredensial typed, hash verify, pembuatan token JWT dengan `tv` + `exp` 24 jam.
 - `server/db/queries/auth.ts` — `getUserByEmail`, `getUserTokenVersionById`, `bumpUserTokenVersion` — query auth login membaca `COALESCE(operational_role, role)` + revocation berbasis token version.
@@ -295,7 +295,9 @@ masjidnurulhuda/
 - `server/api/public/kas.ts` — `GET /summary` (published as `/api/public/kas/summary`) — endpoint publik ringkasan kas dari D1 tanpa JWT.
 - `server/db/schema.sql` — DDL + seed lokal/reference — definisi tabel utama sistem, `jenis_arus`, index minimum, dan data awal.
 - `migrations/0001_init_schema.sql` — migration awal DDL + index utama untuk D1 production fresh database.
-- `migrations/0002_seed_initial_data.sql` — seed data master awal terpisah dari DDL.
+- `migrations/0002_seed_initial_data.sql` — migration historis immutable yang memuat seed awal; credential default historis direkonsiliasi oleh migration 0017.
+- `migrations/0017_disable_known_default_credentials.sql` — menonaktifkan akun yang masih memakai known default hash dan merevoke sesi tanpa memengaruhi password yang telah dirotasi.
+- `scripts/provision-admin.mjs` — provisioning/recovery superadmin D1 lokal dari environment lokal; password kuat wajib, default tidak overwrite akun existing kecuali `--replace-existing`.
 - `.github/workflows/deploy.yml` — pipeline GitHub Actions awal untuk typecheck, apply migration D1 remote, dan deploy Cloudflare.
 - `RUNBOOK.md` — runbook insiden awal untuk backup/restore D1, rollback Pages, dan health check publik.
 - `vite.config.ts` — plugin Vue/Tailwind/Hono dev server — pengikat frontend-backend saat development.
@@ -362,5 +364,5 @@ masjidnurulhuda/
 - Type safety belum tuntas menyeluruh: area admin utama dan backend auth/core service sudah memakai DTO/typed payload, tetapi masih ada `any` residual di `httpClient`, beberapa component props/catch non-kritis, query dashboard, dan area publik jadwal.
 - Sinkronisasi role lintas dokumen perlu dijaga ketat agar seluruh artefak tetap konsisten pada matrix final (`superadmin|ketua|bendahara|pengurus`).
 - Testing baseline domain kas baru mencakup helper nominal (`formatInputRupiah`, `parseInputRupiah`, `formatRupiah`); integration test lintas approval ketua-bendahara belum otomatis.
-- Rate limiting login masih baseline in-memory; cukup untuk proteksi awal, tetapi tidak persisten lintas isolate/region Cloudflare. Jika trafik/risiko naik, pertimbangkan Cloudflare Turnstile, WAF rules, KV, D1, atau Redis-compatible storage.
+- Rate limiting login persisten di D1 dan hanya mencatat autentikasi gagal. Keputusan pre-check dan increment failure adalah operasi terpisah; increment failure sendiri atomic, sedangkan koordinasi strict seluruh verifikasi password lintas request tetap terbatas oleh model D1 tanpa coordinator khusus.
 - Dokumentasi resmi arsitektur/operasional minim (README masih template), sehingga beberapa keputusan non-fungsional (monitoring, backup, recovery) tidak bisa dipetakan pasti.

@@ -14,6 +14,8 @@ Website publik dan panel administrasi Masjid Nurul Huda untuk informasi masjid, 
 ```bash
 npm install
 npm run db:apply:local
+# set PROVISION_ADMIN_EMAIL, PROVISION_ADMIN_NAME, dan PROVISION_ADMIN_PASSWORD
+npm run admin:provision:local
 npm run dev
 ```
 
@@ -37,6 +39,8 @@ npm run db:apply:local
 ```
 
 Migration remote dan deployment hanya boleh dilakukan dengan persetujuan eksplisit serta mengikuti `RUNBOOK.md`. Backup wajib dibuat sebelum migration yang membangun ulang tabel atau menyentuh data finansial.
+
+Fresh database tidak menyediakan credential privileged universal. Setelah migration lokal, provision superadmin dari environment lokal sesuai prosedur `RUNBOOK.md`; jangan menyimpan nilainya di source atau shell history bersama.
 
 ## Dokumentasi aktif
 
