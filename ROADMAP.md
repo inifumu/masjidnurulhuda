@@ -556,12 +556,12 @@ Evidence berjalan:
 - shell admin memakai border-first Civic Editorial, desktop sidebar, reka Sheet mobile, account dropdown, theme action, dan auth recovery state;
 - navigation hanya memuat route operasional dan menyembunyikan Pengaturan dari role di luar `superadmin|ketua`; backend tetap otoritas;
 - browser gate R3 lulus pada login 360×800, 768×1024, 1366×900 serta role-aware mobile Sheet, Escape, touch target, reduced motion, dan overflow; P0.5 authenticated E2E tetap lulus.
+- corrective shell memadatkan sidebar desktop menjadi 240 px dan rail 64 px, menyamakan lockup mobile/desktop, serta merapatkan padding header→nav tanpa mengurangi target control 44 px;
+- browser matrix mencakup `superadmin`, `ketua`, `bendahara`, dan `pengurus` pada 360×800, 768×1024, dan 1366×900, termasuk Sheet, account, theme, navigation, focus restoration, reduced motion, dan overflow;
+- role preview tetap belum diimplementasikan: kebutuhan QA presentation dibuktikan melalui fixture role browser sehingga tidak ada perubahan JWT, backend authorization, atau data scope pada slice corrective ini.
 
 Corrective refinement sebelum closure R3:
 
-- rapikan density sidebar desktop/mobile, hilangkan jarak header→menu yang berlebihan, dan samakan hierarchy logo/nama/subtitle pada kedua viewport;
-- pastikan close/menu/profile/theme/navigation memakai ukuran, alignment, pressed/open/active/pending feedback, dan motion policy yang konsisten;
-- audit primitive serta view R3 untuk menghapus inconsistency spacing, icon scale, state feedback, dan efek interaksi yang masih tersisa;
 - discovery superadmin role preview dilakukan di sela R3, tetapi implementasi hanya boleh dimulai setelah memilih UI-only preview atau server-authorized impersonation dan menyelesaikan threat model/audit contract;
 - UI role preview tidak boleh mengubah authorization/data scope backend atau diklaim sebagai bukti RBAC.
 

@@ -185,10 +185,8 @@ Adoption berjalan: `LoginV2.vue` dan `AdminLayoutV2.vue` kini menjadi implementa
 
 Corrective audit terbuka sebelum R3 dapat ditutup:
 
-- sidebar masih perlu density pass: gap header ke list mobile, compactness desktop, dan parity lockup logo/nama/subtitle mobile-desktop;
-- ukuran icon/close control dan alignment harus dibandingkan lintas header, Sheet, account menu, serta sidebar;
-- feedback interaksi belum seragam: setiap toggle/menu/profile/navigation perlu state open/pressed/active/pending yang terlihat, focus-visible, dan reduced-motion-safe;
-- lakukan inventory component-by-component, bukan perbaikan lokal acak, agar spacing, effect, dan motion memakai primitive/token yang sama;
+- corrective density dan parity shell selesai: desktop sidebar 240 px/rail 64 px, nav padding 12 px vertikal, control 44 px, icon navigasi 20 px, icon close 24 px, dan lockup logo/nama/subtitle memakai hierarchy yang sama pada mobile/desktop;
+- state system Sheet/account/theme/navigation telah diverifikasi untuk active/open/pressed/focus, Escape/focus restoration, reduced motion, dan overflow pada matrix empat role × tiga viewport;
 - role preview superadmin diperlakukan sebagai discovery security. Preview UI hanya menguji presentation; impersonation backend memerlukan audit/expiry/banner/exit/revocation dan test terpisah.
 
 ### R4 — Financial workflows

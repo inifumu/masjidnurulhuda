@@ -51,7 +51,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         data-slot="sheet-close"
         as-child
       >
-        <Button variant="ghost" class="absolute top-3 right-3" size="icon" aria-label="Tutup navigasi">
+        <Button variant="ghost" class="absolute top-3 right-3 [&_svg]:!size-6" size="icon" aria-label="Tutup navigasi">
           <XIcon aria-hidden="true" />
           <span class="sr-only">Tutup navigasi</span>
         </Button>

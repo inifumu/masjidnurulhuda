@@ -99,19 +99,19 @@ const handleLogout = async () => {
       </div>
     </div>
 
-    <aside :class="['hidden shrink-0 flex-col border-r bg-card transition-[width] duration-200 md:flex', isDesktopSidebarOpen ? 'w-64' : 'w-20']">
-      <div class="flex h-16 items-center border-b px-4">
+    <aside :class="['hidden shrink-0 flex-col border-r bg-card transition-[width] duration-200 motion-reduce:transition-none md:flex', isDesktopSidebarOpen ? 'w-60' : 'w-16']">
+      <div data-shell-brand class="flex h-16 items-center border-b px-3">
         <div v-if="isDesktopSidebarOpen" class="flex min-w-0 items-center gap-3">
           <img src="/logo.png" alt="" class="size-9 shrink-0 object-contain" />
           <div class="min-w-0"><p class="truncate text-sm font-semibold">Masjid Nurul Huda</p><p class="text-xs text-muted-foreground">Ruang kerja pengurus</p></div>
         </div>
-        <IconButton :label="isDesktopSidebarOpen ? 'Ciutkan navigasi' : 'Perluas navigasi'" class="ml-auto" @click="isDesktopSidebarOpen = !isDesktopSidebarOpen">
-          <PanelLeftClose class="size-5 transition-transform" :class="!isDesktopSidebarOpen && 'rotate-180'" aria-hidden="true" />
+        <IconButton :label="isDesktopSidebarOpen ? 'Ciutkan navigasi' : 'Perluas navigasi'" :aria-expanded="isDesktopSidebarOpen" class="ml-auto" @click="isDesktopSidebarOpen = !isDesktopSidebarOpen">
+          <PanelLeftClose class="size-5 transition-transform motion-reduce:transition-none" :class="!isDesktopSidebarOpen && 'rotate-180'" aria-hidden="true" />
         </IconButton>
       </div>
 
-      <nav class="flex-1 space-y-1 px-3 py-5" aria-label="Navigasi admin">
-        <router-link v-for="item in visibleNavItems" :key="item.to" :to="item.to" :aria-label="!isDesktopSidebarOpen ? item.name : undefined" :title="!isDesktopSidebarOpen ? item.name : undefined" :class="['flex min-h-11 items-center rounded-sm text-sm font-medium transition-colors', isDesktopSidebarOpen ? 'gap-3 px-3' : 'justify-center', isActiveRoute(item.to, item.exact) ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground']">
+      <nav data-shell-navigation class="flex-1 space-y-1 px-2 py-3" aria-label="Navigasi admin">
+        <router-link v-for="item in visibleNavItems" :key="item.to" :to="item.to" :aria-label="!isDesktopSidebarOpen ? item.name : undefined" :title="!isDesktopSidebarOpen ? item.name : undefined" :class="['flex min-h-11 items-center rounded-sm text-sm font-medium transition-colors motion-reduce:transition-none', isDesktopSidebarOpen ? 'gap-3 px-3' : 'justify-center', isActiveRoute(item.to, item.exact) ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted']">
           <component :is="item.icon" class="size-5 shrink-0" aria-hidden="true" />
           <span v-if="isDesktopSidebarOpen">{{ item.name }}</span>
         </router-link>
@@ -121,12 +121,12 @@ const handleLogout = async () => {
 
     <Sheet v-model:open="isMobileSheetOpen">
       <SheetContent side="left" class="w-[min(20rem,88vw)] p-0">
-        <SheetHeader class="border-b px-5 py-5 text-left">
-          <SheetTitle class="flex items-center gap-3"><img src="/logo.png" alt="" class="size-9 object-contain" />Masjid Nurul Huda</SheetTitle>
-          <SheetDescription>Ruang kerja pengurus</SheetDescription>
+        <SheetHeader data-shell-brand class="border-b px-4 py-3 text-left">
+          <SheetTitle class="flex items-center gap-3"><img src="/logo.png" alt="" class="size-9 shrink-0 object-contain" /><span class="min-w-0"><span class="block truncate text-sm font-semibold">Masjid Nurul Huda</span><span class="mt-0.5 block text-xs font-normal text-muted-foreground">Ruang kerja pengurus</span></span></SheetTitle>
+          <SheetDescription class="sr-only">Navigasi ruang kerja pengurus Masjid Nurul Huda</SheetDescription>
         </SheetHeader>
-        <nav class="space-y-1 px-3 py-5" aria-label="Navigasi admin mobile">
-          <router-link v-for="item in visibleNavItems" :key="item.to" :to="item.to" :class="['flex min-h-12 items-center gap-3 rounded-sm px-3 text-sm font-medium', isActiveRoute(item.to, item.exact) ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground']">
+        <nav data-shell-navigation class="space-y-1 px-3 py-3" aria-label="Navigasi admin mobile">
+          <router-link v-for="item in visibleNavItems" :key="item.to" :to="item.to" :class="['flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm font-medium transition-colors motion-reduce:transition-none', isActiveRoute(item.to, item.exact) ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted']">
             <component :is="item.icon" class="size-5" aria-hidden="true" />{{ item.name }}
           </router-link>
         </nav>
@@ -136,14 +136,14 @@ const handleLogout = async () => {
     <div class="flex h-screen min-w-0 flex-1 flex-col">
       <header class="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b bg-card px-4 md:px-6">
         <div class="flex min-w-0 items-center gap-3">
-          <IconButton label="Buka navigasi" class="md:hidden" @click="isMobileSheetOpen = true"><Menu class="size-5" aria-hidden="true" /></IconButton>
+          <IconButton label="Buka navigasi" :aria-expanded="isMobileSheetOpen" class="md:hidden" @click="isMobileSheetOpen = true"><Menu class="size-5" aria-hidden="true" /></IconButton>
           <div class="min-w-0"><p class="text-xs text-muted-foreground">Admin</p><h1 class="truncate text-base font-semibold tracking-tight">{{ pageTitle }}</h1></div>
         </div>
         <div class="flex items-center gap-2">
-          <IconButton :label="isDark ? 'Gunakan mode terang' : 'Gunakan mode gelap'" @click="toggleTheme"><Sun v-if="isDark" class="size-5" aria-hidden="true" /><Moon v-else class="size-5" aria-hidden="true" /></IconButton>
+          <IconButton data-theme-trigger :label="isDark ? 'Gunakan mode terang' : 'Gunakan mode gelap'" :aria-pressed="isDark" @click="toggleTheme"><Sun v-if="isDark" class="size-5" aria-hidden="true" /><Moon v-else class="size-5" aria-hidden="true" /></IconButton>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="ghost" class="min-h-11 gap-2 px-2" aria-label="Buka menu akun">
+              <Button data-account-trigger variant="ghost" class="min-h-11 gap-2 px-2" aria-label="Buka menu akun">
                 <Avatar class="size-8"><AvatarFallback class="bg-primary text-xs text-primary-foreground">{{ userInitials }}</AvatarFallback></Avatar>
                 <span class="hidden max-w-28 truncate text-sm font-medium sm:block">{{ authStore.user?.name || "Admin" }}</span>
                 <ChevronDown class="size-4 text-muted-foreground" aria-hidden="true" />
