@@ -1,6 +1,6 @@
 # Prompt Handoff — R2 Public Publication Experience (Superseded)
 
-> Arsip handoff historis. R2 sudah `Done`; jangan gunakan prompt ini untuk sesi baru. Gunakan `docs/R3_SESSION_HANDOFF_PROMPT.md` untuk melanjutkan workstream aktif.
+> Arsip handoff historis. R2 sudah `Done`; jangan gunakan prompt ini untuk sesi baru. Gunakan `docs/R4_SESSION_HANDOFF_PROMPT.md` untuk melanjutkan workstream aktif.
 
 Isi di bawah dipertahankan hanya sebagai histori konteks R2.
 

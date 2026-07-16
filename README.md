@@ -77,7 +77,7 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 Status redesign: R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
 
-R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, account footer, geometry desktop 32 px / mobile 44 px / account 48 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side selama 15 menit; backend, data scope, dan mutasi mengikuti role efektif, sedangkan actor tetap superadmin asli dan banner permanen selalu terlihat.
+R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, profile summary + trigger akun khusus, geometry desktop 32 px / mobile 44 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side maksimal 15 menit; backend, data scope, dan mutasi mengikuti role efektif, actor tetap superadmin asli, expiry direkonsiliasi fail-closed, dan banner permanen selalu terlihat. Workstream aktif berikutnya adalah R4 Financial Workflows.
 
 - `.hermes.md` — aturan proses, safety, dan quality gate utama
 - `AGENTS.md` — instruksi ringkas untuk coding agent lain
@@ -89,6 +89,7 @@ R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon colla
 - `docs/UI_UX_REDESIGN_AUDIT.md` — audit stack, route/primitive overlap, migration sequence, dan anti-drift rules
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
 - `docs/R3_SESSION_HANDOFF_PROMPT.md` — histori handoff closure R3; status aktif berikutnya tetap ditentukan dari `ROADMAP.md`
+- `docs/R4_SESSION_HANDOFF_PROMPT.md` — prompt aktif untuk memulai discovery dan implementasi R4 pada sesi baru
 
 Dokumen dalam `docs/archive/` hanya histori. `optimalisasi_plan.md` deprecated dan bukan roadmap aktif.
 

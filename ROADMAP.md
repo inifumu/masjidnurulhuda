@@ -563,6 +563,7 @@ Evidence berjalan:
 - independent pre-commit review final lulus setelah relasi `aria-controls`, ID target, label, dan landmark navigasi mobile/desktop diverifikasi pada DOM;
 - commit corrective R3 dipromosikan ke branch/resource testing terisolasi; GitHub Actions verify/deploy lulus dan HTTP + custom browser matrix live testing lulus pada `masjidnurulhuda-testing.pages.dev`.
 - refinement shell pasca-impersonation mengunci banner global desktop/tablet 48 px di atas sidebar+workspace, header sticky normal/samaran, content-only scrolling, dan theme tile radius 10 px dengan motion canonical; commit `64cf1ef` lulus 153 test, build, P0.5 browser E2E, custom matrix lokal, independent review, CI testing run `29480671964`, serta HTTP/custom browser gate pada deployment immutable testing `bf01b3c5.masjidnurulhuda-testing.pages.dev`.
+- final re-audit closure commit `2ae5a95` menutup race logout/bootstrap, rekonsiliasi expiry impersonation, cap expiry terhadap sesi asli, modal auth recovery focus-contained, reduced-motion struktural, dan profile menu khusus trigger titik tiga dengan density 44 px mobile/32 px desktop; 156 test, build, migration, P0.5 E2E, custom browser matrix 4 role × 5 viewport, independent review, CI run `29484603193`, deployment immutable `149e00ce.masjidnurulhuda-testing.pages.dev`, dan alias testing stabil seluruhnya lulus.
 
 Post-closure R3 security extension:
 
@@ -571,7 +572,7 @@ Post-closure R3 security extension:
 
 ## Phase R4 — Financial Workflows
 
-**Status:** Not Started
+**Status:** In Progress (discovery/audit)
 
 Urutan:
 
