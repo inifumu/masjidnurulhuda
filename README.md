@@ -88,7 +88,7 @@ R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon colla
 - `docs/AI_AGENT_PLAYBOOK.md` — prosedur kerja rinci
 - `docs/UI_UX_REDESIGN_AUDIT.md` — audit stack, route/primitive overlap, migration sequence, dan anti-drift rules
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
-- `docs/R3_SESSION_HANDOFF_PROMPT.md` — handoff canonical untuk melanjutkan corrective refinement dan discovery R3
+- `docs/R3_SESSION_HANDOFF_PROMPT.md` — histori handoff closure R3; status aktif berikutnya tetap ditentukan dari `ROADMAP.md`
 
 Dokumen dalam `docs/archive/` hanya histori. `optimalisasi_plan.md` deprecated dan bukan roadmap aktif.
 

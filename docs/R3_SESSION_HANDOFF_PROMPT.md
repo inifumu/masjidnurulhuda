@@ -1,6 +1,6 @@
-# Prompt Handoff — R3 Corrective Closure Selesai
+# Histori Handoff — R3 Corrective Closure Selesai
 
-Salin seluruh isi prompt di bawah ini ke sesi Hermes baru.
+Dokumen ini dipertahankan sebagai histori evidence dan telah superseded. Jangan gunakan sebagai prompt sesi aktif; tentukan workstream berikutnya dari `ROADMAP.md`.
 
 ---
 
@@ -55,7 +55,7 @@ Status source R3 saat handoff ini:
 - Logo resmi `/logo.png` dipakai pada header sidebar.
 - Collapse motion brand/account sekarang shrink/fade sinkron dengan sidebar width.
 - Group icon saat sidebar collapsed melakukan expand + reveal submenu group tersebut.
-- Role preview/impersonation belum diimplementasikan.
+- Server-authorized role impersonation telah diimplementasikan sebagai extension R3 dan refinement banner global/sticky telah ditutup pada commit `64cf1ef`.
 
 Route/source penting:
 - `/admin/login` → `src/views/admin/LoginV2.vue` → `authStore.login` → `httpClient` → `/api/admin/auth/login`.

@@ -54,7 +54,7 @@ Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau li
 - Arah final adalah `DESIGN.md`: Nurul Huda Civic Editorial, warm modern minimalism, editorial public experience, institutional admin UI, emerald identity, dan restrained yellow-gold accent.
 - Ini full product redesign, bukan cleanup/reskin V2. Legacy dan V2 hanya referensi behavior; jangan dijadikan baseline visual.
 - Gunakan Tailwind v4 + CSS variables + shadcn-vue/reka sebagai primitive canonical. Lucide, vue-sonner, VeeValidate+Zod, Pinia, dan Inter Variable tetap digunakan sesuai audit.
-- R1 Design Foundation dan R2 Public Publication Experience `Done`; workstream aktif R3 Admin Shell dan Authentication. Evaluasi homepage publik yang lebih modern hanya kandidat masa depan, bukan pembukaan ulang R2.
+- R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`; workstream berikutnya R4 Financial Workflows. Evaluasi homepage publik yang lebih modern hanya kandidat masa depan, bukan pembukaan ulang R2.
 - Headless UI telah dimigrasikan ke reka dan dependency dihapus; jangan memperkenalkannya kembali.
 - Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view.
 - Mobile 360 adalah baseline; tablet dan desktop wajib dirancang, bukan sekadar hasil stretch.

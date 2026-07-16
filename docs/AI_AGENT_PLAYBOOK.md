@@ -133,8 +133,8 @@ Jangan menggabungkan refactor besar dengan perubahan behavior besar tanpa alasan
 5. Pertahankan business flow dan policy backend.
 6. Uji keyboard, focus, loading, error, empty, disabled, dan mobile state.
 7. Jangan menambah wrapper versi baru hanya untuk visual eksperimen.
-8. Status redesign aktif: R1 foundation dan R2 public publication experience `Done`; R3 admin shell dan authentication `In Progress`.
-9. Baseline publik R2 dipertahankan. Evaluasi homepage lebih modern hanya kandidat masa depan; R3 berfokus pada shell admin, login, auth loading/recovery, role-aware navigation, dan responsive accessibility tanpa mengubah contract backend auth.
+8. Status redesign aktif: R1 foundation, R2 public publication experience, dan R3 admin shell dan authentication `Done`; workstream berikutnya R4 financial workflows.
+9. Baseline publik R2 dan shell/auth R3 dipertahankan. Evaluasi homepage lebih modern hanya kandidat masa depan; R4 berfokus pada workflow finansial tanpa mengubah contract backend, RBAC, audit, atau idempotency P0.5.
 10. Headless UI telah dihapus; gunakan primitive reka canonical dan jangan menambah dependency UI paralel.
 11. Untuk shell, audit interaction feedback sebagai satu sistem: hover bukan satu-satunya feedback; open/pressed/active/pending/focus harus jelas, konsisten, dan reduced-motion-safe.
 12. Role preview frontend hanya untuk presentation QA. Jangan menyebutnya impersonation aman atau bukti RBAC; server-authorized impersonation wajib threat model, audit, expiry, indikator, exit, revocation, dan negative tests.

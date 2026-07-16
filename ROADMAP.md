@@ -562,6 +562,7 @@ Evidence berjalan:
 - server-authorized role impersonation untuk superadmin telah diimplementasikan setelah closure corrective: role efektif mengendalikan RBAC/data scope/mutasi, actor tetap superadmin asli, sesi samaran 15 menit, start/stop diaudit, samaran berantai ditolak, dan banner permanen menyediakan exit satu klik;
 - independent pre-commit review final lulus setelah relasi `aria-controls`, ID target, label, dan landmark navigasi mobile/desktop diverifikasi pada DOM;
 - commit corrective R3 dipromosikan ke branch/resource testing terisolasi; GitHub Actions verify/deploy lulus dan HTTP + custom browser matrix live testing lulus pada `masjidnurulhuda-testing.pages.dev`.
+- refinement shell pasca-impersonation mengunci banner global desktop/tablet 48 px di atas sidebar+workspace, header sticky normal/samaran, content-only scrolling, dan theme tile radius 10 px dengan motion canonical; commit `64cf1ef` lulus 153 test, build, P0.5 browser E2E, custom matrix lokal, independent review, CI testing run `29480671964`, serta HTTP/custom browser gate pada deployment immutable testing `bf01b3c5.masjidnurulhuda-testing.pages.dev`.
 
 Post-closure R3 security extension:
 
