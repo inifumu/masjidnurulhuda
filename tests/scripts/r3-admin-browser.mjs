@@ -50,6 +50,12 @@ try {
     await mockAdmin(page, role);
     await page.goto(`${baseURL}/admin/dashboard`);
     await page.locator('[data-slot="sidebar-wrapper"]').waitFor();
+    const contentScroll = page.locator('[data-slot="admin-content-scroll"]');
+    await contentScroll.locator(':scope > div').evaluate((node) => { node.style.height = '2000px'; node.style.flexShrink = '0'; });
+    await contentScroll.evaluate((node) => { node.scrollTop = 300; });
+    assert.ok(await contentScroll.evaluate((node) => node.scrollTop) > 0, `content pane normal tidak benar-benar scroll pada ${viewport.width}`);
+    assert.equal(await page.locator('[data-slot="sidebar-inset"] > header').evaluate((node) => node.getBoundingClientRect().top), 0, `header normal tidak sticky pada ${viewport.width}`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollTop), 0, `document ikut scroll pada ${viewport.width}`);
     const expectedSettings = role === "superadmin" || role === "ketua";
     const trigger = page.locator('[data-slot="sidebar-trigger"]');
 
@@ -133,15 +139,19 @@ try {
     }
 
     const theme = page.locator("[data-theme-trigger]");
+    const themeStyle = await theme.evaluate((node) => { const style = getComputedStyle(node); return { radius: style.borderRadius, transition: parseFloat(style.transitionDuration) }; });
+    assert.equal(themeStyle.radius, "10px");
+    assert.ok(themeStyle.transition > 0, "theme button harus mempertahankan active transition canonical");
     const pressed = await theme.getAttribute("aria-pressed");
     await theme.click();
     assert.notEqual(await theme.getAttribute("aria-pressed"), pressed);
+
     await assertOverflow(page, `shell ${role} ${viewport.width}`);
     assert.match(await page.evaluate(() => getComputedStyle(document.body).fontFamily), /Inter Variable/);
     assert.deepEqual(errors, [], `${role} ${viewport.width}: console errors`);
     await context.close();
   }
-  for (const viewport of [{ width: 360, height: 800 }, { width: 1366, height: 900 }]) {
+  for (const viewport of [{ width: 360, height: 800 }, { width: 768, height: 1024 }, { width: 1366, height: 900 }]) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     let session = { id: 7, name: "Fixture Superadmin", role: "superadmin" };
@@ -164,10 +174,27 @@ try {
     if (viewport.width < 768) await page.locator('[data-slot="sidebar-trigger"]').click();
     await page.locator("[data-account-trigger]").click();
     await page.getByRole("menuitem", { name: "Role Pengurus" }).click();
-    const banner = page.locator("[data-impersonation-banner]");
+    const banner = page.locator("[data-impersonation-banner]:visible");
     await banner.waitFor();
     assert.match(await banner.innerText(), /Mode samaran: Pengurus/);
     assert.match(await banner.innerText(), /Fixture Superadmin/);
+    const contentScroll = page.locator('[data-slot="admin-content-scroll"]');
+    await contentScroll.locator(':scope > div').evaluate((node) => { node.style.height = '2000px'; node.style.flexShrink = '0'; });
+    await contentScroll.evaluate((node) => { node.scrollTop = 300; });
+    assert.ok(await contentScroll.evaluate((node) => node.scrollTop) > 0, `content pane samaran tidak benar-benar scroll pada ${viewport.width}`);
+    if (viewport.width >= 768) {
+      const globalGeometry = await page.evaluate(() => {
+        const banner = document.querySelector('[data-impersonation-banner-global]').getBoundingClientRect();
+        const sidebar = document.querySelector('[data-sidebar="sidebar"]').getBoundingClientRect();
+        const inset = document.querySelector('[data-slot="sidebar-inset"]').getBoundingClientRect();
+        return { bannerTop: banner.top, bannerBottom: banner.bottom, sidebarTop: sidebar.top, insetTop: inset.top };
+      });
+      assert.deepEqual(globalGeometry, { bannerTop: 0, bannerBottom: 48, sidebarTop: 48, insetTop: 48 });
+      assert.equal(await banner.evaluate((node) => node.getBoundingClientRect().top), 0, "banner samaran harus tetap sticky saat workspace di-scroll");
+      assert.equal(await page.locator('[data-slot="sidebar-inset"] > header').evaluate((node) => node.getBoundingClientRect().top), 48, "header samaran desktop harus tetap tepat di bawah banner");
+    } else {
+      assert.equal(await page.locator('[data-slot="sidebar-inset"] > header').evaluate((node) => node.getBoundingClientRect().top), 48, "header samaran mobile harus tetap tepat di bawah banner");
+    }
     assert.equal(await page.getByText("Pengaturan", { exact: true }).count(), 0);
     await banner.getByRole("button", { name: "Keluar samaran" }).click();
     await banner.waitFor({ state: "hidden" });

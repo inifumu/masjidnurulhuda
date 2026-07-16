@@ -9,10 +9,12 @@ import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SID
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
   open?: boolean
+  topOffset?: string
   class?: HTMLAttributes['class']
 }>(), {
   defaultOpen: !defaultDocument?.cookie.includes(`${SIDEBAR_COOKIE_NAME}=false`),
   open: undefined,
+  topOffset: '0px',
 })
 
 const emits = defineEmits<{
@@ -77,11 +79,15 @@ provideSidebarContext({
       :style="{
         '--sidebar-width': SIDEBAR_WIDTH,
         '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+        '--sidebar-top-offset': props.topOffset,
       }"
-      :class="cn('group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full', props.class)"
+      :class="cn('group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex h-svh w-full flex-col overflow-hidden', props.class)"
       v-bind="$attrs"
     >
-      <slot />
+      <slot name="banner" />
+      <div data-slot="sidebar-shell-row" class="flex min-h-0 flex-1 overflow-hidden">
+        <slot />
+      </div>
     </div>
   </TooltipProvider>
 </template>
