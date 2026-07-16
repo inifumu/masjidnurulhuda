@@ -70,3 +70,36 @@ test("response bootstrap lama tidak menimpa retry yang lebih baru", async () => 
   assert.equal(store.authStatus, "authenticated");
   assert.equal(store.user?.id, 9);
 });
+
+test("response bootstrap lama tidak dapat mengautentikasi ulang setelah logout", async () => {
+  const store = createStore();
+  let resolveAuth;
+  const authResponse = new Promise((resolve) => { resolveAuth = resolve; });
+  await withFetch(async (input) => {
+    if (String(input).endsWith("/api/admin/auth/me")) return authResponse;
+    return Response.json({ status: "success" });
+  }, async () => {
+    const bootstrap = store.checkAuth();
+    await store.logout();
+    resolveAuth(Response.json({ status: "success", data: { id: 7, name: "Superadmin", role: "superadmin" } }));
+    await bootstrap;
+  });
+  assert.equal(store.authStatus, "unauthenticated");
+  assert.equal(store.user, null);
+});
+
+test("timer expiry impersonation merekonsiliasi sesi melalui auth check paksa", async () => {
+  const store = createStore();
+  let calls = 0;
+  await withFetch(async () => {
+    calls += 1;
+    if (calls === 1) return Response.json({ status: "success", data: { id: 7, name: "Admin", role: "pengurus", impersonation: { active: true, role: "pengurus", original_role: "superadmin", actor_id: 7, actor_name: "Admin", expires_at: Math.floor(Date.now() / 1000) + 1 } } });
+    return new Response(null, { status: 401 });
+  }, async () => {
+    await store.checkAuth();
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+  });
+  assert.equal(calls, 2);
+  assert.equal(store.authStatus, "unauthenticated");
+  assert.equal(store.user, null);
+});

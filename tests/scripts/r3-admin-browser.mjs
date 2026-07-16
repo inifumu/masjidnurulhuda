@@ -94,7 +94,7 @@ try {
       await trigger.click();
       await sheet.waitFor();
       const account = page.locator("[data-account-trigger]");
-      assert.equal(await account.evaluate((node) => node.getBoundingClientRect().height), 48);
+      assert.deepEqual(await account.evaluate((node) => { const r = node.getBoundingClientRect(); return [r.width, r.height]; }), [44, 44]);
       await account.click();
       const popup = page.locator('[data-slot="dropdown-menu-content"]');
       await popup.waitFor();
@@ -104,6 +104,8 @@ try {
       const popupBox = await popup.evaluate((node) => { const r = node.getBoundingClientRect(); return { x: r.x, right: r.right, y: r.y, bottom: r.bottom, radius: getComputedStyle(node).borderRadius }; });
       assert.ok(popupBox.x >= -1 && popupBox.right <= viewport.width + 1 && popupBox.y >= -1 && popupBox.bottom <= viewport.height + 1, `${role} ${viewport.width}: popup ${JSON.stringify(popupBox)}`);
       assert.equal(popupBox.radius, "10px");
+      assert.equal(await popup.getByRole("menuitem").first().evaluate((node) => node.getBoundingClientRect().height), 44);
+      assert.ok(Math.abs(popupBox.right - await account.evaluate((node) => node.getBoundingClientRect().right)) <= 1, `${role} ${viewport.width}: popup akun tidak menempel ke trigger titik tiga`);
       await page.keyboard.press("Escape");
       await popup.waitFor({ state: "hidden" });
       assert.equal(await account.evaluate((node) => node === document.activeElement), true);
@@ -127,6 +129,16 @@ try {
       const shellIconSizes = await page.locator('[data-slot="sidebar-trigger"] svg, [data-theme-trigger] svg').evaluateAll((icons) => icons.map((icon) => icon.getBoundingClientRect().width));
       assert.deepEqual(shellIconSizes, [20, 20]);
       await assertControls(page, 32, `desktop shell ${role} ${viewport.width}`);
+      const account = page.locator('[data-account-trigger]');
+      assert.deepEqual(await account.evaluate((node) => { const r = node.getBoundingClientRect(); return [r.width, r.height]; }), [32, 32]);
+      await account.click();
+      const accountPopup = page.locator('[data-slot="dropdown-menu-content"]');
+      await accountPopup.waitFor();
+      await accountPopup.waitFor({ state: "visible" });
+      assert.equal(await accountPopup.getByRole("menuitem").first().evaluate((node) => parseFloat(getComputedStyle(node).height)), 32);
+      await page.keyboard.press("Escape");
+      await accountPopup.waitFor({ state: "hidden" });
+      assert.equal(await account.evaluate((node) => node === document.activeElement), true);
       await trigger.click();
       await page.waitForTimeout(220);
       assert.equal(Math.round(await sidebar.evaluate((node) => node.getBoundingClientRect().width)), 47);
@@ -141,7 +153,7 @@ try {
     const theme = page.locator("[data-theme-trigger]");
     const themeStyle = await theme.evaluate((node) => { const style = getComputedStyle(node); return { radius: style.borderRadius, transition: parseFloat(style.transitionDuration) }; });
     assert.equal(themeStyle.radius, "10px");
-    assert.ok(themeStyle.transition > 0, "theme button harus mempertahankan active transition canonical");
+    assert.ok(themeStyle.transition <= 0.001, "theme button harus menghormati reduced motion");
     const pressed = await theme.getAttribute("aria-pressed");
     await theme.click();
     assert.notEqual(await theme.getAttribute("aria-pressed"), pressed);

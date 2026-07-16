@@ -136,9 +136,9 @@ api.post("/impersonation/start", requireAuth, async (c) => {
   if (!principal || principal.is_active !== 1 || principal.token_version !== current.tv) return sendError(c, "Sesi sudah tidak valid.", 401, undefined, "UNAUTHORIZED");
   if (principal.role !== "superadmin") return sendError(c, "Hanya superadmin aktif yang dapat memulai mode samaran.", 403, undefined, "FORBIDDEN");
   const now = Math.floor(Date.now() / 1000);
-  const expiresAt = now + IMPERSONATION_SECONDS;
   const originalExp = typeof current.exp === "number" ? current.exp : now + 60 * 60 * 24;
-  const token = await sign({ sub: actorId, id: actorId, name: current.name, role, original_role: "superadmin", impersonated_by: actorId, impersonation_started_at: now, impersonation_expires_at: expiresAt, original_exp: originalExp, tv: current.tv ?? 0, exp: Math.min(expiresAt, originalExp) }, c.env.JWT_SECRET);
+  const expiresAt = Math.min(now + IMPERSONATION_SECONDS, originalExp);
+  const token = await sign({ sub: actorId, id: actorId, name: current.name, role, original_role: "superadmin", impersonated_by: actorId, impersonation_started_at: now, impersonation_expires_at: expiresAt, original_exp: originalExp, tv: current.tv ?? 0, exp: expiresAt }, c.env.JWT_SECRET);
   await recordActorSecurityEvent(c.env.DB, actorId, "role_impersonation_started", { role });
   setCookie(c, "auth_token", token, sessionCookieOptions(c.req.url, IMPERSONATION_SECONDS));
   return sendSuccess(c, "Mode samaran aktif", { role, expires_at: expiresAt });

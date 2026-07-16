@@ -14,6 +14,7 @@ import type { AdminRole } from "../../../../shared/contracts/index";
 import { toast } from "vue-sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { IconButton } from "@/components/ui/icon-button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -140,20 +141,23 @@ const startImpersonation = async (role: typeof previewRoles[number]) => {
     </SidebarContent>
 
     <SidebarFooter class="shrink-0 border-t border-sidebar-border p-2">
-      <SidebarMenu><SidebarMenuItem><DropdownMenu><DropdownMenuTrigger as-child>
-        <SidebarMenuButton data-account-trigger size="lg" tooltip="Menu akun" class="h-12 gap-2 px-2 transition-[width,height,padding,gap] duration-200 ease-linear motion-reduce:transition-none group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-1!">
-          <Avatar class="size-8 rounded-md transition-[width,height,transform] duration-200 ease-linear motion-reduce:transition-none group-data-[collapsible=icon]:size-6"><AvatarFallback class="rounded-md bg-primary text-[10px] text-primary-foreground">{{ userInitials }}</AvatarFallback></Avatar>
-          <span class="min-w-0 max-w-40 flex-1 truncate text-sm font-semibold opacity-100 transition-[max-width,opacity] duration-200 ease-linear motion-reduce:transition-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">{{ authStore.user?.name || "Administrator" }}<span class="block text-xs font-normal text-muted-foreground md:hidden">{{ roleLabel }}</span></span><MoreVertical class="ml-auto mr-2 size-5! shrink-0 opacity-100 transition-[width,opacity] duration-200 ease-linear motion-reduce:transition-none md:mr-0 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0" />
-        </SidebarMenuButton>
-      </DropdownMenuTrigger><DropdownMenuContent :side="isMobile ? 'top' : 'right'" :align="isMobile ? 'start' : 'end'" :side-offset="8" :collision-padding="12" class="w-[min(15rem,calc(100vw-1.5rem))] rounded-md md:w-60">
-        <DropdownMenuLabel><p class="truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}</p><p class="mt-1 text-xs font-normal text-muted-foreground">{{ roleLabel }}</p></DropdownMenuLabel><DropdownMenuSeparator />
-        <template v-if="authStore.user?.role === 'superadmin' && !authStore.user?.impersonation">
-          <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Lihat dan bertindak sebagai</DropdownMenuLabel>
-          <DropdownMenuItem v-for="role in previewRoles" :key="role" :disabled="isChangingRole" class="min-h-11" @select="startImpersonation(role)">Role {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus' })[role] }}</DropdownMenuItem>
-          <DropdownMenuSeparator />
-        </template>
-        <DropdownMenuItem variant="destructive" :disabled="props.isLoggingOut" class="min-h-11 [&_svg]:!size-5" @select="emit('logout')"><LogOut />{{ props.isLoggingOut ? "Mengakhiri sesi..." : "Keluar" }}</DropdownMenuItem>
-      </DropdownMenuContent></DropdownMenu></SidebarMenuItem></SidebarMenu>
+      <div class="flex h-12 items-center gap-2 group-data-[collapsible=icon]:justify-center">
+        <div data-profile-summary class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
+          <Avatar class="size-8 shrink-0 rounded-md"><AvatarFallback class="rounded-md bg-primary text-[10px] text-primary-foreground">{{ userInitials }}</AvatarFallback></Avatar>
+          <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}<span class="block text-xs font-normal text-muted-foreground md:hidden">{{ roleLabel }}</span></span>
+        </div>
+        <DropdownMenu><DropdownMenuTrigger as-child>
+          <IconButton data-account-trigger class="mr-1 size-11! shrink-0 rounded-md [&_svg]:!size-5 md:mr-0 md:size-8!" label="Buka menu akun"><MoreVertical /></IconButton>
+        </DropdownMenuTrigger><DropdownMenuContent :side="isMobile ? 'top' : 'right'" align="end" :side-offset="8" :collision-padding="12" class="w-[min(15rem,calc(100vw-1.5rem))] rounded-md md:w-60">
+          <DropdownMenuLabel><p class="truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}</p><p class="mt-1 text-xs font-normal text-muted-foreground">{{ roleLabel }}</p></DropdownMenuLabel><DropdownMenuSeparator />
+          <template v-if="authStore.user?.role === 'superadmin' && !authStore.user?.impersonation">
+            <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Lihat dan bertindak sebagai</DropdownMenuLabel>
+            <DropdownMenuItem v-for="role in previewRoles" :key="role" :disabled="isChangingRole" class="h-[44px]! py-0 md:h-[32px]!" @select="startImpersonation(role)">Role {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus' })[role] }}</DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </template>
+          <DropdownMenuItem variant="destructive" :disabled="props.isLoggingOut" class="h-[44px]! py-0 md:h-[32px]! [&_svg]:!size-5" @select="emit('logout')"><LogOut />{{ props.isLoggingOut ? "Mengakhiri sesi..." : "Keluar" }}</DropdownMenuItem>
+        </DropdownMenuContent></DropdownMenu>
+      </div>
     </SidebarFooter>
   </Sidebar>
 </template>

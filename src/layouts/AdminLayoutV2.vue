@@ -8,6 +8,7 @@ import { useTheme } from "../composables/admin/useTheme";
 import AdminSidebar from "@/components/admin/shell/AdminSidebar.vue";
 import { IconButton } from "@/components/ui/icon-button";
 import { ErrorState } from "@/components/ui/data-state";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const authStore = useAuthStore();
@@ -56,9 +57,12 @@ const stopImpersonation = async () => {
         <button class="h-8 shrink-0 rounded-sm border border-warning/40 px-3 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" :disabled="isStoppingImpersonation" @click="stopImpersonation">{{ isStoppingImpersonation ? "Menghentikan..." : "Keluar samaran" }}</button>
       </div>
     </template>
-    <div v-if="authStore.authStatus === 'error'" class="fixed inset-0 z-[200] grid place-items-center bg-background p-4" role="alert">
-      <div class="w-full max-w-lg"><ErrorState title="Sesi belum dapat diverifikasi" description="Koneksi ke server sedang bermasalah. Sesi Anda dipertahankan dan dapat diperiksa kembali tanpa diarahkan ke login." @retry="authStore.retryAuth()" /></div>
-    </div>
+    <Dialog :open="authStore.authStatus === 'error'">
+      <DialogContent :show-close-button="false" class="max-w-lg" @escape-key-down="$event.preventDefault()" @pointer-down-outside="$event.preventDefault()" @interact-outside="$event.preventDefault()">
+        <DialogHeader class="sr-only"><DialogTitle>Sesi belum dapat diverifikasi</DialogTitle><DialogDescription>Coba periksa kembali sesi admin.</DialogDescription></DialogHeader>
+        <ErrorState title="Sesi belum dapat diverifikasi" description="Koneksi ke server sedang bermasalah. Sesi Anda dipertahankan dan dapat diperiksa kembali tanpa diarahkan ke login." @retry="authStore.retryAuth()" />
+      </DialogContent>
+    </Dialog>
 
     <AdminSidebar :is-logging-out="isLoggingOut" @logout="handleLogout" />
 

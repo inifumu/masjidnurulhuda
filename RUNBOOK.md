@@ -23,6 +23,9 @@ Dokumen ini dipakai untuk tindakan cepat saat deploy, insiden database, rollback
   - `0012_idempotency_lifecycle.sql` (state processing/completed untuk claim-first)
   - `0013_security_hardening.sql` (status akun, persistent login limiter, dan security audit events)
   - `0014_reconcile_user_roles.sql` (`operational_role` additive untuk allowlist role final tanpa rebuild parent `users`)
+  - `0015_seed_operational_bendahara.sql` (seed role bendahara operasional untuk fresh database)
+  - `0016_safe_media_deletion.sql` (lifecycle media, reference registry, dan deletion outbox)
+  - `0017_disable_known_default_credentials.sql` (menonaktifkan known default credential dan merevoke sesi)
 
 **Backup data remote:**
 

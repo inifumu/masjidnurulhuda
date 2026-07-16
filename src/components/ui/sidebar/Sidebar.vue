@@ -66,7 +66,7 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     <div
       data-slot="sidebar-gap"
       :class="cn(
-        'transition-[width] duration-200 ease-linear relative w-(--sidebar-width) bg-transparent',
+        'transition-[width] duration-200 ease-linear motion-reduce:transition-none relative w-(--sidebar-width) bg-transparent',
         'group-data-[collapsible=offcanvas]:w-0',
         'group-data-[side=right]:rotate-180',
         variant === 'floating' || variant === 'inset'
@@ -78,7 +78,7 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       data-slot="sidebar-container"
       :data-side="side"
       :class="cn(
-        'fixed bottom-0 top-(--sidebar-top-offset) z-10 hidden w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+        'fixed bottom-0 top-(--sidebar-top-offset) z-10 hidden w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear motion-reduce:transition-none md:flex',
         side === 'left'
           ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
           : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',

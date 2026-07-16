@@ -158,7 +158,7 @@ Progress awal terverifikasi:
 - semua caller `@headlessui/vue` telah dimigrasikan ke reka dan dependency dihapus;
 - component lab development-only tersedia di `/_design-system`;
 - browser gate 360×800, 768×1024, dan 1366×900 lulus untuk overflow, touch target, local font, dan console;
-- visual audit menilai component lab menjaga Civic Editorial tanpa glass/default card grid; R1 browser, keyboard, reduced-motion, dan authenticated finance regression gates lulus. R1 `Done`; R2 public publication experience aktif berikutnya.
+- visual audit menilai component lab menjaga Civic Editorial tanpa glass/default card grid; R1 browser, keyboard, reduced-motion, dan authenticated finance regression gates lulus. R1 `Done`; histori dilanjutkan melalui closure R2 dan R3 di bawah.
 
 ### R2 — Public publication experience
 
@@ -181,15 +181,16 @@ Shell dan homepage aktif telah diadopsi ke Civic Editorial. Data source nyata te
 - login dan session recovery;
 - mobile drawer, tablet rail, desktop sidebar.
 
-Adoption berjalan: `LoginV2.vue` dan `AdminLayoutV2.vue` kini menjadi implementation R3 aktif tanpa route V3. Login membedakan credential/rate-limit/operational error dan memakai form primitive canonical. Shell memakai desktop sidebar + reka Sheet mobile, role-aware navigation terhadap route nyata, auth recovery, account/logout pending state, dan control 44 px. Dashboard/finance/content views tetap dimigrasikan pada phase masing-masing; shell tidak melakukan reskin business screen tersebut.
+`LoginV2.vue` dan `AdminLayoutV2.vue` menjadi implementation R3 aktif tanpa route V3. Login membedakan credential/rate-limit/operational error dan memakai form primitive canonical. Shell memakai desktop sidebar + reka Sheet mobile, role-aware navigation terhadap route nyata, modal auth recovery, serta density 44 px mobile dan 32 px tablet/desktop. Dashboard/finance/content views tetap dimigrasikan pada phase masing-masing; shell tidak melakukan reskin business screen tersebut.
 
-Corrective audit terbuka sebelum R3 dapat ditutup:
+Corrective audit yang menutup R3:
 
 - corrective shell memakai shadcn-vue Sidebar canonical, bukan custom aside: desktop expanded 240 px/icon rail 48 px, mobile off-canvas, logo resmi, grouped Collapsible submenu, dan account footer;
 - geometry dipisahkan konsisten per display: desktop shell controls 32 px; mobile controls 44 px; account row 48 px; header mobile/desktop 64 px. Long label tetap single-line/truncated dan header optical spacing terukur simetris;
 - state system collapse/submenu/Sheet/account/theme/navigation telah diverifikasi untuk active/open/pressed/focus, nested Escape/focus restoration, popup collision, reduced motion, dan overflow pada matrix empat role × tiga viewport;
 - server-authorized role impersonation superadmin telah diadopsi sebagai extension security R3: role target berlaku end-to-end di backend, actor asli dipertahankan, start/stop diaudit, expiry 15 menit, nested start ditolak, dan banner/exit permanen tersedia;
 - closure R3 lulus independent review, CI testing terisolasi, HTTP smoke, dan custom browser matrix live; extension impersonation memiliki route negative tests dan browser start/stop mobile-desktop terpisah.
+- re-audit pasca-closure menutup race logout/bootstrap, rekonsiliasi expiry impersonation, focus-contained auth recovery, reduced-motion struktural, serta trigger menu akun khusus titik tiga dengan popup alignment dan density responsif.
 
 ### R4 — Financial workflows
 

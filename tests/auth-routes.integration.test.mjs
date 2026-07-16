@@ -188,6 +188,17 @@ test("superadmin memulai impersonation dengan role efektif, identitas asli, expi
   assert.deepEqual(data.impersonation, { active: true, role: "pengurus", original_role: "superadmin", actor_id: 7, actor_name: "Admin", expires_at: payload.impersonation_expires_at });
 });
 
+test("expiry impersonation dibatasi oleh sisa expiry sesi asli", async () => {
+  const env = await createEnv();
+  const originalExp = Math.floor(Date.now() / 1000) + 60;
+  const response = await impersonationRequest(env, "start", await sessionCookie("superadmin", { exp: originalExp }), { role: "pengurus" });
+  assert.equal(response.status, 200);
+  const cookie = response.headers.get("set-cookie")?.split(";")[0] ?? "";
+  const payload = await verify(cookie.replace("auth_token=", ""), JWT_SECRET, "HS256");
+  assert.equal(payload.exp, originalExp);
+  assert.equal(payload.impersonation_expires_at, originalExp);
+});
+
 test("impersonation menolak target superadmin dan samaran berantai", async () => {
   const env = await createEnv();
   const now = Math.floor(Date.now() / 1000);

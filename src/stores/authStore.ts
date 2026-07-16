@@ -27,6 +27,26 @@ export const useAuthStore = defineStore("auth", () => {
     () => authStatus.value === "unauthenticated",
   );
   let authRequestSequence = 0;
+  let impersonationExpiryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const clearImpersonationExpiryTimer = () => {
+    if (impersonationExpiryTimer) clearTimeout(impersonationExpiryTimer);
+    impersonationExpiryTimer = undefined;
+  };
+
+  const scheduleImpersonationExpiry = (session: AuthUser) => {
+    clearImpersonationExpiryTimer();
+    if (!session.impersonation) return;
+    const delay = Math.max(0, session.impersonation.expires_at * 1000 - Date.now() - 1000);
+    impersonationExpiryTimer = setTimeout(async () => {
+      try {
+        await httpClient("/api/admin/auth/impersonation/stop", { method: "POST" });
+      } catch {
+        // /me below reconciles expired or revoked sessions fail-closed.
+      }
+      await checkAuth(true);
+    }, delay);
+  };
 
   const login = async (email: string, password: string) => {
     const result = await httpClient<AuthSuccess>("/api/admin/auth/login", {
@@ -36,12 +56,15 @@ export const useAuthStore = defineStore("auth", () => {
     if (result.status !== "success" || !result.data) throw new Error("Kontrak login tidak valid.");
     isAuthenticated.value = true;
     user.value = result.data;
+    scheduleImpersonationExpiry(result.data);
     isReady.value = true;
     authStatus.value = "authenticated";
     return true;
   };
 
   const logout = async () => {
+    authRequestSequence += 1;
+    clearImpersonationExpiryTimer();
     try {
       await fetch("/api/admin/auth/logout", {
         method: "POST",
@@ -73,6 +96,7 @@ export const useAuthStore = defineStore("auth", () => {
       if (request !== authRequestSequence) return;
 
       if (res.status === 401) {
+        clearImpersonationExpiryTimer();
         isAuthenticated.value = false;
         user.value = null;
         authStatus.value = "unauthenticated";
@@ -93,6 +117,7 @@ export const useAuthStore = defineStore("auth", () => {
 
       isAuthenticated.value = true;
       user.value = result.data;
+      scheduleImpersonationExpiry(result.data);
       authStatus.value = "authenticated";
     } catch (error) {
       if (request !== authRequestSequence) return;
