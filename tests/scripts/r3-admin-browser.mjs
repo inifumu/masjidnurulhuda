@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const baseURL = process.env.R3_BROWSER_BASE_URL || "http://127.0.0.1:4173";
-const viewports = [{ width: 360, height: 800 }, { width: 768, height: 1024 }, { width: 1366, height: 900 }];
+const viewports = [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1366, height: 900 }];
 const roles = ["superadmin", "ketua", "bendahara", "pengurus"];
 const browser = await chromium.launch({ headless: true });
 
@@ -73,11 +73,13 @@ try {
         return {
           sizes: [closeIcon.width, accountIcon.width, submenuIcon.width],
           centers: [closeIcon.x + closeIcon.width / 2, accountIcon.x + accountIcon.width / 2, submenuIcon.x + submenuIcon.width / 2],
+          closeCenterY: closeIcon.y + closeIcon.height / 2,
           triggerClass: triggerIcon?.getAttribute("class") ?? "",
         };
       });
       assert.deepEqual(mobileIconGeometry.sizes, [20, 20, 20]);
       assert.ok(Math.max(...mobileIconGeometry.centers) - Math.min(...mobileIconGeometry.centers) <= 1, `${role}: mobile trailing icons tidak sejajar ${JSON.stringify(mobileIconGeometry.centers)}`);
+      assert.equal(mobileIconGeometry.closeCenterY, 32, `${role}: ikon close tidak center pada header 64px`);
       assert.ok(!mobileIconGeometry.triggerClass.includes("cn-rtl-flip"), `${role}: mobile trigger masih memakai panel icon`);
       await assertControls(page, 44, `mobile shell ${role}`);
       await page.keyboard.press("Escape");
@@ -140,4 +142,4 @@ try {
     await context.close();
   }
 } finally { await browser.close(); }
-console.log("R3 admin browser gate passed: shadcn Sidebar + 4 roles x 3 viewports");
+console.log("R3 admin browser gate passed: shadcn Sidebar + 4 roles x 5 viewports");
