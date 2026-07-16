@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Hono } from "hono";
+import { sign, verify } from "hono/jwt";
 import authRouter from "../server/api/admin/auth.ts";
 import { hashPassword } from "../server/utils/crypto.ts";
 
@@ -45,9 +46,9 @@ const createEnv = async ({ active = 1, tokenVersion = 0 } = {}) => {
             state.passwordQueries += 1;
             return this.values[0] === user.email ? user : null;
           }
-          if (normalized.includes("SELECT id, token_version, is_active FROM users")) {
+          if (normalized.includes("COALESCE(operational_role, role) AS role") && normalized.includes("FROM users WHERE id = ?")) {
             return this.values[0] === user.id
-              ? { id: user.id, token_version: user.token_version, is_active: user.is_active }
+              ? { id: user.id, role: user.role, token_version: user.token_version, is_active: user.is_active }
               : null;
           }
           return null;
@@ -58,7 +59,9 @@ const createEnv = async ({ active = 1, tokenVersion = 0 } = {}) => {
             return { success: true, meta: { changes: existed ? 1 : 0 } };
           }
           if (normalized.includes("INSERT INTO security_audit_events")) {
-            state.audits.push({ target_user_id: this.values[0], action: this.values[1], metadata: this.values[2] });
+            state.audits.push(normalized.includes("actor_id")
+              ? { actor_id: this.values[0], target_user_id: this.values[1], action: this.values[2], metadata: this.values[3] }
+              : { target_user_id: this.values[0], action: this.values[1], metadata: this.values[2] });
           }
           if (normalized.includes("UPDATE users SET token_version")) user.token_version += 1;
           return { success: true, meta: { changes: 1 } };
@@ -141,4 +144,69 @@ test("akun disabled tidak dapat login dan sesi token-version lama ditolak", asyn
   const me = await app.request("https://masjid.example/api/admin/auth/me", { headers: { cookie } }, active);
   assert.equal(me.status, 401);
   assert.equal((await me.json()).error.code, "UNAUTHORIZED");
+});
+
+const sessionCookie = async (role = "superadmin", extra = {}) => {
+  const token = await sign({ sub: 7, id: 7, name: "Admin", role, tv: 0, exp: Math.floor(Date.now() / 1000) + 3600, ...extra }, JWT_SECRET, "HS256");
+  return `auth_token=${token}`;
+};
+
+const impersonationRequest = (env, path, cookie, body) => app.request(
+  `https://masjid.example/api/admin/auth/impersonation/${path}`,
+  { method: "POST", headers: { cookie, "content-type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) }, env,
+);
+
+test("hanya superadmin asli dapat memulai role impersonation", async () => {
+  const env = await createEnv();
+  assert.equal((await impersonationRequest(env, "start", await sessionCookie("ketua"), { role: "pengurus" })).status, 403);
+});
+
+test("start impersonation memverifikasi role superadmin terkini langsung dari database", async () => {
+  const env = await createEnv();
+  env.state.user.role = "ketua";
+  assert.equal((await impersonationRequest(env, "start", await sessionCookie(), { role: "pengurus" })).status, 403);
+});
+
+test("superadmin memulai impersonation dengan role efektif, identitas asli, expiry, dan audit", async () => {
+  const env = await createEnv();
+  const response = await impersonationRequest(env, "start", await sessionCookie(), { role: "pengurus" });
+  assert.equal(response.status, 200);
+  const cookie = response.headers.get("set-cookie")?.split(";")[0] ?? "";
+  const payload = await verify(cookie.replace("auth_token=", ""), JWT_SECRET, "HS256");
+  assert.equal(payload.role, "pengurus");
+  assert.equal(payload.original_role, "superadmin");
+  assert.equal(payload.impersonated_by, 7);
+  assert.equal(payload.original_exp, Math.floor(Date.now() / 1000) + 3600);
+  assert.ok(Number(payload.impersonation_expires_at) > Math.floor(Date.now() / 1000));
+  assert.deepEqual(env.state.audits.at(-1), {
+    actor_id: 7, target_user_id: 7, action: "role_impersonation_started", metadata: JSON.stringify({ role: "pengurus" }),
+  });
+
+  const me = await app.request("https://masjid.example/api/admin/auth/me", { headers: { cookie } }, env);
+  const data = (await me.json()).data;
+  assert.equal(data.role, "pengurus");
+  assert.deepEqual(data.impersonation, { active: true, role: "pengurus", original_role: "superadmin", actor_id: 7, actor_name: "Admin", expires_at: payload.impersonation_expires_at });
+});
+
+test("impersonation menolak target superadmin dan samaran berantai", async () => {
+  const env = await createEnv();
+  const now = Math.floor(Date.now() / 1000);
+  assert.equal((await impersonationRequest(env, "start", await sessionCookie(), { role: "superadmin" })).status, 400);
+  const nestedCookie = await sessionCookie("pengurus", { original_role: "superadmin", impersonated_by: 7, impersonation_started_at: now, impersonation_expires_at: now + 600, original_exp: now + 1800, exp: now + 600 });
+  assert.equal((await impersonationRequest(env, "start", nestedCookie, { role: "ketua" })).status, 403);
+});
+
+test("stop impersonation memulihkan superadmin dan mencatat audit", async () => {
+  const env = await createEnv();
+  const now = Math.floor(Date.now() / 1000);
+  const originalExp = now + 1800;
+  const cookie = await sessionCookie("bendahara", { original_role: "superadmin", impersonated_by: 7, impersonation_started_at: now, impersonation_expires_at: now + 600, original_exp: originalExp, exp: now + 600 });
+  const response = await impersonationRequest(env, "stop", cookie);
+  assert.equal(response.status, 200);
+  const restored = response.headers.get("set-cookie")?.split(";")[0] ?? "";
+  const payload = await verify(restored.replace("auth_token=", ""), JWT_SECRET, "HS256");
+  assert.equal(payload.role, "superadmin");
+  assert.equal(payload.exp, originalExp);
+  assert.equal(payload.impersonated_by, undefined);
+  assert.equal(env.state.audits.at(-1).action, "role_impersonation_stopped");
 });

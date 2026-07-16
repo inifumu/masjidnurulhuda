@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ChevronRight, Moon, Sun } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useTheme } from "../composables/admin/useTheme";
 import AdminSidebar from "@/components/admin/shell/AdminSidebar.vue";
@@ -14,6 +15,7 @@ const router = useRouter();
 const route = useRoute();
 const { isDark, toggleTheme } = useTheme();
 const isLoggingOut = ref(false);
+const isStoppingImpersonation = ref(false);
 
 const routeLabels: Record<string, { group?: string; title: string }> = {
   "/admin/dashboard": { title: "Ringkasan" },
@@ -34,6 +36,16 @@ const handleLogout = async () => {
     isLoggingOut.value = false;
   }
 };
+const stopImpersonation = async () => {
+  if (isStoppingImpersonation.value) return;
+  isStoppingImpersonation.value = true;
+  try {
+    await authStore.stopImpersonation();
+    toast.success("Mode samaran dihentikan.");
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Gagal menghentikan mode samaran.");
+  } finally { isStoppingImpersonation.value = false; }
+};
 </script>
 
 <template>
@@ -45,6 +57,10 @@ const handleLogout = async () => {
     <AdminSidebar :is-logging-out="isLoggingOut" @logout="handleLogout" />
 
     <SidebarInset class="h-svh min-w-0 overflow-hidden">
+      <div v-if="authStore.user?.impersonation" data-impersonation-banner class="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-warning/30 bg-warning-soft px-3 text-sm text-foreground md:px-4" role="status">
+        <p class="min-w-0 text-xs leading-tight sm:text-sm"><strong>Mode samaran: {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus', superadmin: 'Superadmin' })[authStore.user.impersonation.role] }}</strong><span class="block sm:inline"> — oleh {{ authStore.user.impersonation.actor_name }} (Superadmin).</span></p>
+        <button class="h-11 shrink-0 rounded-sm border border-warning/40 px-3 font-semibold md:h-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" :disabled="isStoppingImpersonation" @click="stopImpersonation">{{ isStoppingImpersonation ? "Menghentikan..." : "Keluar samaran" }}</button>
+      </div>
       <header class="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b bg-card pl-3 pr-3 md:pl-2 md:pr-4">
         <div class="flex min-w-0 items-center gap-2 md:gap-2.5">
           <SidebarTrigger class="size-11! [&_svg]:!size-5 md:size-8!" aria-label="Buka atau ciutkan navigasi" />

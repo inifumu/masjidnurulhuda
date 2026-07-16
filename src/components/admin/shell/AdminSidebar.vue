@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "lucide-vue-next";
 import type { AdminRole } from "../../../../shared/contracts/index";
+import { toast } from "vue-sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -84,6 +85,18 @@ watch(() => route.path, () => {
 
 const userInitials = computed(() => (authStore.user?.name || "Admin").trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase());
 const roleLabel = computed(() => ({ superadmin: "Superadmin", ketua: "Ketua", bendahara: "Bendahara", pengurus: "Pengurus" })[authStore.user?.role ?? "pengurus"]);
+const isChangingRole = ref(false);
+const previewRoles = ["ketua", "bendahara", "pengurus"] as const;
+const startImpersonation = async (role: typeof previewRoles[number]) => {
+  if (isChangingRole.value) return;
+  isChangingRole.value = true;
+  try {
+    await authStore.startImpersonation(role);
+    toast.success(`Mode samaran ${role} aktif.`);
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Gagal memulai mode samaran.");
+  } finally { isChangingRole.value = false; }
+};
 </script>
 
 <template>
@@ -134,6 +147,11 @@ const roleLabel = computed(() => ({ superadmin: "Superadmin", ketua: "Ketua", be
         </SidebarMenuButton>
       </DropdownMenuTrigger><DropdownMenuContent :side="isMobile ? 'top' : 'right'" :align="isMobile ? 'start' : 'end'" :side-offset="8" :collision-padding="12" class="w-[min(15rem,calc(100vw-1.5rem))] rounded-md md:w-60">
         <DropdownMenuLabel><p class="truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}</p><p class="mt-1 text-xs font-normal text-muted-foreground">{{ roleLabel }}</p></DropdownMenuLabel><DropdownMenuSeparator />
+        <template v-if="authStore.user?.role === 'superadmin' && !authStore.user?.impersonation">
+          <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Lihat dan bertindak sebagai</DropdownMenuLabel>
+          <DropdownMenuItem v-for="role in previewRoles" :key="role" :disabled="isChangingRole" class="min-h-11" @select="startImpersonation(role)">Role {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus' })[role] }}</DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </template>
         <DropdownMenuItem variant="destructive" :disabled="props.isLoggingOut" class="min-h-11 [&_svg]:!size-5" @select="emit('logout')"><LogOut />{{ props.isLoggingOut ? "Mengakhiri sesi..." : "Keluar" }}</DropdownMenuItem>
       </DropdownMenuContent></DropdownMenu></SidebarMenuItem></SidebarMenu>
     </SidebarFooter>

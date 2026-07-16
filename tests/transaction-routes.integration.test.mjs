@@ -8,7 +8,7 @@ const JWT_SECRET = "test-secret-transaction-routes";
 const app = new Hono();
 app.route("/api/admin/transaction", transactionRouter);
 
-const cookie = async (role, id = 7) => `auth_token=${await sign({ id, sub: id, role, tv: 0 }, JWT_SECRET, "HS256")}`;
+const cookie = async (role, id = 7) => `auth_token=${await sign({ id, sub: id, role, tv: 0, exp: Math.floor(Date.now() / 1000) + 600 }, JWT_SECRET, "HS256")}`;
 
 const createEnv = ({ status = "approved", updateChanges = 1 } = {}) => {
   const state = { transaction: { id: 42, status }, events: [] };
@@ -16,7 +16,7 @@ const createEnv = ({ status = "approved", updateChanges = 1 } = {}) => {
     prepare(sql) {
       const normalized = sql.replace(/\s+/g, " ").trim();
       const statement = { sql: normalized, values: [], bind(...values) { this.values = values; return this; }, async first() {
-        if (normalized.includes("SELECT id, token_version, is_active FROM users")) return { id: 7, token_version: 0, is_active: 1 };
+        if (normalized.includes("COALESCE(operational_role, role) AS role")) return { id: 7, role: "superadmin", token_version: 0, is_active: 1 };
         if (normalized.includes("SELECT status FROM kas_masjid")) return state.transaction ? { status: state.transaction.status } : null;
         if (normalized.includes("FROM transaction_idempotency_keys")) return null;
         return null;

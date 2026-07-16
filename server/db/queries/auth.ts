@@ -1,5 +1,6 @@
 type UserTokenVersionRow = {
   id: number;
+  role: "superadmin" | "ketua" | "bendahara" | "pengurus";
   token_version: number;
   is_active: number;
 };
@@ -18,13 +19,14 @@ export const getUserTokenVersionById = async (
   userId: number,
 ): Promise<UserTokenVersionRow | null> => {
   const row = await db
-    .prepare("SELECT id, token_version, is_active FROM users WHERE id = ?")
+    .prepare("SELECT id, COALESCE(operational_role, role) AS role, token_version, is_active FROM users WHERE id = ?")
     .bind(userId)
-    .first<{ id: number; token_version: number | null; is_active: number | null }>();
+    .first<{ id: number; role: UserTokenVersionRow["role"]; token_version: number | null; is_active: number | null }>();
 
   if (!row) return null;
   return {
     id: row.id,
+    role: row.role,
     token_version:
       typeof row.token_version === "number" &&
       Number.isInteger(row.token_version)

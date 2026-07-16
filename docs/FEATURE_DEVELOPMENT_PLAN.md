@@ -34,10 +34,10 @@ Discovery minimum:
 - bandingkan dampak accessibility, Core Web Vitals, maintainability, dan conversion/task clarity terhadap baseline R2;
 - jangan membuat V3, bridge visual, route paralel, atau mempublikasikan aset/data yang belum terverifikasi.
 
-### 0.1 Superadmin Role Preview untuk QA
+### 0.1 Superadmin Role Impersonation untuk QA
 
-**Status:** Candidate / discovery keamanan wajib sebelum implementasi
-**Tujuan:** memungkinkan superadmin memeriksa navigasi dan pengalaman UI sebagai role operasional lain tanpa harus berganti akun berulang kali.
+**Status:** Implemented sebagai extension R3; maintenance melalui `ROADMAP.md`
+**Tujuan:** memungkinkan superadmin memeriksa dan menjalankan pengalaman end-to-end sebagai role operasional lain tanpa menyamar sebagai akun pengguna tertentu.
 
 Batas keamanan wajib:
 
@@ -48,12 +48,13 @@ Batas keamanan wajib:
 - jangan menyimpan role preview di JWT/cookie/localStorage secara ambigu atau membuka jalur privilege escalation;
 - mode aktif harus selalu terlihat dan tidak boleh menyerupai sesi role asli tanpa indikator.
 
-Discovery minimum:
+Kontrak implemented:
 
-- putuskan apakah kebutuhan cukup dengan preview menu/read-only UI atau perlu data-scope/API impersonation nyata;
-- definisikan behavior refresh, multi-tab, logout, session expiry, dan perubahan role akun asli;
-- tentukan route/fitur yang aman dipreview dan yang wajib tetap menggunakan akun fixture terpisah;
-- tambahkan browser matrix seluruh role dan backend negative tests; jangan mengklaim RBAC teruji hanya dari perubahan menu.
+- server-authorized role-level impersonation dipilih; bukan UI-only preview dan bukan penyamaran ke akun user tertentu;
+- JWT role efektif mengendalikan backend, sementara `sub/id` tetap superadmin asli;
+- expiry 15 menit, original session expiry tidak diperpanjang, refresh/multi-tab mengikuti cookie sesi, logout/revocation tetap berlaku;
+- start/stop diaudit, nested impersonation dan target superadmin ditolak, banner permanen + exit satu klik tersedia;
+- backend negative tests dan browser start/stop mobile-desktop tersedia.
 
 ### 1. Artikel dan Informasi
 

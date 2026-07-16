@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { requireSameOrigin, securityHeaders } from "../server/middleware/security.ts";
+import authRouter from "../server/api/admin/auth.ts";
+import { readFile } from "node:fs/promises";
 
 const app = new Hono();
 app.use("*", securityHeaders);
@@ -41,4 +43,20 @@ test("mutasi admin tanpa cookie tetap memerlukan Origin untuk mencegah login-CSR
   const response = await request("POST");
   assert.equal(response.status, 403);
   assert.equal((await response.json()).error.code, "FORBIDDEN");
+});
+
+test("endpoint impersonation berada di belakang exact same-origin production middleware", async () => {
+  const integrated = new Hono();
+  integrated.use("/api/admin/*", requireSameOrigin);
+  integrated.route("/api/admin/auth", authRouter);
+  const env = { JWT_SECRET: "test", DB: {} };
+  for (const action of ["start", "stop"]) {
+    const url = `https://masjid.example/api/admin/auth/impersonation/${action}`;
+    for (const origin of [undefined, "null", "https://evil.example"]) {
+      assert.equal((await integrated.request(url, { method: "POST", headers: origin ? { origin } : {} }, env)).status, 403);
+    }
+    assert.equal((await integrated.request(url, { method: "POST", headers: { origin: "https://masjid.example" } }, env)).status, 401);
+  }
+  const source = await readFile("server/index.ts", "utf8");
+  assert.ok(source.indexOf('app.use("/api/admin/*", requireSameOrigin)') < source.indexOf('app.route("/api/admin/auth", authRouter)'));
 });

@@ -112,7 +112,7 @@ const createInMemoryEnv = () => {
   let autoId = 1;
   const rows = [];
   const objects = new Map();
-  const users = [{ id: 7, token_version: 0, is_active: 1 }];
+  const users = [{ id: 7, role: "superadmin", token_version: 0, is_active: 1 }];
 
   const parseId = (value) => {
     const n = Number(value);
@@ -133,7 +133,7 @@ const createInMemoryEnv = () => {
               if (normalized.includes("FROM media_references")) return { total: 0 };
               if (
                 normalized.includes(
-                  "SELECT id, token_version, is_active FROM users WHERE id = ?",
+                  "COALESCE(operational_role, role) AS role",
                 )
               ) {
                 const userId = parseId(values[0]);
@@ -324,7 +324,7 @@ const createInMemoryEnv = () => {
 
 const makeAuthedCookie = async () => {
   const token = await sign(
-    { id: 7, sub: 7, role: "superadmin", tv: 0 },
+    { id: 7, sub: 7, role: "superadmin", tv: 0, exp: Math.floor(Date.now() / 1000) + 600 },
     JWT_SECRET,
     "HS256",
   );

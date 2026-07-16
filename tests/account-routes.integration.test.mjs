@@ -9,7 +9,7 @@ const app = new Hono();
 app.route("/api/admin/pengaturan", pengaturanRouter);
 
 const cookie = async (role, id = 1, tv = 0) =>
-  `auth_token=${await sign({ id, sub: id, role, tv }, secret, "HS256")}`;
+  `auth_token=${await sign({ id, sub: id, role, tv, exp: Math.floor(Date.now() / 1000) + 600 }, secret, "HS256")}`;
 
 const createEnv = ({ targetRole = "pengurus", targetActive = 1, activeSuperadmins = 2 } = {}) => {
   const state = { target: { id: 2, role: targetRole, is_active: targetActive, token_version: 0 }, audits: [] };
@@ -18,10 +18,10 @@ const createEnv = ({ targetRole = "pengurus", targetActive = 1, activeSuperadmin
       const normalized = sql.replace(/\s+/g, " ").trim();
       return { sql: normalized, values: [], bind(...values) { this.values = values; return this; },
         async first() {
-          if (normalized.includes("SELECT id, token_version, is_active FROM users")) {
+          if (normalized.includes("COALESCE(operational_role, role) AS role")) {
             const id = this.values[0];
-            if (id === 1) return { id: 1, token_version: 0, is_active: 1 };
-            if (id === 2) return { id: 2, token_version: state.target.token_version, is_active: state.target.is_active };
+            if (id === 1) return { id: 1, role: "superadmin", token_version: 0, is_active: 1 };
+            if (id === 2) return { id: 2, role: state.target.role, token_version: state.target.token_version, is_active: state.target.is_active };
           }
           if (normalized.includes("SELECT id, COALESCE(operational_role, role) AS role, is_active FROM users")) return this.values[0] === 2 ? state.target : { id: 1, role: "superadmin", is_active: 1 };
           if (normalized.includes("COUNT(*) AS count")) return { count: activeSuperadmins };

@@ -559,14 +559,14 @@ Evidence berjalan:
 - corrective shell dirombak ke primitive shadcn-vue Sidebar canonical: expanded 240 px, icon rail 48 px, grouped Collapsible submenu, account footer, mobile off-canvas, logo resmi, dan header/breadcrumb compact;
 - geometry konsisten per display: seluruh shell control desktop 32 px, mobile 44 px, account row 48 px, header 64 px; collapse logo/avatar dan submenu memiliki motion sinkron serta reduced-motion fallback;
 - browser matrix mencakup `superadmin`, `ketua`, `bendahara`, dan `pengurus` pada 360×800, 768×1024, dan 1366×900, termasuk mobile Sheet, icon-collapse reveal submenu, nested Escape, popup collision, account/theme/navigation, focus restoration, reduced motion, dan overflow;
-- role preview tetap belum diimplementasikan: kebutuhan QA presentation dibuktikan melalui fixture role browser sehingga tidak ada perubahan JWT, backend authorization, atau data scope pada slice corrective ini.
+- server-authorized role impersonation untuk superadmin telah diimplementasikan setelah closure corrective: role efektif mengendalikan RBAC/data scope/mutasi, actor tetap superadmin asli, sesi samaran 15 menit, start/stop diaudit, samaran berantai ditolak, dan banner permanen menyediakan exit satu klik;
 - independent pre-commit review final lulus setelah relasi `aria-controls`, ID target, label, dan landmark navigasi mobile/desktop diverifikasi pada DOM;
 - commit corrective R3 dipromosikan ke branch/resource testing terisolasi; GitHub Actions verify/deploy lulus dan HTTP + custom browser matrix live testing lulus pada `masjidnurulhuda-testing.pages.dev`.
 
-Corrective refinement sebelum closure R3:
+Post-closure R3 security extension:
 
-- discovery superadmin role preview dilakukan di sela R3, tetapi implementasi hanya boleh dimulai setelah memilih UI-only preview atau server-authorized impersonation dan menyelesaikan threat model/audit contract;
-- UI role preview tidak boleh mengubah authorization/data scope backend atau diklaim sebagai bukti RBAC.
+- role impersonation dipilih sebagai server-authorized role-level impersonation, bukan UI-only preview dan bukan penyamaran sebagai akun pengguna lain;
+- actor/ownership/audit tetap memakai ID superadmin asli, sedangkan backend policy memakai role efektif yang disamarkan.
 
 ## Phase R4 — Financial Workflows
 

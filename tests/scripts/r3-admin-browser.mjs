@@ -141,5 +141,38 @@ try {
     assert.deepEqual(errors, [], `${role} ${viewport.width}: console errors`);
     await context.close();
   }
+  for (const viewport of [{ width: 360, height: 800 }, { width: 1366, height: 900 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    let session = { id: 7, name: "Fixture Superadmin", role: "superadmin" };
+    await page.route("**/api/admin/**", (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === "/api/admin/auth/me") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "success", data: session }) });
+      if (path === "/api/admin/auth/impersonation/start") {
+        const role = JSON.parse(route.request().postData() ?? "{}").role;
+        session = { id: 7, name: "Fixture Superadmin", role, impersonation: { active: true, role, original_role: "superadmin", actor_id: 7, actor_name: "Fixture Superadmin", expires_at: Math.floor(Date.now() / 1000) + 900 } };
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "success", data: { role } }) });
+      }
+      if (path === "/api/admin/auth/impersonation/stop") {
+        session = { id: 7, name: "Fixture Superadmin", role: "superadmin" };
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "success", data: { role: "superadmin" } }) });
+      }
+      const body = path === "/api/admin/dashboard/summary" ? { data: { saldoAwal: 0, totalPemasukan: 0, totalPengeluaran: 0, saldoAkhir: 0 } } : { data: [] };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    await page.goto(`${baseURL}/admin/dashboard`);
+    if (viewport.width < 768) await page.locator('[data-slot="sidebar-trigger"]').click();
+    await page.locator("[data-account-trigger]").click();
+    await page.getByRole("menuitem", { name: "Role Pengurus" }).click();
+    const banner = page.locator("[data-impersonation-banner]");
+    await banner.waitFor();
+    assert.match(await banner.innerText(), /Mode samaran: Pengurus/);
+    assert.match(await banner.innerText(), /Fixture Superadmin/);
+    assert.equal(await page.getByText("Pengaturan", { exact: true }).count(), 0);
+    await banner.getByRole("button", { name: "Keluar samaran" }).click();
+    await banner.waitFor({ state: "hidden" });
+    assert.equal(session.role, "superadmin");
+    await context.close();
+  }
 } finally { await browser.close(); }
-console.log("R3 admin browser gate passed: shadcn Sidebar + 4 roles x 5 viewports");
+console.log("R3 admin browser gate passed: shell 4 roles x 5 viewports + impersonation mobile/desktop");

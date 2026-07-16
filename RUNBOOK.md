@@ -93,6 +93,8 @@ Workflow `.github/workflows/deploy-testing.yml` hanya merespons branch `testing`
 
 Baseline corrective R3 commit `a6d9e2b` telah dipromosikan ke `testing`. Shell memakai shadcn-vue Sidebar canonical: grouped submenu, desktop icon collapse, mobile off-canvas, geometry desktop 32 px / mobile 44 px / account 48 px, ikon shell 20 px, motion collapse sinkron, nested Escape sheet/account, popup collision aman, dan landmark navigasi/`aria-controls` valid. GitHub Actions run `29453040378` lulus verify + deploy; HTTP smoke publik/admin/API dan custom browser matrix live testing empat role × tiga viewport lulus pada `masjidnurulhuda-testing.pages.dev`. Branch/resource production tetap tidak berubah.
 
+Role impersonation superadmin memakai cookie `auth_token` yang sama dan tidak membutuhkan migration/secret baru. Mode aktif maksimal 15 menit, tidak memperpanjang expiry sesi asli, dan dapat dihentikan melalui banner permanen. Jika UI kehilangan banner tetapi `/api/admin/auth/me` masih mengembalikan `impersonation.active`, hentikan sesi dengan logout; jangan memodifikasi cookie secara manual. Audit start/stop berada di `security_audit_events`.
+
 Alur normal: feature/improvement branch → PR ke `testing` → verifikasi live testing → PR `testing` ke `main` → quality gate ulang → production. GitHub Environment `production` direkomendasikan memakai required reviewer agar migration/deploy production tidak berjalan tanpa persetujuan eksplisit.
 
 ### Rollback aplikasi

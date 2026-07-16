@@ -23,10 +23,18 @@ test("R3 admin shell memakai primitive canonical, density compact, dan nav role-
   assert.doesNotMatch(shell, /Sheet v-model:open="isMobileSheetOpen"|isDesktopSidebarOpen|isMobileSheetOpen|backdrop-blur|#09090b|w-8 h-8/);
 });
 
-test("R3 role preview belum mengubah sesi atau otorisasi backend secara implisit", async () => {
-  const [shell, store] = await Promise.all([read("src/layouts/AdminLayoutV2.vue"), read("src/stores/authStore.ts")]);
-  assert.doesNotMatch(shell, /previewRole|impersonat|localStorage/);
-  assert.doesNotMatch(store, /previewRole|impersonat/);
+test("server-authorized role impersonation memakai backend session dan indikator permanen", async () => {
+  const [layout, sidebar, store, authRoute] = await Promise.all([
+    read("src/layouts/AdminLayoutV2.vue"), read("src/components/admin/shell/AdminSidebar.vue"),
+    read("src/stores/authStore.ts"), read("server/api/admin/auth.ts"),
+  ]);
+  assert.match(sidebar, /Lihat dan bertindak sebagai/);
+  assert.match(layout, /data-impersonation-banner/);
+  assert.match(layout, /actor_name/);
+  assert.match(store, /\/api\/admin\/auth\/impersonation\/start/);
+  assert.match(store, /\/api\/admin\/auth\/impersonation\/stop/);
+  assert.match(authRoute, /role_impersonation_started/);
+  assert.doesNotMatch(store, /localStorage|previewRole/);
 });
 
 test("R3 login membedakan credential, rate limit, dan operational error", async () => {

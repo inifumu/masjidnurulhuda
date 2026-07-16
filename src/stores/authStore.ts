@@ -3,7 +3,11 @@ import { computed, ref } from "vue";
 import type { AdminRole } from "../../shared/contracts/index";
 import { httpClient } from "../services/httpClient.ts";
 
-type AuthUser = { id: number; name: string; role: AuthRole };
+export type AuthImpersonation = {
+  active: true; role: AuthRole; original_role: "superadmin"; actor_id: number;
+  actor_name: string; expires_at: number;
+};
+type AuthUser = { id: number; name: string; role: AuthRole; impersonation?: AuthImpersonation };
 type AuthSuccess = { status: "success"; data: AuthUser };
 
 export type AuthRole = AdminRole;
@@ -104,6 +108,14 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const retryAuth = () => checkAuth(true);
+  const startImpersonation = async (role: Exclude<AuthRole, "superadmin">) => {
+    await httpClient("/api/admin/auth/impersonation/start", { method: "POST", body: JSON.stringify({ role }) });
+    await checkAuth(true);
+  };
+  const stopImpersonation = async () => {
+    await httpClient("/api/admin/auth/impersonation/stop", { method: "POST" });
+    await checkAuth(true);
+  };
 
   return {
     isAuthenticated,
@@ -115,5 +127,7 @@ export const useAuthStore = defineStore("auth", () => {
     logout,
     checkAuth,
     retryAuth,
+    startImpersonation,
+    stopImpersonation,
   };
 });
