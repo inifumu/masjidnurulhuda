@@ -90,9 +90,12 @@ Sebelum upgrade remote di masa depan: buat export backup bertimestamp di luar re
 | Git branch | GitHub Environment | Pages | D1 | R2 | Config |
 |---|---|---|---|---|---|
 | `testing` | `testing` | `masjidnurulhuda-testing` | `masjidnurulhuda-testing-db` | `masjidnurulhuda-testing-media` | `wrangler.testing.toml` |
+| `revamp/full-product` | `revamp` | `masjidnurulhuda-revamp` | `masjidnurulhuda-revamp-db` | `masjidnurulhuda-revamp-media` | `wrangler.revamp.toml` |
 | `main` | `production` | `masjidnurulhuda` | `masjidnurulhuda-db` | `masjidnurulhuda-media` | `wrangler.toml` |
 
 Workflow `.github/workflows/deploy-testing.yml` hanya merespons branch `testing`; workflow `.github/workflows/deploy.yml` hanya merespons `main`. Keduanya menjalankan test/build/migration harness sebelum migration remote dan deploy. Jangan menukar config antar-environment atau menggunakan resource production untuk smoke testing.
+
+Lane revamp memakai workflow `.github/workflows/deploy-revamp.yml` dan resource terisolasi. Detail workspace, aturan cherry-pick, dan larangan visual inheritance berada di `docs/REVAMP_WORKSPACE_STRATEGY.md`. Revamp tidak boleh membaca atau memigrasikan D1/R2 testing maupun production.
 
 Baseline corrective R3 commit `a6d9e2b` telah dipromosikan ke `testing`. Shell memakai shadcn-vue Sidebar canonical: grouped submenu, desktop icon collapse, mobile off-canvas, geometry desktop 32 px / mobile 44 px / account 48 px, ikon shell 20 px, motion collapse sinkron, nested Escape sheet/account, popup collision aman, dan landmark navigasi/`aria-controls` valid. GitHub Actions run `29453040378` lulus verify + deploy; HTTP smoke publik/admin/API dan custom browser matrix live testing empat role × tiga viewport lulus pada `masjidnurulhuda-testing.pages.dev`. Branch/resource production tetap tidak berubah.
 

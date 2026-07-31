@@ -47,9 +47,19 @@ tmp-auth-cookie.txt
 tmp-smoke-patch.json
 tmp-smoke-prod.png
 
-# Local AI-agent runtime/profile artifacts (project instructions remain tracked)
+# Local AI-agent runtime/profile artifacts (project instructions and tracked plans remain tracked)
 .hermes/backups/
+.hermes/artifacts/
+.hermes/*.mjs
+.hermes/*-experiments/
+.hermes/r3-experiments/
+.hermes/r4-experiments/
+.hermes/r4-proposal-experiments/
 .openclaw/
+
+# Accidental browser/console expression artifacts
+/document.documentElement.clientWidth
+/x.name)
 HEARTBEAT.md
 IDENTITY.md
 SOUL.md

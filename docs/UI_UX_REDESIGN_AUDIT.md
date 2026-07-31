@@ -72,7 +72,7 @@ Route aktif saat audit:
 | `/admin/login` | `LoginV2.vue` | native V2 |
 | `/admin/*` | `AdminLayoutV2.vue` | native V2 |
 | `/admin/dashboard` | `DashboardV2.vue` | native V2 |
-| `/admin/finance` | `FinanceV2.vue` | native V2 monolith |
+| `/admin/finance/*` | `FinanceV2.vue` host + `views/admin/finance/*View.vue` | R4 child workflow routes; legacy tidak diroute-kan |
 | `/admin/pengaturan` | `PengaturanV2.vue` | V2 shell + `PengaturanLegacyBridge` |
 | `/admin/media` | `MediaLibrary.vue` | custom current UI |
 | `/admin/galeri-dokumentasi` | `GaleriDokumentasi.vue` | custom current UI |
@@ -131,6 +131,24 @@ Behavior yang tetap diadopsi: role visibility, form validation, recovery states,
   - Audit aktivitas
 
 Route baru hanya dibuat ketika workflow dan contract siap end-to-end. Jangan membuat placeholder route yang terlihat operasional.
+
+### Adoption R4 terbaru — Catat kas
+
+- Route aktif `/admin/finance/transaksi-langsung` memakai `DirectTransactionView.vue` sebagai page framing dan `DirectCashDesk.vue` sebagai task surface canonical.
+- Composition aktif adalah Entry Spine tanpa guide task order: arus kas → nominal → identitas transaksi → detail opsional → closure review.
+- Persistent live slip/dossier di halaman telah dihapus; review dan mutation final hanya dimiliki Dialog yang memakai `DirectCashSlip.vue`.
+- Kategori dan seksi memakai `DropdownMenuRadioGroup/RadioItem`; `KasInput.vue` tetap legacy bridge dan bukan donor visual.
+- Density tetap 44 px pada mobile/tablet dan compact mulai `xl`; jarak label-control field utama 12 px pada touch/tablet dan 10 px pada desktop compact.
+- Audit browser wajib memakai source live, menunggu animasi transient settle sebelum screenshot, dan membedakan intentional workflow-tab scroll cue dari document overflow.
+
+### Adoption R4 terbaru — Proposal
+
+- Route aktif `/admin/finance/proposal` memakai `ProposalsView.vue` sebagai page/loading/error owner dan `KasProposal.vue` sebagai task surface canonical Request Brief.
+- Hierarchy canonical adalah keperluan-first, lalu arus, nominal, rincian, metadata routing, consequence, dan CTA tunggal; urutan DOM, visual, keyboard, dan validation tidak dipisahkan dengan CSS reorder.
+- Outer wrapper Card page telah dihapus. Metadata memuat kategori, tanggal, metode, seksi, consequence copy, dan CTA di akhir grup; metadata desktop mengikuti alur normal (`position: static`), bukan sticky rail.
+- Review final hanya melalui Dialog. Pending menolak Escape/outside/cancel/double-submit; conflict/dependency failure menutup Dialog, mempertahankan input, dan mengembalikan fokus ke CTA.
+- Mutation tetap memakai `useKas.handleProposal → kasService.submitProposal → add-proposal`; RBAC, ownership, status awal `pending_ketua`, audit, idempotency, dan state machine tidak berubah.
+- Workflow R4 berikutnya adalah Persetujuan. `KasApproval.vue` tetap behavior inventory legacy, bukan donor visual; desain baru harus dimulai dari audit role/stage/reason/timeline/responsive state dan prototype sebelum promosi production.
 
 ## Migration sequence
 
@@ -198,7 +216,16 @@ Corrective audit yang menutup R3:
 - proposal create/detail;
 - approval review/timeline;
 - dashboard dan audit history;
-- pecah `FinanceV2.vue` berdasarkan workflow tanpa memindahkan business logic ke view.
+- `FinanceV2.vue` sudah menjadi host tipis dengan child route/file terpisah untuk transaksi, **Catat kas**, proposal, persetujuan, dan riwayat audit; dashboard finance dihapus karena metric periode sudah menjadi bagian workflow transaksi;
+- komposisi legacy disimpan tidak ter-route hanya sebagai referensi parity behavior, bukan baseline visual;
+- closure R4 tetap terbuka untuk penyempurnaan workflow finance lain dan review visual final;
+- corrective slice Transaksi telah memindahkan timeline ke detail inline dengan loading, retryable error, legacy `history_available=false`, dan stale-response protection; dialog baca terpisah dihapus dari journey aktif;
+- bug filter mati setelah child-route remount direproduksi merah dan ditutup dengan watcher singleton detached effect scope; browser regression membuktikan filter kembali mengirim request dan mengubah hasil tanpa F5;
+- vertical slice Catat kas kini memakai Entry Spine yang dipilih user: semantic radio arus, nominal dominan, keperluan headline wajib, keterangan/seksi opsional, closure review tanpa persistent slip/dossier, dan Dialog sebagai mutation owner; contract/storage memakai migration 0018 + backfill exact;
+- browser canonical lulus pada 360×800, 768×1024, 1024×1366, dan 1366×900 untuk role, transient focus/Escape, pending, conflict/recovery, filter remount, void, dan overflow; Proposal Request Brief juga telah diadopsi, sehingga R4 berikutnya beralih ke Persetujuan.
+- redesign filter **Command Sheet** menjadi checkpoint setengah approve: behavior/reliability dan arah interaksi dipertahankan, tetapi visual composition belum final;
+- audit lanjutan mengonfirmasi dependency aktif adalah `shadcn-vue` + `reka-ui` tanpa Headless UI, tetapi finance masih mencampur primitive canonical dengan domain component/native markup/style legacy-custom;
+- total recomposition shadcn-vue/Reka telah dipilih user sebagai transaksi canonical pada `/admin/finance/transaksi`; route/menu evaluasi `Transaksi Alt` dihapus. Canonical workspace mempertahankan service/invariant existing, server-bound filters, responsive Sheet/dossier, timeline, dan void dialog tanpa nested modal.
 
 ### R5 — Publication, media, organization, settings
 

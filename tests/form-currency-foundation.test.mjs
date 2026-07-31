@@ -16,6 +16,12 @@ test("FormField menghubungkan label, description, error, dan control secara sema
   assert.match(component, /ariaDescribedby/);
 });
 
+test("FormField mendukung gap label-control eksplisit tanpa mengubah default", async () => {
+  const source = await read("src/components/ui/form-field/FormField.vue");
+  assert.match(source, /controlGap\?: "default" \| "comfortable"/);
+  assert.match(source, /gap-3 xl:gap-2\.5/);
+});
+
 test("CurrencyInput memakai formatter Rupiah canonical dan contract input aksesibel", async () => {
   const component = await read("src/components/ui/currency-input/CurrencyInput.vue");
   assert.match(component, /formatInputRupiah/);

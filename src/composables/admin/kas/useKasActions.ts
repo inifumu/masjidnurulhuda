@@ -140,6 +140,7 @@ export const loadData = async () => {
 const resetFormInputAfterSubmit = () => {
   directIntentKeys.clear();
   formInput.value.jumlah = "";
+  formInput.value.keperluan = "";
   formInput.value.keterangan = "";
   formInput.value.seksi_id = null;
 };
@@ -147,6 +148,7 @@ const resetFormInputAfterSubmit = () => {
 const resetFormProposalAfterSubmit = () => {
   proposalIntentKeys.clear();
   formProposal.value.jumlah = "";
+  formProposal.value.keperluan = "";
   formProposal.value.keterangan = "";
   formProposal.value.seksi_id = null;
 };

@@ -3,16 +3,22 @@ import type { DateValue } from "reka-ui";
 import { computed, ref, shallowRef, watch } from "vue";
 import { Calendar as CalendarIcon } from "lucide-vue-next";
 import { parseDate } from "@internationalized/date";
+import { Button } from "../button";
 import { Calendar } from "../calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 
+import type { HTMLAttributes } from "vue";
+
 const props = defineProps<{
+  id?: string;
   modelValue: string | null;
   placeholder?: string;
   disabled?: boolean;
   invalid?: boolean;
   describedby?: string;
   labelledby?: string;
+  class?: HTMLAttributes["class"];
+  size?: "default" | "sm";
 }>();
 const emit = defineEmits<{
   (event: "update:modelValue", value: string): void;
@@ -55,20 +61,26 @@ const formattedDate = computed(() => {
 <template>
   <Popover :open="open" @update:open="open = $event">
     <PopoverTrigger as-child>
-      <button
+      <Button
+        :id="id"
         type="button"
+        variant="outline"
+        :size="props.size"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
         :aria-describedby="describedby"
         :aria-labelledby="labelledby"
-        class="flex min-h-11 w-full items-center justify-start rounded-sm border border-input bg-card px-3 py-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60"
-        :class="!dateValue && 'text-muted-foreground'"
+        class="w-full justify-start px-3 font-normal"
+        :class="[
+          !dateValue && 'text-muted-foreground',
+          props.class,
+        ]"
       >
         <CalendarIcon class="mr-2 size-4 shrink-0" aria-hidden="true" />
         {{ formattedDate }}
-      </button>
+      </Button>
     </PopoverTrigger>
-    <PopoverContent class="z-[100] w-auto rounded-md border bg-popover p-0 text-popover-foreground shadow-md" align="start">
+    <PopoverContent class="z-[100] w-auto p-0" align="start">
       <Calendar :model-value="dateValue" @update:model-value="handleCalendarUpdate" />
     </PopoverContent>
   </Popover>

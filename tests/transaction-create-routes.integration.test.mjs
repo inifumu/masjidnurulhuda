@@ -55,8 +55,8 @@ const createEnv = () => {
   return { DB, JWT_SECRET, state };
 };
 
-const directPayload = { tipe: "pemasukan", jumlah: 100000, keterangan: "Infak Jumat", tanggal: "2026-07-13", kategori_id: 1, metode: "kas_langsung" };
-const proposalPayload = { tipe: "pengeluaran", jumlah: 250000, keterangan: "Konsumsi rapat pengurus", tanggal: "2026-07-13", kategori_id: 2, seksi_id: 1, metode: "reimbursement" };
+const directPayload = { tipe: "pemasukan", jumlah: 100000, keperluan: "Infak Jumat", keterangan: "", tanggal: "2026-07-13", kategori_id: 1, metode: "kas_langsung" };
+const proposalPayload = { tipe: "pengeluaran", jumlah: 250000, keperluan: "Konsumsi rapat", keterangan: "Konsumsi rapat pengurus dan relawan", tanggal: "2026-07-13", kategori_id: 2, seksi_id: 1, metode: "reimbursement" };
 
 const post = async (env, path, key, payload, role = "pengurus") => app.request(`http://local/api/admin/transaction/${path}`, {
   method: "POST",
@@ -77,6 +77,8 @@ for (const scenario of [
     assert.equal(env.state.transactions.length, 1);
     assert.equal(env.state.events.length, 1);
     assert.equal(env.state.registry.size, 1);
+    assert.ok(env.state.transactions[0].values.includes(scenario.payload.keperluan));
+    assert.ok(env.state.transactions[0].values.includes(scenario.payload.keterangan));
   });
 
   test(`${scenario.name} key sama dengan payload berbeda mendapat 409`, async () => {
@@ -89,6 +91,15 @@ for (const scenario of [
     assert.equal(env.state.events.length, 1);
   });
 
+  test(`${scenario.name} key sama dengan keperluan berbeda mendapat 409`, async () => {
+    const env = createEnv();
+    await post(env, scenario.path, scenario.key, scenario.payload, scenario.role);
+    const conflict = await post(env, scenario.path, scenario.key, { ...scenario.payload, keperluan: `${scenario.payload.keperluan} revisi` }, scenario.role);
+    assert.equal(conflict.status, 409);
+    assert.equal(env.state.transactions.length, 1);
+    assert.equal(env.state.events.length, 1);
+  });
+
   test(`${scenario.name} tanpa Idempotency-Key mendapat contract exact`, async () => {
     const response = await post(createEnv(), scenario.path, "", scenario.payload, scenario.role);
     assert.equal(response.status, 400);
@@ -97,12 +108,12 @@ for (const scenario of [
 }
 
 test("direct validation mengembalikan status, code, dan fields exact", async () => {
-  const response = await post(createEnv(), "add-direct", "direct-invalid-123456", { ...directPayload, jumlah: 0, keterangan: "" }, "bendahara");
+  const response = await post(createEnv(), "add-direct", "direct-invalid-123456", { ...directPayload, jumlah: 0, keperluan: "" }, "bendahara");
   const body = await response.json();
   assert.equal(response.status, 400);
   assert.equal(body.error.code, "VALIDATION_ERROR");
   assert.ok(body.error.fields.jumlah);
-  assert.ok(body.error.fields.keterangan);
+  assert.ok(body.error.fields.keperluan);
 });
 
 test("pengurus tidak dapat mencatat transaksi direct melalui backend", async () => {

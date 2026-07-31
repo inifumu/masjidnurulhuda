@@ -48,12 +48,18 @@ const authStore = useAuthStore();
 const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
 
 const allRoles: readonly AdminRole[] = ["superadmin", "ketua", "bendahara", "pengurus"];
-type NavigationLeaf = { name: string; to: string; roles: readonly AdminRole[] };
+type NavigationLeaf = { name: string; to: string; roles: readonly AdminRole[]; exact?: boolean };
 type NavigationGroup = { name: string; icon: typeof LayoutDashboard; roles: readonly AdminRole[]; to?: string; exact?: boolean; children?: NavigationLeaf[] };
 
 const navigationGroups: NavigationGroup[] = [
   { name: "Ringkasan", icon: LayoutDashboard, to: "/admin/dashboard", exact: true, roles: allRoles },
-  { name: "Keuangan", icon: Wallet, roles: allRoles, children: [{ name: "Keuangan", to: "/admin/finance", roles: allRoles }] },
+  { name: "Keuangan", icon: Wallet, roles: allRoles, children: [
+    { name: "Transaksi", to: "/admin/finance/transaksi", roles: allRoles, exact: true },
+    { name: "Catat kas", to: "/admin/finance/transaksi-langsung", roles: ["superadmin", "ketua", "bendahara"], exact: true },
+    { name: "Proposal", to: "/admin/finance/proposal", roles: allRoles },
+    { name: "Persetujuan", to: "/admin/finance/persetujuan", roles: ["superadmin", "ketua", "bendahara"] },
+    { name: "Riwayat audit", to: "/admin/finance/riwayat-audit", roles: allRoles },
+  ] },
   { name: "Media & publikasi", icon: FolderOpen, roles: allRoles, children: [
     { name: "Pustaka media", to: "/admin/media", roles: allRoles },
     { name: "Galeri & dokumentasi", to: "/admin/galeri-dokumentasi", roles: allRoles },
@@ -69,7 +75,7 @@ const visibleNavigationGroups = computed(() => {
     .map((group) => ({ ...group, children: group.children?.filter((child) => child.roles.includes(role)) }));
 });
 const isActiveRoute = (path: string, exact = false) => exact ? route.path === path || route.path === "/admin" : route.path.startsWith(path);
-const isGroupActive = (group: NavigationGroup) => Boolean(group.to && isActiveRoute(group.to, group.exact)) || Boolean(group.children?.some((child) => isActiveRoute(child.to)));
+const isGroupActive = (group: NavigationGroup) => Boolean(group.to && isActiveRoute(group.to, group.exact)) || Boolean(group.children?.some((child) => isActiveRoute(child.to, child.exact)));
 const openGroups = ref<Record<string, boolean>>({});
 const toggleGroup = (groupName: string) => {
   if (state.value === "collapsed") {
@@ -103,7 +109,7 @@ const startImpersonation = async (role: typeof previewRoles[number]) => {
 <template>
   <Sidebar id="admin-sidebar-navigation" collapsible="icon" aria-label="Navigasi admin">
     <SidebarHeader class="h-16 shrink-0 justify-center border-b border-sidebar-border px-3 py-0 transition-[padding] duration-200 ease-linear motion-reduce:transition-none group-data-[collapsible=icon]:px-2.5">
-      <div class="flex h-11 min-w-0 items-center gap-2 transition-[gap] duration-200 ease-linear motion-reduce:transition-none md:h-8 group-data-[collapsible=icon]:gap-0">
+      <div class="flex h-11 min-w-0 items-center gap-2 transition-[gap] duration-200 ease-linear motion-reduce:transition-none xl:h-8 group-data-[collapsible=icon]:gap-0">
         <img src="/logo.png" alt="" class="size-9 shrink-0 object-contain transition-[width,height,transform] duration-200 ease-linear motion-reduce:transition-none md:size-8 group-data-[collapsible=icon]:size-7" />
         <span class="min-w-0 max-w-44 overflow-hidden opacity-100 transition-[max-width,opacity] duration-200 ease-linear motion-reduce:transition-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0"><span class="block truncate text-sm font-semibold text-foreground">Masjid Nurul Huda</span><span class="block truncate text-xs text-muted-foreground">Ruang kerja pengurus</span></span>
       </div>
@@ -115,20 +121,20 @@ const startImpersonation = async (role: typeof previewRoles[number]) => {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="group in visibleNavigationGroups" :key="group.name">
-              <SidebarMenuButton v-if="group.to" as-child :tooltip="group.name" :is-active="isGroupActive(group)" class="h-11 px-3 [&_svg]:!size-5 md:h-8 md:px-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5!">
+              <SidebarMenuButton v-if="group.to" as-child :tooltip="group.name" :is-active="isGroupActive(group)" class="h-11 px-3 [&_svg]:!size-5 xl:h-8 xl:px-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5!">
                 <router-link :to="group.to"><component :is="group.icon" /><span>{{ group.name }}</span></router-link>
               </SidebarMenuButton>
               <Collapsible v-else :open="openGroups[group.name]" as-child class="group/collapsible">
                 <div>
                   <CollapsibleTrigger as-child>
-                    <SidebarMenuButton :tooltip="group.name" class="h-11 px-3 [&_svg]:!size-5 data-[state=open]:text-sidebar-accent-foreground md:h-8 md:px-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5!" @click="toggleGroup(group.name)">
+                    <SidebarMenuButton :tooltip="group.name" class="h-11 px-3 [&_svg]:!size-5 data-[state=open]:text-sidebar-accent-foreground xl:h-8 xl:px-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5!" @click="toggleGroup(group.name)">
                       <component :is="group.icon" /><span>{{ group.name }}</span><ChevronRight class="ml-auto transition-transform duration-200 motion-reduce:transition-none" :class="openGroups[group.name] && 'rotate-90'" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       <SidebarMenuSubItem v-for="child in group.children" :key="child.to">
-                        <SidebarMenuSubButton as-child :is-active="isActiveRoute(child.to)" class="h-11 px-3 md:h-8 md:px-2"><router-link :to="child.to"><span class="truncate">{{ child.name }}</span></router-link></SidebarMenuSubButton>
+                        <SidebarMenuSubButton as-child :is-active="isActiveRoute(child.to, child.exact)" class="h-11 px-3 xl:h-8 xl:px-2"><router-link :to="child.to"><span class="truncate">{{ child.name }}</span></router-link></SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   </CollapsibleContent>
@@ -147,15 +153,15 @@ const startImpersonation = async (role: typeof previewRoles[number]) => {
           <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}<span class="block text-xs font-normal text-muted-foreground md:hidden">{{ roleLabel }}</span></span>
         </div>
         <DropdownMenu><DropdownMenuTrigger as-child>
-          <IconButton data-account-trigger class="mr-1 size-11! shrink-0 rounded-md [&_svg]:!size-5 md:mr-0 md:size-8!" label="Buka menu akun"><MoreVertical /></IconButton>
+          <IconButton data-account-trigger class="mr-1 size-11! shrink-0 rounded-md [&_svg]:!size-5 xl:mr-0 xl:size-8!" label="Buka menu akun"><MoreVertical /></IconButton>
         </DropdownMenuTrigger><DropdownMenuContent :side="isMobile ? 'top' : 'right'" align="end" :side-offset="8" :collision-padding="12" class="w-[min(15rem,calc(100vw-1.5rem))] rounded-md md:w-60">
           <DropdownMenuLabel><p class="truncate text-sm font-semibold">{{ authStore.user?.name || "Administrator" }}</p><p class="mt-1 text-xs font-normal text-muted-foreground">{{ roleLabel }}</p></DropdownMenuLabel><DropdownMenuSeparator />
           <template v-if="authStore.user?.role === 'superadmin' && !authStore.user?.impersonation">
             <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Lihat dan bertindak sebagai</DropdownMenuLabel>
-            <DropdownMenuItem v-for="role in previewRoles" :key="role" :disabled="isChangingRole" class="h-[44px]! py-0 md:h-[32px]!" @select="startImpersonation(role)">Role {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus' })[role] }}</DropdownMenuItem>
+            <DropdownMenuItem v-for="role in previewRoles" :key="role" :disabled="isChangingRole" class="h-[44px]! py-0 xl:h-[32px]!" @select="startImpersonation(role)">Role {{ ({ ketua: 'Ketua', bendahara: 'Bendahara', pengurus: 'Pengurus' })[role] }}</DropdownMenuItem>
             <DropdownMenuSeparator />
           </template>
-          <DropdownMenuItem variant="destructive" :disabled="props.isLoggingOut" class="h-[44px]! py-0 md:h-[32px]! [&_svg]:!size-5" @select="emit('logout')"><LogOut />{{ props.isLoggingOut ? "Mengakhiri sesi..." : "Keluar" }}</DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" :disabled="props.isLoggingOut" class="h-[44px]! py-0 xl:h-[32px]! [&_svg]:!size-5" @select="emit('logout')"><LogOut />{{ props.isLoggingOut ? "Mengakhiri sesi..." : "Keluar" }}</DropdownMenuItem>
         </DropdownMenuContent></DropdownMenu>
       </div>
     </SidebarFooter>

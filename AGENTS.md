@@ -56,13 +56,16 @@ Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau li
 - Gunakan Tailwind v4 + CSS variables + shadcn-vue/reka sebagai primitive canonical. Lucide, vue-sonner, VeeValidate+Zod, Pinia, dan Inter Variable tetap digunakan sesuai audit.
 - R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`; workstream berikutnya R4 Financial Workflows. Evaluasi homepage publik yang lebih modern hanya kandidat masa depan, bukan pembukaan ulang R2.
 - Headless UI telah dimigrasikan ke reka dan dependency dihapus; jangan memperkenalkannya kembali.
-- Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view.
+- Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view. Transaksi canonical berada di `/admin/finance/transaksi`; route evaluasi `Transaksi Alt` telah dihapus setelah user memilih recomposition baru.
+- Transaksi canonical wajib mempertahankan total recomposition shadcn-vue/Reka. Legacy/V2/custom lama hanya inventory behavior/data/invariant, bukan style/composition reference; jangan copy domain component legacy sebagai shortcut.
+- Catat kas canonical memakai `DirectTransactionView.vue` + `DirectCashDesk.vue` dengan Entry Spine tanpa guide task order dan review final Dialog-only. `KasInput.vue` hanya legacy bridge; prototype Hybrid/persistent slip bukan baseline aktif.
 - Mobile 360 adalah baseline; tablet dan desktop wajib dirancang, bukan sekadar hasil stretch.
 - Semua screen wajib memiliki state dan keyboard/accessibility evidence sesuai flow.
 - Audit R3 lanjutan wajib mencakup density/spacing shell, parity header sidebar mobile-desktop, ukuran icon/control, dan feedback interaksi pressed/open/pending/active yang konsisten.
 - Role preview/impersonation adalah security-sensitive: preview frontend tidak boleh dianggap RBAC backend; impersonation nyata memerlukan contract server, audit, expiry, indikator permanen, exit, dan negative tests.
 - `docs/UI_UX_REDESIGN_AUDIT.md` memuat inventory, adoption matrix, urutan migrasi, dan anti-drift rules.
 - Jangan cleanup/rename canonical sebelum caller audit, parity, test, build, dan browser flow lulus.
+- Feedback `desain ulang` berarti composition/system lama ditolak. Jangan hanya mengganti radius, spacing, warna, atau primitive pada layout yang sama; rancang ulang hierarchy, grouping, disclosure, responsive interaction, dan buktikan visualnya di browser.
 
 ## Dokumentasi
 

@@ -76,7 +76,7 @@ export const parseApiErrorBody = (value: unknown): ApiErrorBody => {
 };
 
 export type TransactionRequest = {
-  tipe: TransactionType; jumlah: number; keterangan: string; tanggal: string;
+  tipe: TransactionType; jumlah: number; keperluan: string; keterangan: string; tanggal: string;
   kategori_id: number; seksi_id: number | null; metode: string;
 };
 
@@ -90,6 +90,7 @@ const parseTransaction = (input: unknown, requireSection: boolean): ValidationRe
   const fields: FieldErrorMap = {};
   const tipe = isTransactionType(raw.tipe) ? raw.tipe : null;
   const jumlah = typeof raw.jumlah === "number" ? raw.jumlah : Number(raw.jumlah);
+  const keperluan = typeof raw.keperluan === "string" ? raw.keperluan.trim() : "";
   const keterangan = typeof raw.keterangan === "string" ? raw.keterangan.trim() : "";
   const tanggal = typeof raw.tanggal === "string" ? raw.tanggal : "";
   const kategoriId = positiveInt(raw.kategori_id);
@@ -97,13 +98,15 @@ const parseTransaction = (input: unknown, requireSection: boolean): ValidationRe
   const metode = typeof raw.metode === "string" ? raw.metode.trim() : "";
   if (!tipe) fields.tipe = "Tipe transaksi tidak valid.";
   if (!Number.isFinite(jumlah) || jumlah <= 0 || jumlah > 1_000_000_000_000) fields.jumlah = "Nominal harus lebih dari 0 dan dalam batas yang diizinkan.";
-  if (!keterangan) fields.keterangan = "Keterangan wajib diisi.";
+  if (keperluan.length < 5 || keperluan.length > 120) fields.keperluan = "Keperluan wajib diisi 5-120 karakter.";
+  if (requireSection && (keterangan.length < 10 || keterangan.length > 2000)) fields.keterangan = "Keterangan proposal wajib diisi 10-2000 karakter.";
+  if (!requireSection && keterangan.length > 1000) fields.keterangan = "Keterangan tambahan maksimum 1000 karakter.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) fields.tanggal = "Tanggal harus menggunakan format YYYY-MM-DD.";
   if (!kategoriId) fields.kategori_id = "Kategori wajib dipilih.";
   if (requireSection && !seksiId) fields.seksi_id = "Seksi wajib dipilih.";
   if (!metode) fields.metode = "Metode wajib dipilih.";
   if (Object.keys(fields).length) return { ok: false, fields };
-  return { ok: true, value: { tipe: tipe!, jumlah, keterangan, tanggal, kategori_id: kategoriId!, seksi_id: seksiId, metode } };
+  return { ok: true, value: { tipe: tipe!, jumlah, keperluan, keterangan, tanggal, kategori_id: kategoriId!, seksi_id: seksiId, metode } };
 };
 
 export const parseDirectTransaction = (input: unknown) => parseTransaction(input, false);

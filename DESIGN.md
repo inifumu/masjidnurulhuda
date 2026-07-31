@@ -183,6 +183,10 @@ Mobile 360 px adalah baseline keputusan, bukan versi kecil desktop.
 
 Bento hanya dipakai ketika hierarchy data benar-benar terbantu. Card bukan default wrapper untuk setiap section. Public layout mengutamakan komposisi editorial foto, headline, list, dan whitespace.
 
+### Makna corrective redesign
+
+Ketika user menolak suatu bagian dan meminta **desain ulang**, jangan mempertahankan komposisi yang sama lalu hanya mengganti primitive, radius, border, spacing, label, atau warna. Desain ulang wajib mengevaluasi ulang task utama, hierarchy, grouping, urutan baca, progressive disclosure, responsive interaction, dan hubungan control terhadap hasil. Untuk filter kompleks finance, buat komposisi baru yang task-oriented dan buktikan saat tertutup maupun dropdown/sheet terbuka pada mobile, tablet, dan desktop. Green test mekanis tidak boleh mengalahkan penolakan visual user.
+
 ## Elevation & Depth
 
 Gunakan border halus sebagai pemisah utama. Shadow hanya untuk overlay, popover, sticky surface, atau elemen yang benar-benar berada di atas surface lain. Tidak ada full glassmorphism, neumorphism, glow dekoratif, atau shadow warna brand berulang.

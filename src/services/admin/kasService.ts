@@ -43,6 +43,7 @@ export interface KasTransaction {
   id: number;
   tipe: "pemasukan" | "pengeluaran";
   jumlah: number;
+  keperluan: string;
   keterangan: string;
   tanggal: string;
   kategori_id: number;
@@ -108,6 +109,7 @@ export interface KasTransactionFormState {
   seksi_id: number | null;
   metode: string;
   tanggal: string;
+  keperluan: string;
   keterangan: string;
 }
 
@@ -156,6 +158,8 @@ export const buildDirectTransactionPayload = (
   if (!form.kategori_id) throw new Error("Kategori wajib dipilih");
   return {
     ...form,
+    keperluan: form.keperluan.trim(),
+    keterangan: form.keterangan.trim(),
     jumlah: validateNominal(form.jumlah),
     kategori_id: form.kategori_id,
   };
@@ -168,6 +172,8 @@ export const buildProposalTransactionPayload = (
   if (!form.seksi_id) throw new Error("Seksi wajib dipilih");
   return {
     ...form,
+    keperluan: form.keperluan.trim(),
+    keterangan: form.keterangan.trim(),
     jumlah: validateNominal(form.jumlah),
     kategori_id: form.kategori_id,
     seksi_id: form.seksi_id,

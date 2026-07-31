@@ -52,6 +52,14 @@ const router = createRouter({
           name: "admin-finance",
           component: () => import("../views/admin/FinanceV2.vue"),
           meta: { requiresAuth: true },
+          redirect: { name: "admin-finance-transactions" },
+          children: [
+            { path: "transaksi", name: "admin-finance-transactions", component: () => import("../views/admin/finance/TransactionsView.vue") },
+            { path: "transaksi-langsung", name: "admin-finance-direct-transaction", component: () => import("../views/admin/finance/DirectTransactionView.vue") },
+            { path: "proposal", name: "admin-finance-proposals", component: () => import("../views/admin/finance/ProposalsView.vue") },
+            { path: "persetujuan", name: "admin-finance-approvals", component: () => import("../views/admin/finance/ApprovalsView.vue") },
+            { path: "riwayat-audit", name: "admin-finance-audit", component: () => import("../views/admin/finance/AuditHistoryView.vue") },
+          ],
         },
         {
           path: "pengaturan",

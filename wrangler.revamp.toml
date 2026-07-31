@@ -1,0 +1,13 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "masjidnurulhuda-revamp"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "masjidnurulhuda-revamp-db"
+database_id = "d2dd9b3b-60d6-40c9-b181-dd2c910fdba4"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "masjidnurulhuda-revamp-media"

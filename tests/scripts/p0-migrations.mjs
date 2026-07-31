@@ -25,10 +25,11 @@ const writeConfig = (migrationsDir) => writeFile(config, `name = "p0-migration-t
 try {
   await mkdir(".wrangler", { recursive: true });
   const migrationFiles = (await readdir("migrations")).filter((name) => /^\d{4}_.*\.sql$/.test(name)).sort();
-  assert.equal(migrationFiles.at(-1)?.slice(0, 4), "0017");
+  assert.equal(migrationFiles.at(-1)?.slice(0, 4), "0018");
 
   apply(fresh);
-  assert.equal(scalar(fresh, "SELECT COUNT(*) AS count FROM d1_migrations"), 17);
+  assert.equal(scalar(fresh, "SELECT COUNT(*) AS count FROM d1_migrations"), 18);
+  assert.equal(scalar(fresh, "SELECT COUNT(*) AS count FROM pragma_table_info('kas_masjid') WHERE name = 'keperluan'"), 1, "fresh DB wajib memiliki kolom keperluan");
   assert.equal(scalar(fresh, `SELECT COUNT(*) AS count FROM users WHERE password_hash = '${knownDefault}' AND is_active = 1`), 0, "fresh DB tidak boleh punya known default credential aktif");
   assert.equal(rows(execute(fresh, "PRAGMA foreign_key_check")).length, 0);
   assert.equal(scalar(fresh, "PRAGMA foreign_keys"), 1, "FK harus aktif setelah fresh chain");
@@ -48,13 +49,14 @@ try {
   apply(upgrade, config);
 
   assert.equal(scalar(upgrade, "SELECT COUNT(*) AS count FROM kas_masjid WHERE keterangan = 'Kas legacy terjaga' AND status = 'approved' AND jumlah = 125000", config), 1, "row/status kas legacy wajib terjaga");
+  assert.equal(scalar(upgrade, "SELECT COUNT(*) AS count FROM kas_masjid WHERE keterangan = 'Kas legacy terjaga' AND keperluan = keterangan", config), 1, "keperluan legacy wajib dibackfill exact dari keterangan");
   assert.equal(scalar(upgrade, "SELECT COUNT(*) AS count FROM users WHERE id = 1 AND password_hash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' AND is_active = 1", config), 1, "password terotasi tidak boleh dinonaktifkan");
   assert.equal(scalar(upgrade, `SELECT COUNT(*) AS count FROM users WHERE password_hash = '${knownDefault}' AND is_active = 1`, config), 0);
   assert.equal(scalar(upgrade, "SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='transaction_audit_events'", config), 1);
   for (const index of ["idx_kas_status_tanggal", "idx_transaction_audit_transaction_created", "idx_login_rate_limits_blocked_until"]) assert.equal(scalar(upgrade, `SELECT COUNT(*) AS count FROM sqlite_master WHERE type='index' AND name='${index}'`, config), 1, `index ${index} wajib tersedia`);
   assert.equal(rows(execute(upgrade, "PRAGMA foreign_key_check", config)).length, 0);
   assert.equal(scalar(upgrade, "PRAGMA foreign_keys", config), 1, "FK harus aktif setelah upgrade chain");
-  console.log(JSON.stringify({ freshMigrations: 17, defaultCredentialActive: false, rotatedAccountPreserved: true, legacyCashPreserved: true, indexes: "available", transactionAuditEvents: "available", foreignKeys: "active-clean" }));
+  console.log(JSON.stringify({ freshMigrations: 18, transactionPurpose: "available-backfilled", defaultCredentialActive: false, rotatedAccountPreserved: true, legacyCashPreserved: true, indexes: "available", transactionAuditEvents: "available", foreignKeys: "active-clean" }));
 } finally {
   await Promise.allSettled([rm(fresh, { recursive: true, force: true }), rm(upgrade, { recursive: true, force: true }), rm(partial, { recursive: true, force: true }), rm(config, { force: true })]);
 }

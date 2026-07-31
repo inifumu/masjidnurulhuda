@@ -123,7 +123,7 @@ api.post("/add-direct", requireRole(["superadmin", "ketua", "bendahara"]), async
       !body.tipe ||
       body.jumlah === undefined ||
       body.jumlah === null ||
-      !body.keterangan ||
+      !body.keperluan ||
       !body.tanggal ||
       body.kategori_id === undefined ||
       body.kategori_id === null
@@ -193,7 +193,7 @@ api.post("/add-proposal", async (c) => {
       !body.tipe ||
       body.jumlah === undefined ||
       body.jumlah === null ||
-      !body.keterangan ||
+      !body.keperluan ||
       !body.tanggal ||
       body.kategori_id === undefined ||
       body.kategori_id === null ||

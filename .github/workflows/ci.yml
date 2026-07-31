@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - testing
+      - revamp/full-product
       - main
 
 concurrency:

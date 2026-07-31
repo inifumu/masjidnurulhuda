@@ -572,15 +572,66 @@ Post-closure R3 security extension:
 
 ## Phase R4 — Financial Workflows
 
-**Status:** In Progress (discovery/audit)
+**Status:** In Progress (Transaksi, Catat kas, dan Proposal canonical diterapkan; Persetujuan menjadi workflow berikutnya)
 
 Urutan:
 
 1. transaction list/detail;
-2. proposal create/detail;
-3. approval review/timeline;
-4. dashboard;
+2. Catat kas;
+3. proposal create/detail;
+4. approval review/timeline;
 5. audit history.
+
+Corrective gate submenu Transaksi — canonical recomposition disetujui user dan diadopsi pada `/admin/finance/transaksi`:
+
+- filter dirombak menjadi Command Sheet search-first dengan quick filter arus, advanced Sheet periode/status/kategori, applied chips, clear behavior, dan result count/totals; bukan polish panel grid lama;
+- root cause filter mati setelah remount adalah watcher singleton yang terikat effect scope child view pertama; detached effect scope mempertahankan watcher sepanjang lifetime singleton state tanpa reload/F5;
+- browser regression query-aware membuktikan perubahan bulan sebelum/sesudah child-route remount tetap mengirim request dan mengubah hasil; latest-request gates tetap dipertahankan;
+- timeline audit dimuat melalui service existing dan dirender inline dalam detail desktop/drawer/full-screen, dengan loading, retry, legacy `history_available=false`, dan stale-response protection;
+- targeted/full test, build, migration, real-D1 critical flow, browser matrix 360/tablet/desktop, serta diff check lulus; R4 keseluruhan tetap `In Progress` untuk workflow finance berikutnya.
+
+Penyesuaian kontrak aktif sebelum melanjutkan promosi redesign Catat kas/Proposal:
+
+- pisahkan `keperluan` sebagai judul wajib arus uang dari `keterangan` sebagai uraian detail;
+- direct transaction: `keperluan` wajib, `keterangan` opsional;
+- proposal: `keperluan` dan rincian `keterangan` wajib;
+- list Transaksi, Persetujuan, dan Riwayat audit memakai `keperluan` sebagai judul; dossier/detail memakai `keterangan` sebagai uraian;
+- pencarian transaksi mencakup `keperluan`, `keterangan`, kategori, dan seksi;
+- gunakan migration additive baru: tambah kolom nullable, backfill `keperluan = keterangan` untuk row existing, switch read/write, lalu evaluasi contract constraint setelah compatibility window;
+- sinkronkan shared contract/parser, frontend form state/service, backend route/service/query, idempotency request hash/replay, fixture, dan dokumentasi tanpa mengubah invariant approved/void, ownership, atau state machine;
+- lampiran proposal tidak digabungkan diam-diam ke perubahan field: kebutuhan attachment, relasi media, access policy, audit, immutability, dan cleanup D1–R2 menjalani discovery terpisah di Feature Development Plan;
+- redesign Catat kas dan Proposal tidak dipromosikan ke production sebelum contract `keperluan` tersedia end-to-end agar UI tidak dibangun ulang di atas semantik field lama.
+
+Evidence vertical slice `keperluan` + Catat kas Entry Spine:
+
+- migration 0018 additive dan fresh/upgrade backfill exact lulus dengan row/status/audit/idempotency tetap terjaga dan FK bersih;
+- shared parser, backend persistence/list, idempotency hash/replay, frontend state/payload/reset, serta title/detail/search canonical memakai dua field terpisah;
+- Catat kas production memakai Entry Spine yang dipilih user: arus kas, nominal, identitas transaksi, detail opsional, lalu closure review; guide task order dan persistent live slip/dossier dihapus, sedangkan Dialog tetap owner konfirmasi dan mutation final;
+- label-control field utama memakai rhythm responsif terukur: 12 px pada mobile/tablet dan 10 px pada desktop compact `xl`; default `FormField` screen lain tetap 8 px;
+- browser source-live membuktikan flow selector tidak terpotong, settled Dropdown/Dialog opak dan bounded, toast validasi lama dibersihkan sebelum review, consequence copy dapat discroll, dan tidak ada document overflow;
+- Chromium matrix 360×800, 768×1024, 1024×1366, 1366×900 lulus untuk role journey, focus/Escape/pending, conflict/recovery, filter remount, void, dan overflow;
+- full test/build, migration, real-D1 critical flow, dan real Vite→Hono JSON request lulus; R4 tetap `In Progress` karena full Proposal redesign adalah workflow berikutnya.
+
+Evidence vertical slice Proposal Request Brief:
+
+- user memilih Request Brief dan urutan canonical source-live adalah `keperluan → arus → nominal → rincian → kategori → tanggal → metode → seksi → consequence → CTA` tanpa CSS reorder;
+- outer Card wrapper page dihapus; metadata routing memiliki consequence copy dan satu CTA di akhir grup, serta tidak lagi sticky/melayang pada desktop;
+- Dialog tetap satu-satunya owner review/mutation; pending menolak dismissal/double-submit, sedangkan 409/503 mempertahankan input dan mengembalikan fokus ke CTA;
+- Chromium 360×800, 768×1024, 1024×1366, dan 1366×900 membuktikan completion berada di metadata, metadata `position: static`, CTA tunggal setelah field wajib, split desktop sejajar, focus restoration, dark mode, tanpa overflow/console error;
+- workflow berikutnya adalah **Persetujuan** (`ApprovalsView.vue` + `KasApproval.vue`), yang masih memakai composition/table/custom controls legacy dan harus diaudit prototype-first tanpa mengubah approval state machine.
+
+Gate penyesuaian fitur:
+
+1. failing contract/migration tests untuk `keperluan` dan perbedaan kewajiban `keterangan` direct versus proposal;
+2. migration fresh apply dan upgrade apply dengan preservasi seluruh row, backfill benar, dan foreign-key check bersih;
+3. shared DTO/parser dan backend validation exact untuk direct/proposal, termasuk batas panjang dan field error;
+4. create/replay idempotent membuktikan payload/hash baru tidak menghasilkan transaksi atau audit event ganda;
+5. list/detail/search membuktikan `keperluan` menjadi judul dan `keterangan` tetap detail, termasuk row legacy hasil backfill;
+6. positive/negative RBAC, ownership, approval state transition, audit timeline, dan approved-only summary tetap lulus;
+7. browser Catat kas/Proposal membuktikan validation, first-error focus, confirmation slip, pending/double-submit, 409, 5xx/network retry tanpa kehilangan input;
+8. browser matrix 360×800, 768×1024, 1024×1366, dan 1366×900, termasuk sidebar expanded/collapsed, keyboard, Escape/focus restoration, zoom 200%, dark mode, overflow, dan console;
+9. `npm run test`, `npm run build`, `npm run test:migrations`, `npm run test:critical-flow:d1`, `npm run test:e2e:browser`, real Vite→Hono API request, dan `git diff --check` lulus setelah edit terakhir;
+10. update `SYSTEM_MAP.md`, active UI audit, dan handoff R4 setelah contract aktual terverifikasi.
 
 Acceptance criteria:
 
@@ -588,6 +639,7 @@ Acceptance criteria:
 - mobile memakai structured cards/list, bukan table scroll sebagai solusi utama;
 - approval memiliki review experience, reason, pending, conflict, dan timeline;
 - seluruh state contract tersedia;
+- `keperluan` dan `keterangan` memiliki semantik, validation, persistence, dan presentation yang terpisah end-to-end;
 - `FinanceV2.vue` dipecah berdasarkan workflow tanpa menduplikasi business logic;
 - P0.5 browser dan real-D1 regression tetap lulus.
 

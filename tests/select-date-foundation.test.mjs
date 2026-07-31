@@ -19,7 +19,12 @@ test("DatePicker canonical typed, aksesibel, dan menutup popover setelah memilih
   assert.match(picker, /aria-invalid/);
   assert.match(picker, /aria-describedby/);
   assert.match(picker, /aria-labelledby/);
-  assert.match(picker, /min-h-11/);
+  assert.match(picker, /:size="props\.size"/);
+  assert.match(picker, /import \{ Button \} from "\.\.\/button"/);
+  assert.match(picker, /<Button[\s\S]*variant="outline"/);
+  assert.doesNotMatch(picker, /<button/);
+  assert.match(picker, /<PopoverContent class="z-\[100\] w-auto p-0"/);
+  assert.doesNotMatch(picker, /<PopoverContent[^>]*rounded-md|<PopoverContent[^>]*\bborder\b/);
   assert.doesNotMatch(picker, /\bas any\b/);
   assert.doesNotMatch(picker, /slate-|dark:\[#/);
 });

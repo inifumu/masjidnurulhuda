@@ -7,6 +7,7 @@ const props = defineProps<{
   error?: string;
   required?: boolean;
   id?: string;
+  controlGap?: "default" | "comfortable";
 }>();
 
 const generatedId = useId();
@@ -23,7 +24,7 @@ const ariaDescribedby = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div class="grid" :class="props.controlGap === 'comfortable' ? 'gap-3 xl:gap-2.5' : 'gap-2'">
     <label :id="labelId" :for="controlId" class="text-sm font-semibold text-foreground">
       {{ label }}
       <span v-if="required" class="text-destructive" aria-hidden="true">*</span>

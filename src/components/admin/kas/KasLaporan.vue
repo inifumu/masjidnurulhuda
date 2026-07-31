@@ -353,7 +353,7 @@ onUnmounted(() => document.removeEventListener("click", closeFilters));
 
             <td class="py-3 px-4">
               <div class="font-medium text-slate-700 dark:text-slate-200">
-                {{ trx.keterangan }}
+                {{ trx.keperluan }}
               </div>
               <div class="text-[10px] text-slate-400 mt-0.5">
                 {{ trx.kategori }}

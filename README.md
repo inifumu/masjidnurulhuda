@@ -77,7 +77,7 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 Status redesign: R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
 
-R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, profile summary + trigger akun khusus, geometry desktop 32 px / mobile 44 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side maksimal 15 menit; backend, data scope, dan mutasi mengikuti role efektif, actor tetap superadmin asli, expiry direkonsiliasi fail-closed, dan banner permanen selalu terlihat. Workstream aktif berikutnya adalah R4 Financial Workflows.
+R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, profile summary + trigger akun khusus, geometry desktop 32 px / mobile 44 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side maksimal 15 menit; backend, data scope, dan mutasi mengikuti role efektif, actor tetap superadmin asli, expiry direkonsiliasi fail-closed, dan banner permanen selalu terlihat. Workstream aktif adalah R4 Financial Workflows. Transaksi, Catat kas Entry Spine, dan Proposal Request Brief telah menjadi route/task surface canonical pada working tree; workflow berikutnya adalah redesign Persetujuan tanpa mengubah approval state machine.
 
 - `.hermes.md` — aturan proses, safety, dan quality gate utama
 - `AGENTS.md` — instruksi ringkas untuk coding agent lain
@@ -88,8 +88,17 @@ R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon colla
 - `docs/AI_AGENT_PLAYBOOK.md` — prosedur kerja rinci
 - `docs/UI_UX_REDESIGN_AUDIT.md` — audit stack, route/primitive overlap, migration sequence, dan anti-drift rules
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
+- `docs/REVAMP_WORKSPACE_STRATEGY.md` — topology dua worktree, kontrak full revamp, sinkronisasi branch, dan lane Cloudflare revamp
+- `docs/REVAMP_BOOTSTRAP_RECORD.md` — resource ID, migration/deployment evidence, checkpoint gate, dan production non-touch record
 - `docs/R3_SESSION_HANDOFF_PROMPT.md` — histori handoff closure R3; status aktif berikutnya tetap ditentukan dari `ROADMAP.md`
-- `docs/R4_SESSION_HANDOFF_PROMPT.md` — prompt aktif untuk memulai discovery dan implementasi R4 pada sesi baru
+- `docs/R4_APPROVAL_REDESIGN_HANDOFF.md` — handoff aktif untuk audit dan prototype-first redesign workflow Persetujuan setelah closure Proposal Request Brief
+- `docs/R4_PROPOSAL_PROTOTYPE_HANDOFF.md` dan `docs/R4_PROPOSAL_HIERARCHY_CORRECTION_HANDOFF.md` — histori prototype serta koreksi hierarchy Proposal; superseded oleh handoff Persetujuan aktif
+- `docs/R4_CATAT_KAS_FINISHING_AND_DOC_SYNC_HANDOFF.md` — histori corrective Catat kas Entry Spine; superseded oleh handoff Proposal aktif
+- `docs/R4_DIRECT_TRANSACTION_IMPLEMENTATION_HANDOFF.md` — histori implementasi contract `keperluan`/`keterangan` dan vertical slice Catat kas; superseded oleh handoff finishing aktif
+- `docs/R4_FINANCE_WORKFLOWS_HANDOFF_PROMPT.md` — histori discovery workflow finance setelah Transaksi canonical; telah superseded untuk slice Catat kas oleh handoff implementasi aktif
+- `docs/R4_TRANSACTION_ALT_HANDOFF_PROMPT.md` — histori audit route evaluasi yang kini telah dipromosikan menjadi transaksi canonical; bukan instruksi aktif
+- `docs/R4_TRANSACTION_REDESIGN_HANDOFF_PROMPT.md` — histori closure corrective Transaksi R4 beserta acceptance notes dan evidence reproduksi
+- `docs/R4_SESSION_HANDOFF_PROMPT.md` dan `docs/R4_SESSION_HANDOFF_PROMPT_REDESIGN_RESET.md` — histori handoff R4 yang telah superseded
 
 Dokumen dalam `docs/archive/` hanya histori. `optimalisasi_plan.md` deprecated dan bukan roadmap aktif.
 

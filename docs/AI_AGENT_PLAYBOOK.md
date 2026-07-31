@@ -140,6 +140,7 @@ Jangan menggabungkan refactor besar dengan perubahan behavior besar tanpa alasan
 12. Role preview frontend hanya untuk presentation QA. Jangan menyebutnya impersonation aman atau bukti RBAC; server-authorized impersonation wajib threat model, audit, expiry, indikator, exit, revocation, dan negative tests.
 13. Bila user menyetujui rombak shell admin total, gunakan primitive shadcn-vue Sidebar canonical dan berhenti mempertahankan geometri legacy. Tetapkan satu contract geometry desktop (contoh: 32 px shell controls, 48 px icon rail, 64 px header) dan satu contract mobile (contoh: 44 px controls, account row 48 px), lalu audit computed browser boxes agar trigger, separator, breadcrumb, submenu, profile footer, dan motion collapse konsisten sebagai satu sistem.
 14. Untuk nested transient UI mobile (Sheet sidebar + dropdown akun), uji dua hal terpisah: Escape langsung menutup Sheet bila tidak ada layer di atasnya, dan Escape menutup dropdown terlebih dahulu tanpa ikut menutup Sheet. Jika wiring primitive tidak cukup, tambahkan fail-safe pada sumber state sidebar, bukan pada caller yang mudah terlewat.
+15. Bila user mengatakan `desain ulang`, hentikan polish incremental. Perlakukan feedback sebagai penolakan composition/system; buat ulang hierarchy, grouping, disclosure, responsive interaction, dan hubungan control-result. Test hijau tidak membuktikan desain diterima.
 
 ## 6. Finance Safety Procedure
 
@@ -300,6 +301,18 @@ Perilaku frontend:
 - thumbnail consistency;
 - referenced delete;
 - role restrictions.
+
+### Transaksi canonical R4
+
+Route canonical transaksi adalah `/admin/finance/transaksi` dengan `TransactionsView.vue` + `TransactionWorkspace.vue` berbasis shadcn-vue/Reka. Route evaluasi `/admin/finance/transaksi-alt` dan submenu alternatif telah dihapus setelah approval user.
+
+- Pertahankan composable/service/API/invariant yang sama; dilarang fork backend/DTO/domain policy.
+- Filter month/year/flow/category tetap server-bound.
+- Mobile/tablet memakai detail Sheet; wide desktop memakai persistent dossier pada breakpoint 1280.
+- Sheet wajib ditutup sebelum Dialog void dibuka, dan resize ke wide desktop wajib membersihkan modal state tersembunyi.
+- Row menggunakan lebar container agar mengikuti sidebar collapse/expand.
+- `TransactionLedger.vue` bukan caller canonical; file hanya dipertahankan selama `FinanceLegacyView.vue` masih memerlukannya sebagai parity reference.
+- Handoff aktif kelanjutan R4: `docs/R4_FINANCE_WORKFLOWS_HANDOFF_PROMPT.md`.
 
 ## 12. Documentation Update Rules
 

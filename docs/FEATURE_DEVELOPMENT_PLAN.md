@@ -93,6 +93,29 @@ Arah domain yang perlu dievaluasi:
 
 Keputusan desain final belum dibuat. Konsolidasi menu tidak berarti tabel dan lifecycle harus dipaksa menjadi satu model.
 
+### 2.1 Lampiran Proposal Keuangan
+
+**Status:** Candidate / discovery diperlukan setelah kontrak teks `keperluan` dan `keterangan` R4 stabil
+**Tujuan:** memungkinkan proposal menyertakan dokumen pendukung tanpa merusak lifecycle media, audit finansial, atau recovery D1–R2.
+
+Discovery minimum:
+
+- tentukan apakah lampiran opsional, alternatif terhadap uraian, atau wajib untuk tipe/nominal tertentu;
+- allowlist MIME, ukuran, jumlah file, dan akses download berdasarkan role/ownership;
+- tentukan upload sebelum atau setelah proposal dibuat serta cleanup orphan jika submit gagal;
+- relasi proposal/transaksi ke Media Library dan reference tracking agar file terpakai tidak dapat dihapus tidak aman;
+- immutability atau aturan replace/remove setelah proposal diajukan, ditolak, atau approved;
+- audit attach/remove/download bila diperlukan dan preservasi actor asli;
+- private delivery policy; lampiran proposal tidak otomatis menjadi media publik;
+- retry, partial failure, reconciliation, retention, dan recovery plan D1–R2;
+- browser behavior mobile untuk upload progress, retry, validation, pending submit, dan file preview.
+
+Keputusan sementara:
+
+- pemisahan `keperluan` dan `keterangan` adalah scope aktif R4 karena merupakan koreksi contract transaksi inti;
+- attachment proposal tidak ditampilkan sebagai control operasional sampai contract storage, RBAC, lifecycle, dan cleanup memiliki implementation serta test end-to-end;
+- redesign Proposal boleh menyediakan hierarchy konseptual dokumen pendukung, tetapi tidak boleh membuat upload palsu atau menyimpan file tanpa reference lifecycle.
+
 ### 3. Inventaris Masjid
 
 **Status:** Candidate / discovery belum dimulai

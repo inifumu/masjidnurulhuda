@@ -23,7 +23,7 @@ test("R3 admin shell memakai primitive canonical, density compact, dan nav role-
   assert.match(layout, /DialogContent/);
   assert.match(sidebar, /label="Buka menu akun"/);
   assert.match(sidebar, /data-profile-summary/);
-  assert.match(sidebar, /h-\[44px\]! py-0 md:h-\[32px\]!/);
+  assert.match(sidebar, /h-\[44px\]! py-0 xl:h-\[32px\]!/);
   assert.doesNotMatch(shell, /Sheet v-model:open="isMobileSheetOpen"|isDesktopSidebarOpen|isMobileSheetOpen|backdrop-blur|#09090b|w-8 h-8/);
 });
 

@@ -34,6 +34,7 @@ const isSuperadmin = computed(() => authStore.user?.role === "superadmin");
 
 // STATE UNTUK MODAL
 const isModalOpen = ref(false);
+const mutationPending = ref(false);
 const modalData = ref({
   id: 0,
   action: "" as "approve" | "reject",
@@ -51,8 +52,9 @@ const openConfirm = (
 
 const executeAction = async () => {
   try {
-    isModalOpen.value = false;
+    mutationPending.value = true;
     await handleAction(modalData.value.id, modalData.value.action);
+    isModalOpen.value = false;
 
     if (modalData.value.action === "approve") {
       if (modalData.value.currentStatus === "pending_bendahara") {
@@ -65,6 +67,8 @@ const executeAction = async () => {
     }
   } catch (error: any) {
     toast.error(error.message || "Terjadi kesalahan saat memproses data.");
+  } finally {
+    mutationPending.value = false;
   }
 };
 </script>
@@ -74,7 +78,8 @@ const executeAction = async () => {
     <!-- MODAL PINTAR -->
     <ConfirmModal
       :isOpen="isModalOpen"
-      @close="isModalOpen = false"
+      :pending="mutationPending"
+      @close="!mutationPending && (isModalOpen = false)"
       @confirm="executeAction"
       :title="
         modalData.action === 'approve'
@@ -150,7 +155,7 @@ const executeAction = async () => {
                 </div>
               </td>
               <td class="py-4 px-4">
-                <div class="text-sm font-semibold">{{ trx.keterangan }}</div>
+                <div class="text-sm font-semibold">{{ trx.keperluan }}</div>
                 <div
                   class="text-[10px] text-slate-400 uppercase tracking-tight mt-0.5"
                 >
@@ -246,7 +251,7 @@ const executeAction = async () => {
                 </div>
               </td>
               <td class="py-4 px-4">
-                <div class="text-sm font-semibold">{{ trx.keterangan }}</div>
+                <div class="text-sm font-semibold">{{ trx.keperluan }}</div>
                 <div
                   class="text-[10px] text-slate-400 uppercase tracking-tight mt-0.5"
                 >
@@ -327,7 +332,7 @@ const executeAction = async () => {
               <td
                 class="py-3 px-4 text-sm text-slate-500 line-through decoration-slate-300"
               >
-                {{ trx.keterangan }}
+                {{ trx.keperluan }}
               </td>
               <td class="py-3 px-4 text-xs text-slate-500">
                 {{ trx.seksi || "-" }}

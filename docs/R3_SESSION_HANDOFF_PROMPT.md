@@ -1,6 +1,6 @@
 # Histori Handoff — R3 Corrective Closure Selesai
 
-Dokumen ini dipertahankan sebagai snapshot histori evidence awal R3 dan telah superseded. Angka gate/viewport di bawah adalah bukti pada saat snapshot lama, bukan status terbaru. Jangan gunakan sebagai prompt sesi aktif; gunakan `docs/R4_SESSION_HANDOFF_PROMPT.md`.
+Dokumen ini dipertahankan sebagai snapshot histori evidence awal R3 dan telah superseded. Angka gate/viewport di bawah adalah bukti pada saat snapshot lama, bukan status terbaru. Jangan gunakan sebagai prompt sesi aktif; gunakan `docs/R4_APPROVAL_REDESIGN_HANDOFF.md` untuk task aktif saat ini dan `ROADMAP.md` untuk prioritas R4 keseluruhan.
 
 ---
 

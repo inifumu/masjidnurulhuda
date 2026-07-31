@@ -13,6 +13,7 @@ import type {
   KasTransaction,
 } from "../../../services/admin/kasService";
 import type { DashboardSummary } from "../../../services/admin/dashboardService";
+import { getCurrentWibPeriod } from "../../../../shared/contracts/index.ts";
 
 export type KasTab = "laporan" | "approval" | "input" | "proposal";
 export type KasFilterTipe = "semua" | "pemasukan" | "pengeluaran";
@@ -24,10 +25,16 @@ export type KasForm = {
   seksi_id: number | null;
   metode: string;
   tanggal: string;
+  keperluan: string;
   keterangan: string;
 };
 
-const getTodayDate = () => new Date().toISOString().split("T")[0];
+export const getWibDate = (now = new Date()) =>
+  new Intl.DateTimeFormat("fr-CA", { timeZone: "Asia/Jakarta" }).format(now);
+
+const initialNow = new Date();
+const initialPeriod = getCurrentWibPeriod(initialNow);
+const initialDate = getWibDate(initialNow);
 
 export const activeTab = ref<KasTab>("laporan");
 export const isLoading = ref(false);
@@ -44,8 +51,8 @@ export const kasSummary = ref<DashboardSummary>({
   saldoAkhir: 0,
 });
 
-export const selectedMonth = ref(new Date().getMonth() + 1);
-export const selectedYear = ref(new Date().getFullYear());
+export const selectedMonth = ref(initialPeriod.month);
+export const selectedYear = ref(initialPeriod.year);
 export const filterTipe = ref<KasFilterTipe>("semua");
 export const filterKategori = ref<number | "semua">("semua");
 
@@ -60,7 +67,8 @@ export const formInput = ref<KasForm>({
   kategori_id: null,
   seksi_id: null,
   metode: "kas_langsung",
-  tanggal: getTodayDate(),
+  tanggal: initialDate,
+  keperluan: "",
   keterangan: "",
 });
 
@@ -70,9 +78,10 @@ export const formProposal = ref<KasForm>({
   kategori_id: null,
   seksi_id: null,
   metode: "reimbursement",
-  tanggal: getTodayDate(),
+  tanggal: initialDate,
+  keperluan: "",
   keterangan: "",
 });
 
 export const openDropdown = ref<string | null>(null);
-export const currentYear = new Date().getFullYear();
+export const currentYear = initialPeriod.year;

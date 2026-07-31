@@ -18,6 +18,7 @@ export class TransactionConflictError extends Error {
 export interface TransactionPayload {
   tipe: TransactionType;
   jumlah: number;
+  keperluan: string;
   keterangan: string;
   tanggal: string;
   kategori_id: number;
@@ -55,6 +56,7 @@ export const createTransaction = async (
   const {
     tipe,
     jumlah,
+    keperluan,
     keterangan,
     tanggal,
     kategori_id,
@@ -71,13 +73,13 @@ export const createTransaction = async (
   const insertStatement = db.prepare(
     transactionId
       ? `INSERT INTO kas_masjid
-         (id, tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (id, tipe, jumlah, keperluan, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       : `INSERT INTO kas_masjid
-         (tipe, jumlah, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (tipe, jumlah, keperluan, keterangan, tanggal, kategori_id, periode_id, seksi_id, metode_pembayaran, created_by, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(
-    ...(transactionId ? [transactionId] : []), tipe, jumlah, keterangan, tanggal,
+    ...(transactionId ? [transactionId] : []), tipe, jumlah, keperluan, keterangan, tanggal,
     kategori_id, periode_id ?? null, seksi_id ?? null, metode ?? null, userId, finalStatus,
   );
   const eventType = finalStatus === "approved" ? "created" : "submitted";

@@ -1,4 +1,6 @@
-# Prompt Handoff — Mulai R4 Financial Workflows
+# Histori Handoff — Mulai R4 Financial Workflows (Superseded)
+
+> Prompt ini telah superseded. Jangan gunakan untuk sesi baru; gunakan `docs/R4_APPROVAL_REDESIGN_HANDOFF.md` untuk task aktif saat ini dan `ROADMAP.md` untuk prioritas R4 keseluruhan. Isi di bawah dipertahankan sebagai histori awal R4.
 
 Salin seluruh isi dokumen ini ke sesi Hermes baru.
 

@@ -13,6 +13,7 @@
     "admin:provision:local": "node scripts/provision-admin.mjs",
     "admin:provision:testing": "node scripts/provision-admin.mjs --remote-testing",
     "deploy:testing": "node scripts/deploy-testing.mjs",
+    "deploy:revamp": "node scripts/deploy-revamp.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name masjidnurulhuda",
     "db:create": "wrangler d1 migrations create masjidnurulhuda-db",
@@ -52,6 +53,6 @@
     "typescript": "~6.0.2",
     "vite": "^8.0.4",
     "vue-tsc": "^3.2.6",
-    "wrangler": "^4.83.0"
+    "wrangler": "^4.111.0"
   }
 }

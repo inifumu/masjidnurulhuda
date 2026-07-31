@@ -56,7 +56,7 @@ const login = async (email) => {
   return cookie;
 };
 const proposal = (label, overrides = {}) => ({
-  tipe: "pengeluaran", jumlah: 10000, keterangan: `${runId} ${label}`, tanggal: "2026-07-14",
+  tipe: "pengeluaran", jumlah: 10000, keperluan: `${runId} ${label}`, keterangan: `${runId} rincian ${label}`, tanggal: "2026-07-14",
   kategori_id: 2, seksi_id: 1, metode: "reimbursement", ...overrides,
 });
 const submit = async (cookie, label, overrides) => {

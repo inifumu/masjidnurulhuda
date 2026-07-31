@@ -21,6 +21,12 @@ const isStoppingImpersonation = ref(false);
 const routeLabels: Record<string, { group?: string; title: string }> = {
   "/admin/dashboard": { title: "Ringkasan" },
   "/admin/finance": { group: "Keuangan", title: "Keuangan" },
+  "/admin/finance/transaksi": { group: "Keuangan", title: "Transaksi" },
+  "/admin/finance/transaksi-langsung": { group: "Keuangan", title: "Catat kas" },
+  "/admin/finance/proposal": { group: "Keuangan", title: "Proposal" },
+  "/admin/finance/persetujuan": { group: "Keuangan", title: "Persetujuan" },
+
+  "/admin/finance/riwayat-audit": { group: "Keuangan", title: "Riwayat audit" },
   "/admin/media": { group: "Media & publikasi", title: "Pustaka media" },
   "/admin/galeri-dokumentasi": { group: "Media & publikasi", title: "Galeri & dokumentasi" },
   "/admin/pengaturan": { group: "Sistem", title: "Pengaturan" },
@@ -73,14 +79,14 @@ const stopImpersonation = async () => {
       </div>
       <header class="sticky top-0 z-20 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b bg-card pl-3 pr-3 md:pl-2 md:pr-4">
         <div class="flex min-w-0 items-center gap-2 md:gap-2.5">
-          <SidebarTrigger class="size-11! [&_svg]:!size-5 md:size-8!" aria-label="Buka atau ciutkan navigasi" />
+          <SidebarTrigger class="size-11! [&_svg]:!size-5 xl:size-8!" aria-label="Buka atau ciutkan navigasi" />
           <span class="mr-1.5 hidden h-4 w-px shrink-0 bg-border md:block" aria-hidden="true" />
           <div class="flex min-w-0 items-center gap-1 text-sm">
             <span v-if="currentRouteLabel.group" class="hidden items-center gap-1 text-muted-foreground sm:flex"><span>{{ currentRouteLabel.group }}</span><ChevronRight class="size-5" aria-hidden="true" /></span>
             <span class="truncate font-semibold text-foreground">{{ currentRouteLabel.title }}</span>
           </div>
         </div>
-        <IconButton data-theme-trigger class="size-11! rounded-md [&_svg]:!size-5 md:size-8!" :label="isDark ? 'Gunakan mode terang' : 'Gunakan mode gelap'" :aria-pressed="isDark" @click="toggleTheme">
+        <IconButton data-theme-trigger class="size-11! rounded-md [&_svg]:!size-5 xl:size-8!" :label="isDark ? 'Gunakan mode terang' : 'Gunakan mode gelap'" :aria-pressed="isDark" @click="toggleTheme">
           <Sun v-if="isDark" class="size-5" aria-hidden="true" /><Moon v-else class="size-5" aria-hidden="true" />
         </IconButton>
       </header>
