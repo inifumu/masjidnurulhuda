@@ -12,7 +12,10 @@ Mempreservasi current R4 sebagai checkpoint dan menyiapkan lane full revamp yang
 - Branch revamp: `revamp/full-product`.
 - Workspace current: `C:\WORK\Projects\Web_Apps\masjidnurulhuda`.
 - Workspace revamp: `C:\WORK\Projects\Web_Apps\masjidnurulhuda-revamp`.
-- SHA checkpoint dan deployment URL diisi setelah commit/push/deploy selesai.
+- SHA checkpoint: `15b013e697bd576b1eeda3216dfa6b1b601fba5c`;
+- GitHub Actions revamp run: `30663081774` (`verify` dan `deploy` lulus);
+- deployment immutable: `https://35b6c65d.masjidnurulhuda-revamp.pages.dev`;
+- alias stabil: `https://masjidnurulhuda-revamp.pages.dev`.
 
 Checkpoint merupakan late snapshot R4, bukan penerimaan arah visual current dan bukan penutupan R4.
 
@@ -80,14 +83,19 @@ Bootstrap ini tidak:
 - deploy ke Pages `masjidnurulhuda`;
 - mengubah secret production.
 
-## Residual yang harus ditutup
+## Evidence deployment dan isolation
 
-- commit dan push checkpoint;
-- buat dua branch dari SHA checkpoint;
-- buat worktree revamp bersih dan install dependency sendiri;
-- deploy Pages revamp dari isolated workspace;
-- verifikasi URL immutable dan alias;
-- cocokkan fingerprint D1 revamp dengan API revamp;
-- catat SHA, GitHub Actions run, dan deployment URL pada dokumen ini.
+- branch `redesign/current-r4`, `revamp/full-product`, dan `improve/project-foundation` remote menunjuk checkpoint `15b013e`;
+- kedua worktree bersih dan memakai dependency directory masing-masing;
+- workflow revamp mengeksekusi quality gate, migration D1 revamp, isolated workspace, dan Pages deploy tanpa menyentuh config production;
+- deployment list Cloudflare mengikat branch `revamp/full-product`, source `15b013e`, dan deployment immutable `35b6c65d`;
+- immutable dan alias sama-sama HTTP 200 untuk homepage, `/api/public/hello`, dan `/api/public/kas/summary`;
+- immutable dan alias menyajikan entry asset `/assets/index-frpCr1jb.js` yang sama;
+- browser smoke 360×800 pada immutable dan alias menampilkan brand, tidak overflow, serta tidak menghasilkan console/page error;
+- D1 fingerprint `transaction_count=0`, `saldo=0`, migration count 18, dan FK bersih cocok dengan API revamp (`total_saldo=0`, pemasukan/pengeluaran bulan ini 0).
+
+## Residual
 
 Audit dependency saat bootstrap melaporkan 14 advisory (`2 low`, `4 moderate`, `8 high`). Tidak dijalankan auto-fix karena dapat mengubah dependency di luar scope checkpoint; perlu triage terpisah pada revamp/reliability workstream.
+
+Superadmin live revamp belum diprovision karena password harus dipilih operator melalui input lokal tersembunyi dan tidak boleh dibuat/dikirim melalui chat. Public/API lane sudah siap; authenticated live review memerlukan provisioning eksplisit tersebut.
