@@ -96,6 +96,6 @@ Bootstrap ini tidak:
 
 ## Residual
 
-Audit dependency saat bootstrap melaporkan 14 advisory (`2 low`, `4 moderate`, `8 high`). Tidak dijalankan auto-fix karena dapat mengubah dependency di luar scope checkpoint; perlu triage terpisah pada revamp/reliability workstream.
+Audit dependency saat bootstrap melaporkan 14 advisory (`2 low`, `4 moderate`, `8 high`). Triage dependency terkontrol berikutnya menurunkan hasil menjadi 2 residual moderate dari satu akar adapter development Hono tanpa fix kompatibel, tanpa `npm audit fix --force`; klasifikasi reachability, compensating control, dan evidence gate dicatat di `docs/DEPENDENCY_SECURITY_AUDIT.md`.
 
 Superadmin live revamp belum diprovision karena password harus dipilih operator melalui input lokal tersembunyi dan tidak boleh dibuat/dikirim melalui chat. Public/API lane sudah siap; authenticated live review memerlukan provisioning eksplisit tersebut.
