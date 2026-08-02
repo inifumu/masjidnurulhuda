@@ -43,6 +43,8 @@ npm run admin:provision:testing
 
 Command testing hard-bound ke `masjidnurulhuda-testing-db`; tidak ada command provisioning remote production. Provisioning atau recovery production wajib mengikuti change window dan persetujuan eksplisit di `RUNBOOK.md`.
 
+Untuk lane full revamp yang terisolasi, gunakan input environment yang sama lalu jalankan `npm run admin:provision:revamp`. Command ini hard-bound ke `masjidnurulhuda-revamp-db` + `wrangler.revamp.toml` dan tidak dapat diarahkan ke testing atau production. Akun bootstrap revamp saat ini adalah `superadmin@masjidnurulhuda.com`; password tidak disimpan dalam Git atau dokumentasi dan dikelola operator secara lokal.
+
 Validasi canonical:
 
 ```bash
@@ -66,6 +68,7 @@ Migration remote dan deployment hanya boleh dilakukan dengan persetujuan eksplis
 
 Branch deployment permanen:
 
+- `revamp/full-product` → Pages `masjidnurulhuda-revamp`, D1 `masjidnurulhuda-revamp-db`, R2 `masjidnurulhuda-revamp-media` melalui `wrangler.revamp.toml`;
 - `testing` → Pages `masjidnurulhuda-testing`, D1 `masjidnurulhuda-testing-db`, R2 `masjidnurulhuda-testing-media` melalui `wrangler.testing.toml`;
 - `main` → resource production existing melalui `wrangler.toml`.
 
@@ -75,7 +78,7 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 ## Dokumentasi aktif
 
-Status redesign: R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`. Foundation canonical berada di `src/components/ui`, component lab development-only di `/_design-system`, dan seluruh dialog operasional telah memakai reka tanpa dependency Headless UI. Baseline homepage R2 diterima; opsi evolusi visual yang lebih modern dicatat sebagai kandidat non-aktif di `docs/FEATURE_DEVELOPMENT_PLAN.md`.
+Lane `revamp/full-product` telah selesai bootstrap dan dependency hardening: audit turun dari 14 menjadi 2 residual moderate development-only tanpa fix kompatibel, seluruh gate lokal/CI/deploy lulus, deployment revamp terikat commit `67fef24`, dan superadmin revamp telah diprovision terpisah. Full revamp berikutnya dimulai dari product brief, information architecture, user journey, dan minimal dua prototype struktural yang berbeda sebelum route production diubah. UI current hanya inventory behavior/RBAC/state, bukan donor visual.
 
 R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, profile summary + trigger akun khusus, geometry desktop 32 px / mobile 44 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side maksimal 15 menit; backend, data scope, dan mutasi mengikuti role efektif, actor tetap superadmin asli, expiry direkonsiliasi fail-closed, dan banner permanen selalu terlihat. Workstream aktif adalah R4 Financial Workflows. Transaksi, Catat kas Entry Spine, dan Proposal Request Brief telah menjadi route/task surface canonical pada working tree; workflow berikutnya adalah redesign Persetujuan tanpa mengubah approval state machine.
 
@@ -90,6 +93,7 @@ R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon colla
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
 - `docs/REVAMP_WORKSPACE_STRATEGY.md` — topology dua worktree, kontrak full revamp, sinkronisasi branch, dan lane Cloudflare revamp
 - `docs/REVAMP_BOOTSTRAP_RECORD.md` — resource ID, migration/deployment evidence, checkpoint gate, dan production non-touch record
+- `docs/DEPENDENCY_SECURITY_AUDIT.md` — upgrade dependency, reachability advisory, residual accepted risk, dan evidence gate
 - `docs/R3_SESSION_HANDOFF_PROMPT.md` — histori handoff closure R3; status aktif berikutnya tetap ditentukan dari `ROADMAP.md`
 - `docs/R4_APPROVAL_REDESIGN_HANDOFF.md` — handoff aktif untuk audit dan prototype-first redesign workflow Persetujuan setelah closure Proposal Request Brief
 - `docs/R4_PROPOSAL_PROTOTYPE_HANDOFF.md` dan `docs/R4_PROPOSAL_HIERARCHY_CORRECTION_HANDOFF.md` — histori prototype serta koreksi hierarchy Proposal; superseded oleh handoff Persetujuan aktif

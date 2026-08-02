@@ -45,10 +45,12 @@ const main = async () => {
   });
   const replaceExisting = process.argv.includes("--replace-existing");
   const remoteTesting = process.argv.includes("--remote-testing");
+  const remoteRevamp = process.argv.includes("--remote-revamp");
   const persistIndex = process.argv.indexOf("--persist-to");
   const persistTo = persistIndex >= 0 ? process.argv[persistIndex + 1] : undefined;
   if (persistIndex >= 0 && !persistTo) throw new Error("--persist-to membutuhkan path.");
-  if (remoteTesting && persistTo) throw new Error("--remote-testing tidak dapat digabung dengan --persist-to.");
+  if (remoteTesting && remoteRevamp) throw new Error("Pilih tepat satu target remote provisioning.");
+  if ((remoteTesting || remoteRevamp) && persistTo) throw new Error("Mode remote tidak dapat digabung dengan --persist-to.");
   const passwordHash = await hashPassword(input.password);
   const sql = buildProvisioningSql({ ...input, passwordHash, replaceExisting });
   const temporaryDirectory = ".wrangler/provision-admin";
@@ -56,9 +58,12 @@ const main = async () => {
   await mkdir(temporaryDirectory, { recursive: true });
   try {
     await writeFile(temporarySqlPath, sql, { mode: 0o600, flag: "wx" });
-    const databaseName = remoteTesting ? "masjidnurulhuda-testing-db" : "masjidnurulhuda-db";
+    const databaseName = remoteTesting
+      ? "masjidnurulhuda-testing-db"
+      : remoteRevamp ? "masjidnurulhuda-revamp-db" : "masjidnurulhuda-db";
     const args = ["node_modules/wrangler/bin/wrangler.js", "d1", "execute", databaseName, "--file", temporarySqlPath];
     if (remoteTesting) args.push("--remote", "--config", "wrangler.testing.toml");
+    else if (remoteRevamp) args.push("--remote", "--config", "wrangler.revamp.toml");
     else {
       args.push("--local");
       if (persistTo) args.push("--persist-to", persistTo);
@@ -69,7 +74,7 @@ const main = async () => {
     await rm(temporarySqlPath, { force: true });
   }
   if (process.exitCode) return;
-  const target = remoteTesting ? "testing remote" : "lokal";
+  const target = remoteTesting ? "testing remote" : remoteRevamp ? "revamp remote" : "lokal";
   console.log(replaceExisting ? `Admin ${target} berhasil dipulihkan.` : `Provisioning ${target} selesai (akun existing tidak diubah).`);
 };
 

@@ -45,10 +45,17 @@ test("credential-equivalent tidak diteruskan melalui process arguments", async (
   assert.match(source, /rm\(temporarySqlPath, \{ force: true \}\)/);
 });
 
-test("mode remote hanya dapat menargetkan resource testing yang hard-bound", async () => {
+test("mode remote hanya dapat menargetkan resource testing atau revamp yang hard-bound", async () => {
   const source = await readFile(new URL("../scripts/provision-admin.mjs", import.meta.url), "utf8");
   assert.match(source, /remoteTesting = process\.argv\.includes\("--remote-testing"\)/);
-  assert.match(source, /remoteTesting \? "masjidnurulhuda-testing-db" : "masjidnurulhuda-db"/);
-  assert.match(source, /args\.push\("--remote", "--config", "wrangler\.testing\.toml"\)/);
+  assert.match(source, /remoteRevamp = process\.argv\.includes\("--remote-revamp"\)/);
+  assert.match(source, /masjidnurulhuda-revamp-db/);
+  assert.match(source, /wrangler\.revamp\.toml/);
+  assert.match(source, /remoteTesting && remoteRevamp/);
   assert.doesNotMatch(source, /--remote-production/);
+});
+
+test("package menyediakan command provisioning revamp khusus", async () => {
+  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(packageJson.scripts["admin:provision:revamp"], "node scripts/provision-admin.mjs --remote-revamp");
 });

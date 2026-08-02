@@ -94,8 +94,16 @@ Bootstrap ini tidak:
 - browser smoke 360×800 pada immutable dan alias menampilkan brand, tidak overflow, serta tidak menghasilkan console/page error;
 - D1 fingerprint `transaction_count=0`, `saldo=0`, migration count 18, dan FK bersih cocok dengan API revamp (`total_saldo=0`, pemasukan/pengeluaran bulan ini 0).
 
-## Residual
+## Dependency hardening dan deployment terbaru
 
 Audit dependency saat bootstrap melaporkan 14 advisory (`2 low`, `4 moderate`, `8 high`). Triage dependency terkontrol berikutnya menurunkan hasil menjadi 2 residual moderate dari satu akar adapter development Hono tanpa fix kompatibel, tanpa `npm audit fix --force`; klasifikasi reachability, compensating control, dan evidence gate dicatat di `docs/DEPENDENCY_SECURITY_AUDIT.md`.
 
-Superadmin live revamp belum diprovision karena password harus dipilih operator melalui input lokal tersembunyi dan tidak boleh dibuat/dikirim melalui chat. Public/API lane sudah siap; authenticated live review memerlukan provisioning eksplisit tersebut.
+- Commit dependency final: `67fef24` (`chore: harden revamp dependencies`).
+- GitHub Actions revamp run `30755596166`: job `verify` dan `deploy` lulus.
+- Deployment immutable terbaru: `https://3e08824d.masjidnurulhuda-revamp.pages.dev`; alias stabil: `https://masjidnurulhuda-revamp.pages.dev`.
+- Immutable dan alias menyajikan entry asset `/assets/index-DlMJFg1Y.js` yang sama serta HTTP 200 untuk homepage dan API publik utama.
+- D1 fingerprint tetap `transaction_count=0`, `saldo=0`, migration count 18, dan FK bersih; API revamp cocok dengan fingerprint tersebut.
+
+## Superadmin revamp
+
+Superadmin pertama telah diprovision langsung ke `masjidnurulhuda-revamp-db`: email `superadmin@masjidnurulhuda.com`, nama `Super Admin`, role/operational role `superadmin`, dan status aktif. Credential tidak disimpan dalam Git, dokumentasi, chat, atau log. Command canonical `npm run admin:provision:revamp` hard-bound ke D1/config revamp dan memakai temporary SQL file yang dihapus saat cleanup. Password dikelola operator di storage lokal ignored; gunakan `-- --replace-existing` hanya untuk recovery eksplisit.

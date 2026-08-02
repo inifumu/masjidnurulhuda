@@ -81,6 +81,8 @@ Password minimal 16 karakter dan wajib memiliki huruf kecil, huruf besar, angka,
 
 Untuk bootstrap/recovery live testing, gunakan input environment yang sama dan jalankan `npm run admin:provision:testing` (tambahkan `-- --replace-existing` hanya untuk recovery eksplisit). Command ini hard-bound ke `masjidnurulhuda-testing-db` + `wrangler.testing.toml`, tidak dapat digabung dengan `--persist-to`, dan tidak menyediakan mode remote production. Provisioning/recovery production tidak diotomasi oleh script ini; lakukan hanya melalui prosedur insiden/change window terpisah dengan backup dan persetujuan eksplisit.
 
+Untuk lane revamp terisolasi, gunakan `npm run admin:provision:revamp`. Command ini hard-bound ke `masjidnurulhuda-revamp-db` + `wrangler.revamp.toml`, tidak dapat digabung dengan target testing atau `--persist-to`, dan tidak menyediakan mode production. Gunakan input environment yang sama; tambahkan `-- --replace-existing` hanya untuk recovery eksplisit.
+
 Sebelum upgrade remote di masa depan: buat export backup bertimestamp di luar repository, catat jumlah users/kas, terapkan migration melalui change window yang disetujui, lalu validasi akun default aktif = 0, preservasi akun terotasi, jumlah/status kas, index penting, `transaction_audit_events`, `PRAGMA foreign_key_check`, dan `PRAGMA foreign_keys`. Jangan memulihkan database secara buta bila legacy row tidak kompatibel; hentikan rollout dan analisis fixture/backup terlebih dahulu.
 
 ## 2. Environment deployment dan rollback aplikasi

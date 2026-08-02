@@ -95,3 +95,5 @@ Workspace revamp baru dinyatakan siap ketika:
 - URL immutable dan alias revamp memberi HTTP/API response sehat;
 - fingerprint API revamp cocok dengan D1 revamp;
 - resource production tidak berubah.
+
+Status 2 Agustus 2026: seluruh gate awal di atas `Done`. Dependency hardening, CI/deploy commit-spesifik, alias/immutable smoke, D1/API fingerprint, dan provisioning superadmin revamp telah selesai. Tahap aktif berikutnya adalah planning full revamp: product brief → information architecture → user journey → minimal dua prototype struktural → pilihan visual pengguna → implementasi presentation layer bertahap.
