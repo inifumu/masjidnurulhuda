@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { LogIn, Menu, X } from "lucide-vue-next";
-import { Button } from "@/components/ui/button";
+// Button diarsipkan; menggunakan router-link native.
 
 const isMobileMenuOpen = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
@@ -73,9 +73,7 @@ onBeforeUnmount(() => {
         </nav>
 
         <div class="flex items-center gap-2">
-          <Button as-child variant="outline" class="hidden lg:inline-flex">
-            <router-link to="/admin/login"><LogIn class="size-4" aria-hidden="true" />Portal Pengurus</router-link>
-          </Button>
+          <router-link to="/admin/login" class="hidden inline-flex min-h-11 items-center gap-2 rounded-sm border border-input bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"><LogIn class="size-4" aria-hidden="true" />Portal Pengurus</router-link>
           <button ref="menuButton" type="button" class="inline-flex size-11 items-center justify-center rounded-sm border bg-card text-foreground lg:hidden" :aria-expanded="isMobileMenuOpen" aria-controls="public-mobile-navigation" :aria-label="isMobileMenuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'" @click="isMobileMenuOpen = !isMobileMenuOpen">
             <X v-if="isMobileMenuOpen" class="size-5" aria-hidden="true" /><Menu v-else class="size-5" aria-hidden="true" />
           </button>

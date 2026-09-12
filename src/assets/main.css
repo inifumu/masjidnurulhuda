@@ -1,223 +1,27 @@
-
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn-vue/tailwind.css";
-
-@custom-variant dark (&:where(.dark, .dark *));
-
-@theme inline {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-sans);
-
-  --color-brand-green: var(--brand-emerald);
-  --color-brand-accent: var(--brand-gold);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-success-soft: var(--success-soft);
-  --color-warning: var(--warning);
-  --color-warning-soft: var(--warning-soft);
-  --color-info: var(--info);
-  --color-info-soft: var(--info-soft);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  --radius-xs: 0.25rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1.25rem;
-}
 
 :root {
   color-scheme: light;
   --brand-emerald: #0B6B4B;
-  --brand-emerald-strong: #0B5D43;
-  --brand-emerald-deep: #063D2D;
-  --brand-emerald-soft: #DDF3E8;
   --brand-gold: #D6A62E;
-  --brand-gold-strong: #8A6412;
-  --brand-gold-soft: #FBECC0;
-
-  --background: #F7F7F2;
-  --foreground: #17211C;
-  --card: #FFFFFF;
-  --card-foreground: #17211C;
-  --popover: #FFFFFF;
-  --popover-foreground: #17211C;
-  --primary: #0B6B4B;
-  --primary-foreground: #FFFFFF;
-  --secondary: #EFF9F4;
-  --secondary-foreground: #0B5D43;
-  --muted: #EEF2EF;
-  --muted-foreground: #66766E;
-  --accent: #FFF8E5;
-  --accent-foreground: #8A6412;
-  --destructive: #B42318;
+  --brand-emerald-deep: #063D2D;
   --border: #DCE4DE;
-  --input: #C9D5CE;
-  --ring: #0B6B4B;
-  --success: #067647;
-  --success-soft: #D1FADF;
-  --warning: #9A6700;
-  --warning-soft: #FEF0C7;
-  --info: #175CD3;
-  --info-soft: #D1E9FF;
-  --radius: 0.625rem;
-
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #3F5047;
-  --sidebar-primary: #0B6B4B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFF9F4;
-  --sidebar-accent-foreground: #0B5D43;
-  --sidebar-border: #DCE4DE;
-  --sidebar-ring: #0B6B4B;
-}
-
-.dark {
-  color-scheme: dark;
-  --brand-emerald: #34D399;
-  --brand-emerald-strong: #6EE7B7;
-  --brand-emerald-deep: #D1FAE5;
-  --brand-emerald-soft: #123C30;
-  --brand-gold: #E8BE55;
-  --brand-gold-strong: #F5D889;
-  --brand-gold-soft: #493B17;
-
-  --background: #101713;
-  --foreground: #F0F5F1;
-  --card: #17211C;
-  --card-foreground: #F0F5F1;
-  --popover: #17211C;
-  --popover-foreground: #F0F5F1;
-  --primary: #34D399;
-  --primary-foreground: #063D2D;
-  --secondary: #193129;
-  --secondary-foreground: #A7F3D0;
-  --muted: #202C26;
-  --muted-foreground: #A4B2AA;
-  --accent: #362F18;
-  --accent-foreground: #F5D889;
-  --destructive: #FDA29B;
-  --border: #314039;
-  --input: #43534B;
-  --ring: #6EE7B7;
-  --success: #6CE9A6;
-  --success-soft: #123C30;
-  --warning: #FEC84B;
-  --warning-soft: #3D3218;
-  --info: #84ADFF;
-  --info-soft: #172B4D;
-
-  --sidebar: #131C17;
-  --sidebar-foreground: #CBD5CF;
-  --sidebar-primary: #34D399;
-  --sidebar-primary-foreground: #063D2D;
-  --sidebar-accent: #193129;
-  --sidebar-accent-foreground: #A7F3D0;
-  --sidebar-border: #314039;
-  --sidebar-ring: #6EE7B7;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  html {
-    @apply bg-background;
-    text-rendering: optimizeLegibility;
-  }
-
-  body {
-    @apply min-h-screen bg-background font-sans text-foreground antialiased;
-  }
-
-  button,
-  a,
-  input,
-  select,
-  textarea {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
-  ::selection {
-    background: var(--brand-emerald-soft);
-    color: var(--foreground);
-  }
+  html { text-rendering: optimizeLegibility; }
+  body { min-height: 100vh; font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: #17211C; background: #F7F7F2; }
+  :focus-visible { outline: 2px solid var(--brand-emerald); outline-offset: 2px; }
+  ::selection { background: #DDF3E8; color: #17211C; }
 }
 
-.font-tabular {
-  font-variant-numeric: tabular-nums;
-}
-
-.reading-measure {
-  max-width: 75ch;
-}
-
-@keyframes collapsible-down {
-  from { height: 0; }
-  to { height: var(--reka-collapsible-content-height); }
-}
-
-@keyframes collapsible-up {
-  from { height: var(--reka-collapsible-content-height); }
-  to { height: 0; }
-}
-
-.animate-collapsible-down {
-  animation: collapsible-down 180ms ease-out;
-}
-
-.animate-collapsible-up {
-  animation: collapsible-up 160ms ease-in;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-input[type="number"] {
-  -moz-appearance: textfield;
-}
+.font-tabular { font-variant-numeric: tabular-nums; }
+.reading-measure { max-width: 75ch; }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

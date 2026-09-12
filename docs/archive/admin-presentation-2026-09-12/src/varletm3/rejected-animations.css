@@ -1,0 +1,85 @@
+/* Playful infographic animations — tasteful, not distracting */
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ripple-glow {
+  0% { box-shadow: 0 0 0 0 rgba(11, 107, 75, 0.25); }
+  70% { box-shadow: 0 0 0 12px rgba(11, 107, 75, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(11, 107, 75, 0); }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.4s ease-out both; }
+.animate-scale-in { animation: scale-in 0.3s ease-out both; }
+.animate-slide-in-right { animation: slide-in-right 0.4s ease-out both; }
+.animate-float { animation: float-gentle 3s ease-in-out infinite; }
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-count-up { animation: count-up 0.5s ease-out both; }
+.animate-ripple-glow { animation: ripple-glow 1.5s ease-out infinite; }
+
+/* Staggered entrance for lists */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* Info graphic decorative shapes */
+.info-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.info-shape--emerald {
+  background: var(--m3-sys-color-primary);
+}
+
+.info-shape--gold {
+  background: var(--m3-sys-color-secondary);
+}
+
+/* Card hover lift */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(11, 107, 75, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up, .animate-scale-in, .animate-slide-in-right,
+  .animate-float, .animate-pulse-soft, .animate-count-up,
+  .animate-ripple-glow { animation: none; }
+  .card-lift { transition: none; }
+}

@@ -99,11 +99,13 @@ Workflow `.github/workflows/deploy-testing.yml` hanya merespons branch `testing`
 
 Lane revamp memakai workflow `.github/workflows/deploy-revamp.yml` dan resource terisolasi. Detail workspace, aturan cherry-pick, dan larangan visual inheritance berada di `docs/REVAMP_WORKSPACE_STRATEGY.md`. Revamp tidak boleh membaca atau memigrasikan D1/R2 testing maupun production.
 
-Baseline corrective R3 commit `a6d9e2b` telah dipromosikan ke `testing`. Shell memakai shadcn-vue Sidebar canonical: grouped submenu, desktop icon collapse, mobile off-canvas, geometry desktop 32 px / mobile 44 px / account 48 px, ikon shell 20 px, motion collapse sinkron, nested Escape sheet/account, popup collision aman, dan landmark navigasi/`aria-controls` valid. GitHub Actions run `29453040378` lulus verify + deploy; HTTP smoke publik/admin/API dan custom browser matrix live testing empat role × tiga viewport lulus pada `masjidnurulhuda-testing.pages.dev`. Branch/resource production tetap tidak berubah.
+Histori deployment R3 ke `testing` tetap dicatat sebagai evidence operasional, bukan baseline visual revamp admin baru:
 
-Refinement shell impersonation commit `64cf1ef` telah dipromosikan ke `testing`: banner global desktop/tablet fixed 48 px mendorong sidebar dan workspace, header tetap sticky pada mode normal/samaran, hanya content pane yang scroll, dan theme tile memakai radius 10 px dengan motion canonical. GitHub Actions run `29480671964` lulus verify + deploy. HTTP dan custom browser matrix live lulus pada deployment immutable `bf01b3c5.masjidnurulhuda-testing.pages.dev`. Alias stabil `masjidnurulhuda-testing.pages.dev` sempat tertinggal selama propagasi awal, lalu terverifikasi menyajikan entry asset yang sama dengan deployment immutable terbaru dan lulus ulang HTTP serta full custom browser gate. URL immutable dari log Wrangler tetap digunakan sebagai evidence commit-spesifik.
+- commit `a6d9e2b`: GitHub Actions run `29453040378` lulus verify/deploy dan live smoke pada alias testing;
+- commit `64cf1ef`: GitHub Actions run `29480671964` lulus verify/deploy; immutable deployment `bf01b3c5.masjidnurulhuda-testing.pages.dev` dan alias testing telah diverifikasi setelah propagasi;
+- commit `2ae5a95`: GitHub Actions run `29484603193` lulus verify/deploy; immutable deployment `149e00ce.masjidnurulhuda-testing.pages.dev` dan alias testing lulus HTTP/browser gate.
 
-Final R3 re-audit commit `2ae5a95` telah dipromosikan ke `testing`. Closure mencakup session race/expiry reconciliation, modal auth recovery, reduced-motion struktural, serta profile menu trigger/alignment/density responsif. GitHub Actions run `29484603193` lulus verify + deploy; HTTP dan full custom browser gate lulus pada deployment immutable `149e00ce.masjidnurulhuda-testing.pages.dev` dan alias stabil `masjidnurulhuda-testing.pages.dev`. Branch/resource production tetap tidak berubah.
+Geometry, component, dan composition pada deployment historis tersebut tidak mengikat planning atau prototype revamp admin baru. Branch/resource production tetap tidak berubah.
 
 Role impersonation superadmin memakai cookie `auth_token` yang sama dan tidak membutuhkan migration/secret baru. Mode aktif maksimal 15 menit, tidak memperpanjang expiry sesi asli, dan dapat dihentikan melalui banner permanen. Jika UI kehilangan banner tetapi `/api/admin/auth/me` masih mengembalikan `impersonation.active`, hentikan sesi dengan logout; jangan memodifikasi cookie secara manual. Audit start/stop berada di `security_audit_events`.
 
@@ -121,6 +123,8 @@ Jika setelah deploy web tidak bisa dibuka atau API gagal berat:
 6. Jalankan health check pada bagian 3.
 
 ## 3. Health Check
+
+> Flow berikut adalah operational smoke untuk deployment existing, bukan urutan implementasi atau donor visual revamp.
 
 Pastikan API publik berikut merespons `status: success`:
 
@@ -184,6 +188,8 @@ Cloudflare Pages Functions:
 - Jika wrapper hilang, deploy hanya melayani file statis Vue dan API bisa gagal dengan HTML/405.
 
 ## 6. Pre-Production Smoke Test (Local)
+
+> Seluruh nama view, ukuran viewport, dan browser evidence di bagian ini adalah histori verifikasi behavior pada snapshot saat itu. Angka tersebut bukan breakpoint, viewport matrix, atau acceptance desain revamp baru.
 
 Tujuan: verifikasi kesiapan deploy **sebelum push/deploy** (bukan hit domain production).
 

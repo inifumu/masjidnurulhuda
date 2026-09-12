@@ -185,6 +185,10 @@ export const buildProposalTransactionPayload = (
 // ==========================================
 
 export const kasService = {
+  async getPendingTransactions(): Promise<KasTransaction[]> {
+    const res = await httpClient<{ data?: KasTransaction[] }>("/api/admin/transaction/pending");
+    return res.data || [];
+  },
   async getMasterData(): Promise<TransactionMasterData> {
     const res = await httpClient<{ data: TransactionMasterData }>(
       "/api/admin/transaction/master-data",

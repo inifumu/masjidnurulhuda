@@ -1,5 +1,7 @@
 # Strategi Workspace Full Revamp
 
+> **Batas aktif:** Dokumen ini hanya mengatur topology Git/worktree, sinkronisasi behavior/security, dan isolasi Cloudflare. Dokumen ini bukan sumber desain, discovery, prototype, atau urutan implementasi. Untuk arah aktif gunakan `DESIGN.md`, `docs/ADMIN_REVAMP_PRD.md`, dan planning di `.hermes/plans/`.
+
 ## Keputusan
 
 Full revamp tidak menggantikan atau menghapus checkpoint R4 yang sudah ada. Repository memakai satu Git history dengan dua jalur kerja dan dua direktori fisik melalui Git worktree:
@@ -8,7 +10,7 @@ State saat dokumen ini pertama kali ditulis: perubahan checkpoint masih berada p
 
 | Jalur | Branch | Workspace | Fungsi |
 |---|---|---|---|
-| Current R4 | `redesign/current-r4` | `C:\WORK\Projects\Web_Apps\masjidnurulhuda` | Preservasi implementasi Transaksi, Catat kas, dan Proposal; hanya menerima perbaikan behavior/security yang memang diperlukan |
+| Historical checkpoint | `redesign/current-r4` | `C:\WORK\Projects\Web_Apps\masjidnurulhuda` | Preservasi snapshot source untuk recovery dan behavior/security evidence; bukan donor atau pembanding visual |
 | Full revamp | `revamp/full-product` | `C:\WORK\Projects\Web_Apps\masjidnurulhuda-revamp` | Presentation layer baru dari nol dengan behavior/API/RBAC/audit/idempotency sebagai regression contract |
 
 Branch `main`, resource production, dan history yang sudah ada tidak diubah oleh pemisahan workspace ini.
@@ -17,11 +19,11 @@ Branch `main`, resource production, dan history yang sudah ada tidak diubah oleh
 
 Checkpoint current R4 adalah snapshot terverifikasi dari working tree yang sebelumnya besar dan mixed. Checkpoint:
 
-- mempertahankan seluruh behavior, migration, test, dokumentasi, dan UI R4 yang masih berguna;
+- mempertahankan source snapshot untuk behavior, migration, test, recovery, dan histori;
 - bukan pernyataan bahwa desain current diterima sebagai arah final;
 - bukan penutupan R4;
 - menjadi titik asal branch revamp agar kontrak terbaru tidak perlu diimplementasikan ulang;
-- menyimpan UI current hanya sebagai inventory behavior dan pembanding, bukan donor visual revamp.
+- menyimpan UI current sebagai bagian snapshot recovery; UI tersebut tidak boleh dibuka sebagai pembanding atau donor pada fase blank-canvas exploration.
 
 Artifact browser/probe lokal di `.hermes/artifacts/`, `.hermes/*.mjs`, dan folder eksperimen tetap berada di disk tetapi di-ignore oleh Git. Artifact tersebut tidak boleh ikut checkpoint atau deployment.
 
@@ -29,14 +31,14 @@ Artifact browser/probe lokal di `.hermes/artifacts/`, `.hermes/*.mjs`, dan folde
 
 Full revamp berarti membuat ulang presentation layer dari nol. Agent atau developer pada branch revamp wajib:
 
-1. memulai dari product brief, information architecture, user journey, dan prototype struktural;
-2. memperlakukan UI current/legacy/V2 hanya sebagai inventory behavior, data, role, error state, dan invariant;
-3. tidak menyalin hierarchy, layout, grouping, spacing, card composition, atau interaction model current hanya agar pekerjaan lebih cepat;
-4. membuat minimal dua arah prototype yang berbeda secara struktural sebelum mengubah route production;
-5. meminta pilihan visual pengguna berdasarkan render browser nyata;
-6. mempertahankan API, backend policy, RBAC, ownership, audit, idempotency, migration, state machine, dan critical-flow tests;
-7. tidak membuat suffix `V3` atau visual bridge baru;
-8. tidak merge seluruh branch current ke revamp setelah kedua jalur berpisah.
+1. mengikuti blank-canvas sequence pada planning aktif: visual brief → beberapa direction baru → render → pilihan pengguna → design system baru;
+2. tidak membaca UI/source current sebagai input visual sebelum direction dan design system baru disetujui;
+3. tidak membawa font, token, angka, density, breakpoint, component, framework, layout, navigation, atau responsive pattern current;
+4. hanya memakai emerald/yellow-gold logo dan brief pengguna sebagai input visual;
+5. setelah design approval, memetakan behavior/API/RBAC/security dari source snapshot tanpa mengubah arah visual;
+6. mempertahankan API, backend policy, RBAC, ownership, audit, idempotency, migration, state machine, dan critical-flow tests saat integrasi;
+7. mengikuti urutan implementation Login → shell admin → Pengaturan → Galeri → Keuangan → Dashboard, dengan Dashboard terakhir;
+8. tidak merge seluruh branch historical checkpoint ke revamp setelah kedua jalur berpisah.
 
 ## Sinkronisasi antarjalur
 
@@ -96,4 +98,4 @@ Workspace revamp baru dinyatakan siap ketika:
 - fingerprint API revamp cocok dengan D1 revamp;
 - resource production tidak berubah.
 
-Status 2 Agustus 2026: seluruh gate awal di atas `Done`. Dependency hardening, CI/deploy commit-spesifik, alias/immutable smoke, D1/API fingerprint, dan provisioning superadmin revamp telah selesai. Tahap aktif berikutnya adalah planning full revamp: product brief → information architecture → user journey → minimal dua prototype struktural → pilihan visual pengguna → implementasi presentation layer bertahap.
+Status 2 Agustus 2026: seluruh gate workspace/environment di atas `Done`. Status ini tidak menyetujui desain snapshot. Tahap aktif mengikuti blank-canvas planning terbaru; urutan IA/journey/prototype lama telah dibatalkan.

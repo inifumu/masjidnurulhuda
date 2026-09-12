@@ -1,3 +1,5 @@
+> Admin aktif memakai presentasi Vue/HTML polos tanpa CSS untuk review fungsi. Lihat [kontrak reset](docs/revamp/ADMIN_FUNCTIONAL_RESET.md). Jalankan npm run dev untuk preview dengan API lokal; npm run test:e2e:browser memakai fixture API dan preview pada port 4173.
+
 # Website Masjid Nurul Huda
 
 Website publik dan panel administrasi Masjid Nurul Huda untuk informasi masjid, jadwal salat, transparansi kas, proposal/persetujuan transaksi, media, galeri, dan pengaturan.
@@ -78,33 +80,25 @@ Detail recovery, temporary SQL cleanup, dan batas environment tersedia di `RUNBO
 
 ## Dokumentasi aktif
 
-Lane `revamp/full-product` telah selesai bootstrap dan dependency hardening: audit turun dari 14 menjadi 2 residual moderate development-only tanpa fix kompatibel, seluruh gate lokal/CI/deploy lulus, deployment revamp terikat commit `67fef24`, dan superadmin revamp telah diprovision terpisah. Full revamp berikutnya dimulai dari product brief, information architecture, user journey, dan minimal dua prototype struktural yang berbeda sebelum route production diubah. UI current hanya inventory behavior/RBAC/state, bukan donor visual.
+Lane `revamp/full-product` telah selesai bootstrap dan dependency hardening: resource revamp terisolasi tersedia dan tidak menyentuh testing/production. Seluruh keputusan framework/shell/style terdahulu dibatalkan; review fungsi polos berjalan berdasarkan `DESIGN.md`, `docs/ADMIN_REVAMP_PRD.md`, dan `docs/revamp/ADMIN_INFORMATION_ARCHITECTURE.md`.
 
-R3 memakai shell shadcn-vue Sidebar canonical dengan grouped submenu, icon collapse desktop, mobile off-canvas, profile summary + trigger akun khusus, geometry desktop 32 px / mobile 44 px, motion collapse sinkron, dan ikon shell 20 px. Superadmin asli dapat mengaktifkan role samaran server-side maksimal 15 menit; backend, data scope, dan mutasi mengikuti role efektif, actor tetap superadmin asli, expiry direkonsiliasi fail-closed, dan banner permanen selalu terlihat. Workstream aktif adalah R4 Financial Workflows. Transaksi, Catat kas Entry Spine, dan Proposal Request Brief telah menjadi route/task surface canonical pada working tree; workflow berikutnya adalah redesign Persetujuan tanpa mengubah approval state machine.
+Seluruh presentasi admin current tidak boleh dibaca sebagai input visual. Fase aktif adalah review fungsi/workflow pada Vue/HTML native polos; source boleh ditelusuri untuk behavior/RBAC/state/data, bukan donor visual. Kontrak security/data tetap dipertahankan pada fase integrasi.
 
-- `.hermes.md` — aturan proses, safety, dan quality gate utama
-- `AGENTS.md` — instruksi ringkas untuk coding agent lain
+- `AGENTS.md` — satu-satunya instruksi proses, safety, dan quality gate agent
 - `SYSTEM_MAP.md` — arsitektur dan flow aktual yang diverifikasi terhadap source
 - `ROADMAP.md` — prioritas improvement aktif dan status milestone
-- `DESIGN.md` — kontrak visual canonical full UI/UX redesign
+- `DESIGN.md` — brief blank-canvas revamp; belum memuat token/design system final
+- `docs/ADMIN_REVAMP_PRD.md` — product brief dan proses visual approval baru
+- `docs/revamp/ADMIN_INFORMATION_ARCHITECTURE.md` — kontrak target menu dan child route revamp admin
 - `RUNBOOK.md` — deployment, migration, backup, restore, dan incident response
-- `docs/AI_AGENT_PLAYBOOK.md` — prosedur kerja rinci
-- `docs/UI_UX_REDESIGN_AUDIT.md` — audit stack, route/primitive overlap, migration sequence, dan anti-drift rules
+- `docs/UI_UX_REDESIGN_AUDIT.md` — boundary blank-canvas, larangan inheritance, dan exit gate eksplorasi
 - `docs/FEATURE_DEVELOPMENT_PLAN.md` — kandidat pengembangan produk masa depan
 - `docs/REVAMP_WORKSPACE_STRATEGY.md` — topology dua worktree, kontrak full revamp, sinkronisasi branch, dan lane Cloudflare revamp
 - `docs/REVAMP_BOOTSTRAP_RECORD.md` — resource ID, migration/deployment evidence, checkpoint gate, dan production non-touch record
-- `docs/DEPENDENCY_SECURITY_AUDIT.md` — upgrade dependency, reachability advisory, residual accepted risk, dan evidence gate
-- `docs/R3_SESSION_HANDOFF_PROMPT.md` — histori handoff closure R3; status aktif berikutnya tetap ditentukan dari `ROADMAP.md`
-- `docs/R4_APPROVAL_REDESIGN_HANDOFF.md` — handoff aktif untuk audit dan prototype-first redesign workflow Persetujuan setelah closure Proposal Request Brief
-- `docs/R4_PROPOSAL_PROTOTYPE_HANDOFF.md` dan `docs/R4_PROPOSAL_HIERARCHY_CORRECTION_HANDOFF.md` — histori prototype serta koreksi hierarchy Proposal; superseded oleh handoff Persetujuan aktif
-- `docs/R4_CATAT_KAS_FINISHING_AND_DOC_SYNC_HANDOFF.md` — histori corrective Catat kas Entry Spine; superseded oleh handoff Proposal aktif
-- `docs/R4_DIRECT_TRANSACTION_IMPLEMENTATION_HANDOFF.md` — histori implementasi contract `keperluan`/`keterangan` dan vertical slice Catat kas; superseded oleh handoff finishing aktif
-- `docs/R4_FINANCE_WORKFLOWS_HANDOFF_PROMPT.md` — histori discovery workflow finance setelah Transaksi canonical; telah superseded untuk slice Catat kas oleh handoff implementasi aktif
-- `docs/R4_TRANSACTION_ALT_HANDOFF_PROMPT.md` — histori audit route evaluasi yang kini telah dipromosikan menjadi transaksi canonical; bukan instruksi aktif
-- `docs/R4_TRANSACTION_REDESIGN_HANDOFF_PROMPT.md` — histori closure corrective Transaksi R4 beserta acceptance notes dan evidence reproduksi
-- `docs/R4_SESSION_HANDOFF_PROMPT.md` dan `docs/R4_SESSION_HANDOFF_PROMPT_REDESIGN_RESET.md` — histori handoff R4 yang telah superseded
+- `docs/ADMIN_REVAMP_ACTIVE_HANDOFF.md` — handoff aktif untuk memulai sesi baru tanpa drifting
+- `docs/archive/revamp-legacy-handoffs/` — seluruh handoff visual R2–R4 lama; histori saja dan bukan instruksi aktif
 
-Dokumen dalam `docs/archive/` hanya histori. `optimalisasi_plan.md` deprecated dan bukan roadmap aktif.
+Dokumen dalam `docs/archive/` hanya histori dan bukan instruksi aktif.
 
 ## Status pekerjaan
 

@@ -1,28 +1,31 @@
 # AGENTS.md — Masjid Nurul Huda
 
-Instruksi lintas-agent untuk repository Vue 3 + TypeScript + Hono + Cloudflare D1/R2.
-Gunakan Bahasa Indonesia untuk laporan teknis. Zona waktu bisnis: `Asia/Jakarta`.
+Satu-satunya instruksi agent untuk repository ini. Gunakan Bahasa Indonesia untuk laporan teknis. Zona waktu bisnis: `Asia/Jakarta`.
 
-Hermes Agent menggunakan `.hermes.md` sebagai project context utama. File ini adalah fallback kompatibilitas untuk agent lain dan tidak dimaksudkan dimuat bersamaan oleh Hermes.
+## Baseline aktif — 12 September 2026
+
+- Stack: Vue 3 + TypeScript + Tailwind CSS, Hono, Cloudflare D1/R2.
+- Eksperimen Material Design, PrimeVue, Varlet, Reka, shadcn-vue, dan sistem visual lama dibatalkan.
+- Panel admin sedang menjalani blank-canvas revamp. Source, arsip, screenshot, prototype, component lab, dan test visual lama bukan donor desain.
+- Admin Vue/HTML polos hanya alat review fungsi, bukan baseline visual.
+- Kontrak backend, security, data, dan IA route-level tetap berlaku.
+- Identitas merek yang tetap berlaku: emerald dengan aksen yellow-gold terkendali.
 
 ## Sumber kebenaran
 
-1. Permintaan dan batasan eksplisit pengguna.
-2. Instruksi proses/safety dalam context agent aktif.
-3. Source code, migration, konfigurasi runtime, dan automated test sebagai fakta behavior operasional.
-4. `SYSTEM_MAP.md` sebagai peta yang harus diverifikasi terhadap source.
-5. `ROADMAP.md` sebagai backlog improvement aktif.
-6. `DESIGN.md` sebagai kontrak visual untuk perubahan UI/UX.
-7. `docs/UI_UX_REDESIGN_AUDIT.md` sebagai audit/adoption/migration redesign.
-8. `docs/archive/` hanya sebagai histori.
+1. Permintaan eksplisit pengguna.
+2. Source code, migration, konfigurasi runtime, dan automated test.
+3. `SYSTEM_MAP.md` untuk arsitektur dan flow aktual; wajib diverifikasi terhadap source.
+4. `ROADMAP.md` untuk backlog aktif.
+5. `DESIGN.md` untuk brief dan keputusan visual yang telah disetujui.
+6. `docs/ADMIN_REVAMP_PRD.md` untuk scope produk dan gate approval.
+7. `docs/revamp/ADMIN_INFORMATION_ARCHITECTURE.md` untuk IA admin.
+8. `RUNBOOK.md` untuk operasi, migration, deployment, backup, dan recovery.
+9. `docs/archive/` hanya histori dan tidak boleh menjadi instruksi aktif.
 
-`optimalisasi_plan.md` telah deprecated. Jangan gunakan sebagai roadmap atau gate aktif.
+Jika fakta tidak ditemukan, tulis `Not found`; jangan berasumsi.
 
-## Workflow wajib
-
-Gunakan trace terarah:
-
-`User action → Route/View → Component/Composable/Store → Frontend Service/httpClient → Hono Route/Middleware → Service/Policy → Repository/Query → D1/R2/External API`
+## Workflow
 
 Sebelum edit:
 
@@ -30,50 +33,59 @@ Sebelum edit:
 - temukan entrypoint dan caller aktual;
 - periksa test dan migration terkait;
 - bedakan current implementation, known gap, dan target roadmap;
-- tampilkan trace singkat, target file, alasan, dan tingkat risiko.
+- tampilkan trace singkat, target file, alasan, dan risiko.
 
-Jangan melakukan blind scan. Abaikan `node_modules`, `.git`, `dist`, `build`, `coverage`, cache, log, minified asset, source map, dan lockfile kecuali task terkait dependency.
+Trace implementation:
+
+`User action → Route/View → Component/Composable/Store → Frontend Service/httpClient → Hono Route/Middleware → Service/Policy → Repository/Query → D1/R2/External API`
+
+Jangan blind scan. Abaikan `node_modules`, `.git`, `dist`, `build`, `coverage`, cache, log, minified asset, source map, dan lockfile kecuali task terkait dependency.
+
+Selama eksplorasi visual blank-canvas:
+
+- gunakan `SYSTEM_MAP.md` hanya untuk semantik dan domain;
+- jangan membaca presentation source lama sebagai inspirasi visual;
+- baca API/DTO/test secara terarah hanya untuk memastikan fungsi dan data;
+- mulai implementation trace setelah direction dan design system disetujui tertulis.
 
 ## Editing dan validasi
 
-- Patch minimal lebih disukai daripada rewrite besar.
-- Jangan membuat V3, bridge, atau fallback baru hanya untuk eksperimen visual.
-- Jangan menambah business logic ke komponen legacy.
-- Backend adalah otoritas RBAC dan state transition; guard UI hanya untuk UX.
-- Jangan mengubah migration lama yang mungkin sudah diterapkan; gunakan migration baru.
-- Jangan melakukan deployment, migration remote, penghapusan data, atau operasi produksi destruktif tanpa permintaan eksplisit.
-- Commit koheren dan push ke branch kerja + `testing` boleh dilakukan langsung setelah seluruh gate relevan lulus dan tidak ada blocker/bug. Tetap minta izin eksplisit untuk merge/push `main`, migration/deploy production, secret production, atau operasi remote destruktif.
-- Jangan menyatakan selesai tanpa menjalankan validasi relevan: typecheck/build, test, integration/security negative path, migration check, atau responsive/accessibility check sesuai scope.
+- Buat patch minimal dan fokus akar masalah.
+- Jangan membuat V3, bridge, fallback, atau primitive duplikat untuk eksperimen.
+- Backend tetap otoritas RBAC dan state transition; guard UI hanya UX.
+- Jangan ubah migration lama yang mungkin sudah diterapkan; buat migration additive baru.
+- Jangan deploy, menjalankan migration remote, mengubah secret production, menghapus data, atau melakukan operasi production destruktif tanpa izin eksplisit.
+- Jangan menyatakan selesai tanpa validasi relevan: typecheck/build, test, integration/security negative path, migration check, atau responsive/accessibility check sesuai scope.
+- Jangan memperbaiki bug di luar scope; laporkan terpisah.
 
-## Domain kritis dan baseline
+## Kontrak kritis
 
-Perubahan baru tidak boleh memperburuk integritas transaksi, RBAC, auth, atau lifecycle media. Baseline P0.5 yang sudah memiliki evidence dan harus dipertahankan: audit/void transaksi, atomic idempotency, shared typed contracts, exact same-origin/security headers, persistent D1 login limiter, account lifecycle/revocation/recovery guards, safe media lifecycle, real-D1 critical flow, dan authenticated browser E2E 360+desktop.
+Perubahan tidak boleh memperburuk:
 
-## Full UI/UX redesign
+- audit dan void transaksi;
+- atomic idempotency dan concurrency guard;
+- shared typed contracts;
+- exact same-origin dan security headers;
+- persistent D1 login limiter;
+- account lifecycle, session revocation, dan recovery guard;
+- safe media lifecycle D1–R2;
+- real-D1 critical flow dan authenticated browser E2E.
 
-- Arah final adalah `DESIGN.md`: Nurul Huda Civic Editorial, warm modern minimalism, editorial public experience, institutional admin UI, emerald identity, dan restrained yellow-gold accent.
-- Ini full product redesign, bukan cleanup/reskin V2. Legacy dan V2 hanya referensi behavior; jangan dijadikan baseline visual.
-- Gunakan Tailwind v4 + CSS variables + shadcn-vue/reka sebagai primitive canonical. Lucide, vue-sonner, VeeValidate+Zod, Pinia, dan Inter Variable tetap digunakan sesuai audit.
-- R1 Design Foundation, R2 Public Publication Experience, dan R3 Admin Shell dan Authentication `Done`; workstream berikutnya R4 Financial Workflows. Evaluasi homepage publik yang lebih modern hanya kandidat masa depan, bukan pembukaan ulang R2.
-- Headless UI telah dimigrasikan ke reka dan dependency dihapus; jangan memperkenalkannya kembali.
-- Jangan membuat V3, bridge visual baru, primitive duplikat, atau hardcode token berulang di view. Transaksi canonical berada di `/admin/finance/transaksi`; route evaluasi `Transaksi Alt` telah dihapus setelah user memilih recomposition baru.
-- Transaksi canonical wajib mempertahankan total recomposition shadcn-vue/Reka. Legacy/V2/custom lama hanya inventory behavior/data/invariant, bukan style/composition reference; jangan copy domain component legacy sebagai shortcut.
-- Catat kas canonical memakai `DirectTransactionView.vue` + `DirectCashDesk.vue` dengan Entry Spine tanpa guide task order dan review final Dialog-only. `KasInput.vue` hanya legacy bridge; prototype Hybrid/persistent slip bukan baseline aktif.
-- Mobile 360 adalah baseline; tablet dan desktop wajib dirancang, bukan sekadar hasil stretch.
-- Semua screen wajib memiliki state dan keyboard/accessibility evidence sesuai flow.
-- Audit R3 lanjutan wajib mencakup density/spacing shell, parity header sidebar mobile-desktop, ukuran icon/control, dan feedback interaksi pressed/open/pending/active yang konsisten.
-- Role preview/impersonation adalah security-sensitive: preview frontend tidak boleh dianggap RBAC backend; impersonation nyata memerlukan contract server, audit, expiry, indikator permanen, exit, dan negative tests.
-- `docs/UI_UX_REDESIGN_AUDIT.md` memuat inventory, adoption matrix, urutan migrasi, dan anti-drift rules.
-- Jangan cleanup/rename canonical sebelum caller audit, parity, test, build, dan browser flow lulus.
-- Feedback `desain ulang` berarti composition/system lama ditolak. Jangan hanya mengganti radius, spacing, warna, atau primitive pada layout yang sama; rancang ulang hierarchy, grouping, disclosure, responsive interaction, dan buktikan visualnya di browser.
+UI visibility bukan security boundary. Role impersonation nyata harus memakai contract server, audit, expiry, indikator permanen, exit, dan negative test.
+
+## IA admin
+
+- Menu utama: Dashboard, Keuangan, Media, Publikasi, Pengaturan.
+- Kategori kas, Seksi & pengurus, dan Akun & akses adalah child route Pengaturan, bukan tab lokal.
+- Media dan Publikasi adalah menu utama terpisah.
+- Inventaris belum memiliki placement yang disetujui; jangan menempatkannya tanpa keputusan pengguna.
+- Tujuan dengan URL/page sendiri wajib memakai route navigation. Tab hanya untuk perspektif lokal dalam satu halaman.
+- Urutan implementation setelah approval visual: Login → shell admin → Pengaturan → Media → Publikasi → Keuangan → Dashboard.
 
 ## Dokumentasi
 
-- Update `SYSTEM_MAP.md` jika route, flow, state machine, schema, atau ownership modul berubah.
-- Update `ROADMAP.md` jika status, dependency, scope, atau acceptance criteria berubah.
-- Update `RUNBOOK.md` jika migration, deployment, backup/restore, secret, atau incident procedure berubah.
-- Update `README.md` jika onboarding, command canonical, prerequisite, atau indeks dokumentasi aktif berubah.
-- Jangan menulis progress log kosmetik panjang di dokumen aktif.
-- Gunakan `docs/AI_AGENT_PLAYBOOK.md` untuk prosedur rinci.
-
-Jika fakta tidak ditemukan, tulis `Not found`; jangan berasumsi.
+- Update `SYSTEM_MAP.md` bila route, flow, state machine, schema, role policy, atau ownership berubah.
+- Update `ROADMAP.md` bila status, dependency, scope, atau acceptance criteria berubah.
+- Update `RUNBOOK.md` bila prosedur migration, deployment, backup/restore, secret, atau incident berubah.
+- Update `README.md` bila onboarding, command canonical, prerequisite, atau indeks dokumentasi berubah.
+- Jangan menulis progress log kosmetik di dokumen aktif.

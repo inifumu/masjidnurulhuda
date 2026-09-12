@@ -17,26 +17,19 @@ Sumber kebenaran prioritas dan status pengerjaan tetap `ROADMAP.md`. Item dalam 
 ### 0. Evaluasi Ulang Visual Homepage Publik yang Lebih Modern
 
 **Status:** Candidate / hanya bila kebutuhan muncul setelah redesign admin selesai
-**Tujuan:** mengevaluasi evolusi homepage publik dari baseline Civic Editorial R2 menuju presentasi yang terasa lebih modern tanpa mengorbankan kerapian, kejujuran data, accessibility, atau performa.
+**Tujuan:** mengevaluasi homepage publik hanya setelah fase admin-first selesai, tanpa mengorbankan kejujuran data, accessibility, atau performa.
 
 Konteks keputusan:
 
-- implementasi R2 saat ini diterima sebagai baseline yang lebih rapi dan profesional;
-- preferensi visual pengguna cenderung lebih modern daripada editorial murni;
-- kandidat ini bukan pembukaan kembali R2 dan tidak mengubah status R2 `Done`;
+- implementasi publik current adalah behavior/content inventory, bukan donor visual admin dan bukan keputusan visual masa depan;
+- evaluasi publik wajib memiliki brief/PRD dan prototype sendiri bila kelak dibuka;
 - evaluasi hanya dilakukan jika ada kebutuhan produk nyata, sumber foto/konten terverifikasi, dan kapasitas setelah workstream admin prioritas selesai.
 
-Discovery minimum:
-
-- definisikan arti “modern” melalui referensi dan prototype terukur, bukan glassmorphism/gradient/card-grid generik;
-- pertahankan emerald identity, restrained gold, hierarchy informasi, honest unavailable states, dan satu primary action;
-- nilai kebutuhan fotografi/visual asli, motion yang menghormati reduced-motion, dan peningkatan perceived quality pada 360/tablet/desktop;
-- bandingkan dampak accessibility, Core Web Vitals, maintainability, dan conversion/task clarity terhadap baseline R2;
-- jangan membuat V3, bridge visual, route paralel, atau mempublikasikan aset/data yang belum terverifikasi.
+Jika kandidat ini kelak dibuka, buat product brief dan blank-canvas visual brief terpisah. Jangan membawa keputusan visual kandidat publik ini ke revamp admin, dan jangan menetapkan font, palette, hierarchy, CTA, viewport, atau composition sebelum brief tersebut disetujui.
 
 ### 0.1 Superadmin Role Impersonation untuk QA
 
-**Status:** Implemented sebagai extension R3; maintenance melalui `ROADMAP.md`
+**Status:** Implemented behavior/security capability; maintenance melalui source/test dan `ROADMAP.md`
 **Tujuan:** memungkinkan superadmin memeriksa dan menjalankan pengalaman end-to-end sebagai role operasional lain tanpa menyamar sebagai akun pengguna tertentu.
 
 Batas keamanan wajib:
@@ -95,7 +88,7 @@ Keputusan desain final belum dibuat. Konsolidasi menu tidak berarti tabel dan li
 
 ### 2.1 Lampiran Proposal Keuangan
 
-**Status:** Candidate / discovery diperlukan setelah kontrak teks `keperluan` dan `keterangan` R4 stabil
+**Status:** Candidate / hanya dievaluasi saat slice Keuangan aktif dan lifecycle media tervalidasi
 **Tujuan:** memungkinkan proposal menyertakan dokumen pendukung tanpa merusak lifecycle media, audit finansial, atau recovery D1–R2.
 
 Discovery minimum:
@@ -112,9 +105,9 @@ Discovery minimum:
 
 Keputusan sementara:
 
-- pemisahan `keperluan` dan `keterangan` adalah scope aktif R4 karena merupakan koreksi contract transaksi inti;
+- pemisahan `keperluan` dan `keterangan` adalah contract transaksi current yang harus dipertahankan atau diubah end-to-end dengan migration/test;
 - attachment proposal tidak ditampilkan sebagai control operasional sampai contract storage, RBAC, lifecycle, dan cleanup memiliki implementation serta test end-to-end;
-- redesign Proposal boleh menyediakan hierarchy konseptual dokumen pendukung, tetapi tidak boleh membuat upload palsu atau menyimpan file tanpa reference lifecycle.
+- jangan menampilkan upload palsu atau menyimpan file tanpa reference lifecycle; presentation baru ditentukan saat slice Keuangan aktif di bawah design system yang sudah disetujui.
 
 ### 3. Inventaris Masjid
 
@@ -134,14 +127,97 @@ Discovery minimum:
 - laporan kondisi, lokasi, maintenance due, dan rekonsiliasi fisik;
 - dukungan label/QR hanya bila kebutuhan operasional sudah terbukti.
 
+### 4. Kegiatan dan Kalender Masjid
+
+**Status:** Candidate / backend admin `Not found`
+**Tujuan:** mengelola agenda, kegiatan rutin, acara khusus, dan publikasi jadwal kegiatan dari panel admin.
+
+Discovery minimum:
+
+- lifecycle draft, published, cancelled, completed, dan archived;
+- waktu, lokasi, penanggung jawab, kapasitas, serta informasi pendaftaran bila diperlukan;
+- recurring schedule tanpa menduplikasi record secara tidak terkendali;
+- role create/review/publish/cancel;
+- relasi cover atau dokumentasi ke Media Library;
+- endpoint publik, timezone WIB, cache, dan stale-update protection.
+
+### 5. Kritik dan Saran
+
+**Status:** Candidate / backend admin `Not found`
+**Tujuan:** menerima, menyeleksi, menindaklanjuti, dan mengarsipkan masukan publik secara aman.
+
+Discovery minimum:
+
+- kebijakan identitas pengirim, anonimitas, consent, retention, dan penghapusan data pribadi;
+- spam/rate-limit, abuse handling, serta sanitasi input;
+- state baru, ditinjau, ditindaklanjuti, selesai, dan archived;
+- assignment internal, catatan privat, dan audit perubahan;
+- response whitelist agar data internal atau identitas tidak bocor ke publik.
+
+### 6. Profil Organisasi dan Struktur Pengurus
+
+**Status:** Candidate / relasi akun dan struktur anggota `Not found`
+**Tujuan:** memisahkan teks `nama_pengurus` pada seksi dari model profil, jabatan, periode kepengurusan, dan akun akses.
+
+Discovery minimum:
+
+- profil orang, jabatan, seksi, masa tugas, urutan tampil, dan status aktif;
+- relasi opsional ke akun admin tanpa menyamakan profil publik dengan credential;
+- histori pergantian pengurus dan kebijakan data pribadi;
+- ownership perubahan, audit, serta output publik berbasis whitelist;
+- migration aman dari `seksi_pengurus.nama_pengurus` yang masih berupa teks.
+
+### 7. Reporting, Audit Global, dan Tren Keuangan
+
+**Status:** Candidate / endpoint agregasi dan audit global `Not found`
+**Tujuan:** menyediakan analisis lintas periode dan aktivitas sistem tanpa menghitung ulang data resmi di browser.
+
+Discovery minimum:
+
+- endpoint tren kas multi-bulan/tahunan dengan definisi saldo yang konsisten;
+- filter server, pagination, export, dan batas periode;
+- audit lintas modul dengan actor, target, event, timestamp, dan data scope;
+- role matrix untuk laporan sensitif dan audit keamanan;
+- index/query plan D1, retention, redaction, serta batas volume;
+- hindari membangun tren dari banyak request dashboard atau audit hasil perkiraan UI.
+
+### 8. Observability Lifecycle Media
+
+**Status:** Candidate / status deletion untuk UI `Not found`
+**Tujuan:** membuat kegagalan dan progres safe-delete media dapat ditangani operator tanpa membuka detail storage sensitif.
+
+Discovery minimum:
+
+- status publik-operasional yang aman: pending, completed, failed, retrying;
+- endpoint status atau antrean terbatas untuk role berwenang;
+- pesan error teredaksi, retry manual terkontrol, dan audit tindakan;
+- reconciliation orphan D1–R2 serta indikator media yang masih direferensikan;
+- jangan mengekspos raw storage key, stack trace, atau credential storage.
+
+### 9. Statistik Pengunjung dan Notifikasi
+
+**Status:** Candidate / analytics dan notification service `Not found`
+**Tujuan:** mengevaluasi kebutuhan metrik penggunaan dan pemberitahuan operasional tanpa menambah tracking atau alarm yang tidak diperlukan.
+
+Discovery minimum:
+
+- keputusan apakah statistik pengunjung benar-benar dibutuhkan dan lawful;
+- definisi metrik, consent, retention, anonymization, serta larangan fingerprinting;
+- sumber data dan pemisahan analytics publik dari audit keamanan;
+- event notifikasi yang actionable, recipient, channel, deduplication, read state, dan expiry;
+- email/push/in-app provider hanya dipilih setelah kebutuhan dan biaya disetujui;
+- tidak membuat badge, counter, atau notifikasi dummy tanpa backend nyata.
+
 ## Urutan Discovery yang Direkomendasikan
 
-1. Tutup P0 foundation dan critical finance integration coverage.
-2. Stabilkan lifecycle Media Library termasuk usage tracking dan safe deletion.
-3. Discovery konsolidasi Media & Galeri karena menjadi dependency media untuk Artikel dan Inventaris.
+1. Selesaikan blank-canvas direction, design-system approval, lalu implementation revamp admin sesuai urutan aktif.
+2. Pertahankan P0.5 dan lifecycle Media Library sebagai regression baseline.
+3. Discovery konsolidasi Media & Galeri bila dipilih sebagai vertical slice admin.
 4. Discovery Artikel dan Informasi.
-5. Discovery Inventaris Masjid.
-6. Setelah scope disetujui, pindahkan feature terpilih ke `ROADMAP.md` sebagai milestone aktif dengan dependency dan acceptance criteria yang konkret.
+5. Discovery Kegiatan serta Kritik dan Saran bila Publikasi menjadi slice aktif.
+6. Discovery Inventaris dan Struktur Pengurus setelah ownership domain diputuskan.
+7. Discovery reporting/audit, observability media, analytics, dan notifikasi berdasarkan kebutuhan operasional terukur.
+8. Setelah scope disetujui, pindahkan feature terpilih ke `ROADMAP.md` sebagai milestone aktif dengan dependency dan acceptance criteria yang konkret.
 
 ## Definition of Ready
 

@@ -1,0 +1,2 @@
+<script setup lang="ts">import { Inbox } from "lucide-vue-next"; defineProps<{ title: string; description?: string }>();</script>
+<template><section class="flex min-h-48 flex-col items-center justify-center border-y bg-card px-4 py-10 text-center"><Inbox class="size-6 text-muted-foreground" aria-hidden="true" /><h3 class="mt-3 font-semibold">{{ title }}</h3><p v-if="description" class="mt-1 max-w-md text-sm text-muted-foreground">{{ description }}</p><div v-if="$slots.action" class="mt-4"><slot name="action" /></div></section></template>
