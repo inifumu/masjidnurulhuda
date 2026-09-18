@@ -1,0 +1,17 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@import "./theme.css";
+@source "../";
+@custom-variant dark (&:is(.dark *));
+
+/* Shared theme maps --color-sidebar-accent: var(--sidebar-accent) and --color-sidebar-border: var(--sidebar-border). */
+@layer base {
+  * { @apply border-border; }
+  html { @apply bg-background text-foreground; }
+  body { @apply min-w-0 bg-background font-sans text-foreground antialiased; }
+  button, a, input, select, textarea, summary { @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

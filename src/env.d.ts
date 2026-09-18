@@ -6,7 +6,5 @@
 // Side Effects: Tidak ada runtime effect; hanya type declarations.
 /// <reference types="vite/client" />
 
-declare module "@fontsource-variable/inter";
-declare module "@fontsource-variable/plus-jakarta-sans";
-
-declare const __PRIMEUI_LICENSE__: string;
+declare module "@fontsource-variable/outfit";
+declare module "@fontsource-variable/jetbrains-mono";

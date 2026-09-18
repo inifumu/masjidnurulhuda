@@ -2,15 +2,18 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+import { applyAdminTheme } from "./utils/adminTheme";
 
 async function bootstrap() {
   const app = createApp(App).use(createPinia());
+  const isAdminDocument = /^\/admin(?:\/|$)/.test(window.location.pathname);
 
-  if (!/^\/admin(?:\/|$)/.test(window.location.pathname)) {
-    // Public zone — load public CSS only
+  if (isAdminDocument) {
+    applyAdminTheme();
+    await import("./adminStyles");
+  } else {
     await import("./publicStyles");
   }
-  // Admin polos zone — no CSS at all
 
   app.use(router).mount("#app");
 }

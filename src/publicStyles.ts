@@ -1,5 +1,4 @@
-// Public styling — Tailwind minimal + brand tokens untuk website publik.
-// Design system lama (shadcn-vue full, dark mode, sidebar tokens) sudah diarsipkan.
-import "@fontsource-variable/inter";
-import "@fontsource-variable/plus-jakarta-sans";
+// Public styling: font self-host dan registry Tailwind/shadcn-vue.
+import "@fontsource-variable/outfit";
+import "@fontsource-variable/jetbrains-mono";
 import "./assets/main.css";

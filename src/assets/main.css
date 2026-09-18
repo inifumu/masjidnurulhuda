@@ -1,27 +1,17 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@import "./theme.css";
+@source "../";
 
-:root {
-  color-scheme: light;
-  --brand-emerald: #0B6B4B;
-  --brand-gold: #D6A62E;
-  --brand-emerald-deep: #063D2D;
-  --border: #DCE4DE;
-}
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
-  html { text-rendering: optimizeLegibility; }
-  body { min-height: 100vh; font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: #17211C; background: #F7F7F2; }
-  :focus-visible { outline: 2px solid var(--brand-emerald); outline-offset: 2px; }
-  ::selection { background: #DDF3E8; color: #17211C; }
-}
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-.font-tabular { font-variant-numeric: tabular-nums; }
-.reading-measure { max-width: 75ch; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    letter-spacing: var(--tracking-normal);
   }
 }

@@ -1,26 +1,22 @@
-# Reset Fungsional Admin — 12 September 2026
+# Design Admin — Papan Amanah Operasional
 
-Permintaan pengguna menggantikan seluruh approval visual sebelumnya: presentasi admin ditolak dan dibangun ulang memakai Vue + HTML semantik tanpa custom CSS. Prioritas adalah mengevaluasi informasi, aksi, komponen yang diperlukan, dan workflow sebelum mendesain visual dari nol.
+## Status aktif
 
-## Kontrak aktif
+Papan Amanah Operasional disetujui pada 13 September 2026 untuk implementasi admin, dengan dial `ENERGY 2 / RHYTHM 2 / MOTION 1`.
 
-- Seluruh route admin memakai presentasi polos: Login, navigasi, Pengaturan, Media, Galeri, Keuangan, Dashboard, dan halaman status Publikasi.
-- Tidak ada stylesheet admin, style block, inline style, utility class, theme switcher, atau shell alternatif pada jalur render aktif.
-- Baseline teknologi revamp berikutnya adalah Vue 3 + Tailwind CSS. Framework tambahan, component library, icon set, font, theme, dan token belum dipilih. Admin Vue/HTML native polos tetap alat review fungsi, bukan arah visual.
-- CSS publik hanya dimuat pada dokumen publik. Perpindahan publik ↔ admin memuat dokumen baru untuk mencegah kebocoran CSS.
-- Backend, session/RBAC, audit, idempotency, lifecycle media, dan migration adalah regression contract. Jangan mengganti atau menyederhanakan otorisasi server demi presentasi.
-- Presentasi lama bukan donor desain. Source boleh ditelusuri untuk fakta fungsi saja.
-- Media dan Publikasi tetap menu utama terpisah. Pengaturan tetap tiga child route. Inventaris belum ditempatkan.
-- Galeri hanya pilihan media sementara. Kabar masjid, Kegiatan, Kritik & saran menyatakan fungsi belum tersedia; tidak ada mock data atau mutation palsu.
-- Impersonation memakai session server, indikator pelaku/peran/expiry dan exit. Pergantian sesi memuat ulang dokumen untuk membuang state UI sebelumnya.
+- Stack: Vue 3, Tailwind CSS v4, shadcn-vue dari registry `reka-maia`, dan CSS variables.
+- Identitas: emerald sebagai warna tindakan; yellow-gold hanya untuk perhatian terkendali.
+- Font: Outfit untuk UI. JetBrains Mono hanya untuk nominal, tanggal, waktu, ID, dan kode state.
+- Ikon: `lucide-vue-next` saat ikon mempercepat pengenalan; aksi penting tetap berlabel teks.
+- `src/assets/theme.css` adalah sumber global absolut dan immutable untuk nilai theme. Jangan menduplikasi, override, atau meregenerasi nilainya.
+- Personalisasi Maia bersama: Card memakai radius visual terhitung `16px` melalui utility proyek; Input memakai `bg-transparent shadow-xs`; Button outline/neutral memakai `bg-background hover:bg-accent hover:text-accent-foreground`; Button primary tetap primary Maia. Personalisasi Card hanya berlaku pada Card; geometry dan state Sidebar, SidebarInset, serta DropdownMenu tetap dimiliki grammar `reka-maia` exact. Shell tidak memaksa target `44px`, border aktif, `aria-current`, atau radius/shadow lokal pada inset.
+- Theme admin dapat dipilih terang atau gelap dari tombol di sisi kanan header konteks. Preferensi hanya berlaku pada dokumen `/admin/*`, disimpan lokal di browser, dan kunjungan pertama mengikuti preferensi sistem. Website publik tidak ikut berubah. Tidak ada V3, alternate shell, capability palsu, editor/publikasi palsu, persistensi galeri, atau placement Inventaris.
 
-## Review berikutnya
+## Implementasi saat ini
 
-Evaluasi kebutuhan per role, urutan kerja, informasi yang berulang/tidak perlu, loading/error/empty/success, validasi, dan konsekuensi aksi pada halaman polos. Setelah pengguna menyetujui struktur fungsi dan workflow, desain visual baru dibuat dari nol. Menara, Sanggar, Lentera, token typography/density, ripple dan geometry lama tidak mengikat.
+- Foundation dan Login Concept A selesai: desktop memakai split Panel Amanah, mobile memakai satu kolom.
+- Shell sidebar memakai komposisi `sidebar-08` dengan submenu collapsible route-level dan logo berlatar putih; tombol theme admin berada di sisi kanan header konteks memakai Button neutral `reka-maia`.
+- Pengaturan, Media, Publikasi, Keuangan, dan Dashboard masih pending, dikerjakan route-by-route sesuai urutan implementasi.
+- Backend, session/RBAC, audit, idempotency, dan lifecycle media tetap regression contract. Perubahan presentasi tidak mengubah otoritas backend.
 
-## Sumber
-
-- SYSTEM_MAP.md: route dan flow aktual.
-- docs/revamp/ADMIN_INFORMATION_ARCHITECTURE.md: batas modul dan route.
-- docs/revamp/ADMIN_FUNCTIONAL_MAPPING.md: fungsi tersedia dan gap.
-- docs/archive/admin-presentation-2026-09-12/: stylesheet serta test presentasi yang sudah digantikan; tidak diimpor aplikasi.
+Detail keputusan ada di [spec Papan Amanah](docs/superpowers/specs/2026-09-13-admin-papan-amanah-design.md) dan [implementation plan](docs/superpowers/plans/2026-09-13-admin-papan-amanah-implementation.md). Dokumen ini adalah brief desain kanonik aktif; jangan menggandakan spec lengkap di sini.
