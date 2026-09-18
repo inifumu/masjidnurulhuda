@@ -74,7 +74,7 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-2">
           <router-link to="/admin/login" class="hidden inline-flex min-h-11 items-center gap-2 rounded-sm border border-input bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"><LogIn class="size-4" aria-hidden="true" />Portal Pengurus</router-link>
-          <button ref="menuButton" type="button" class="inline-flex size-11 items-center justify-center rounded-sm border bg-card text-foreground lg:hidden" :aria-expanded="isMobileMenuOpen" aria-controls="public-mobile-navigation" :aria-label="isMobileMenuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'" @click="isMobileMenuOpen = !isMobileMenuOpen">
+          <button ref="menuButton" type="button" class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-sm border bg-card text-foreground lg:hidden" :aria-expanded="isMobileMenuOpen" aria-controls="public-mobile-navigation" :aria-label="isMobileMenuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'" @click="isMobileMenuOpen = !isMobileMenuOpen">
             <X v-if="isMobileMenuOpen" class="size-5" aria-hidden="true" /><Menu v-else class="size-5" aria-hidden="true" />
           </button>
         </div>
@@ -83,14 +83,14 @@ onBeforeUnmount(() => {
       <div v-if="isMobileMenuOpen" class="fixed inset-x-0 bottom-0 top-16 z-50 bg-background lg:hidden">
         <nav id="public-mobile-navigation" class="mx-auto flex max-w-7xl flex-col px-4 py-5" aria-label="Navigasi mobile">
           <a v-for="(item, index) in navigation" :key="item.href" :ref="index === 0 ? (element) => (firstMobileLink = element as HTMLAnchorElement) : undefined" :href="item.href" class="flex min-h-12 items-center border-b px-2 text-base font-medium" @click="closeMobileMenu()">{{ item.label }}</a>
-          <router-link to="/admin/login" class="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-sm border bg-card px-4 text-sm font-semibold text-brand-green" @click="closeMobileMenu()"><LogIn class="size-4" aria-hidden="true" />Portal Pengurus</router-link>
+          <router-link to="/admin/login" class="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-sm border bg-card px-4 text-sm font-semibold text-primary" @click="closeMobileMenu()"><LogIn class="size-4" aria-hidden="true" />Portal Pengurus</router-link>
         </nav>
       </div>
     </header>
 
     <main class="flex-1"><router-view /></main>
 
-    <footer class="border-t bg-[var(--brand-emerald-deep)] text-white">
+    <footer class="border-t bg-sidebar text-white">
       <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1fr_auto] md:items-end lg:px-8">
         <div>
           <div class="flex items-center gap-3"><img src="/logo.png" alt="" class="size-10 object-contain" /><p class="text-lg font-semibold">Masjid Nurul Huda</p></div>

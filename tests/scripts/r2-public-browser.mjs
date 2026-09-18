@@ -19,7 +19,7 @@ try {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(overflow <= 1, `${viewport.width}: overflow ${overflow}px`);
     const fonts = await page.evaluate(() => ({ family: getComputedStyle(document.body).fontFamily, links: [...document.querySelectorAll("link")].map((link) => link.href) }));
-    assert.match(fonts.family, /Inter Variable/);
+    assert.match(fonts.family, /Outfit Variable/);
     assert.equal(fonts.links.some((url) => url.includes("fonts.googleapis.com")), false);
     const undersized = await page.locator("a:visible, button:visible").evaluateAll((items) => items.filter((item) => { const r = item.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).map((item) => ({ text: item.textContent?.trim(), width: item.getBoundingClientRect().width, height: item.getBoundingClientRect().height })));
     assert.deepEqual(undersized, [], `${viewport.width}: control di bawah 44px`);
